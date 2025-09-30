@@ -53,24 +53,50 @@ elif [[ "$OS" == "linux" ]]; then
     if command_exists nvidia-smi; then
         echo -e "${GREEN}✅ NVIDIA GPU detected${NC}"
         nvidia-smi --query-gpu=name --format=csv,noheader | head -n1
-        FEATURES="cuda"
-        echo -e "${GREEN}   Building with CUDA acceleration${NC}"
+
+        # Check if CUDA is properly installed
+        if [[ -n "$CUDA_PATH" ]] || command_exists nvcc; then
+            FEATURES="cuda"
+            echo -e "${GREEN}   Building with CUDA acceleration${NC}"
+        else
+            echo -e "${YELLOW}   CUDA toolkit not found - falling back to CPU${NC}"
+            echo -e "${YELLOW}   Install CUDA Toolkit to enable GPU acceleration${NC}"
+            FEATURES=""
+        fi
 
     # Check for AMD GPU
     elif command_exists rocm-smi; then
         echo -e "${GREEN}✅ AMD GPU detected${NC}"
-        FEATURES="hipblas"
-        echo -e "${GREEN}   Building with AMD ROCm (HIP) acceleration${NC}"
+
+        # Check if ROCm is properly installed
+        if [[ -n "$ROCM_PATH" ]] || command_exists hipcc; then
+            FEATURES="hipblas"
+            echo -e "${GREEN}   Building with AMD ROCm (HIP) acceleration${NC}"
+        else
+            echo -e "${YELLOW}   ROCm not found - falling back to CPU${NC}"
+            echo -e "${YELLOW}   Install ROCm to enable GPU acceleration${NC}"
+            FEATURES=""
+        fi
 
     # Check for Vulkan support (fallback for Intel/other GPUs)
     elif command_exists vulkaninfo; then
-        echo -e "${YELLOW}⚠️  Vulkan detected (Intel/other GPU)${NC}"
-        FEATURES="vulkan"
-        echo -e "${YELLOW}   Building with Vulkan acceleration${NC}"
+        echo -e "${BLUE}ℹ️  Vulkan support detected${NC}"
+
+        # Check if required environment variables are set
+        if [[ -n "$VULKAN_SDK" ]] && [[ -n "$BLAS_INCLUDE_DIRS" ]]; then
+            FEATURES="vulkan"
+            echo -e "${GREEN}   Building with Vulkan acceleration${NC}"
+        else
+            echo -e "${YELLOW}   Missing required environment variables:${NC}"
+            [[ -z "$VULKAN_SDK" ]] && echo -e "${YELLOW}   - VULKAN_SDK not set${NC}"
+            [[ -z "$BLAS_INCLUDE_DIRS" ]] && echo -e "${YELLOW}   - BLAS_INCLUDE_DIRS not set${NC}"
+            echo -e "${YELLOW}   Falling back to CPU optimization (OpenBLAS)${NC}"
+            FEATURES=""
+        fi
 
     else
-        echo -e "${YELLOW}⚠️  No GPU detected${NC}"
-        echo -e "${YELLOW}   Building with CPU optimization (OpenBLAS)${NC}"
+        echo -e "${BLUE}ℹ️  No GPU detected${NC}"
+        echo -e "${BLUE}   Building with CPU optimization (OpenBLAS)${NC}"
         FEATURES=""
     fi
 fi

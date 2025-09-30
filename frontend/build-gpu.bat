@@ -129,8 +129,22 @@ echo.
 echo 📦 Building Meetily...
 echo.
 
+REM Find Cargo.toml location
+if exist "src-tauri\Cargo.toml" (
+    echo    Found Cargo.toml in src-tauri
+    cd src-tauri
+) else if exist "frontend\src-tauri\Cargo.toml" (
+    echo    Found Cargo.toml in frontend\src-tauri
+    cd frontend\src-tauri
+) else if exist "Cargo.toml" (
+    echo    Found Cargo.toml in current directory
+) else (
+    echo    ❌ Error: Could not find Cargo.toml
+    echo    Make sure you're in the project root or frontend directory
+    exit /b 1
+)
+
 REM Build based on GPU detection
-cd src-tauri
 if "%GPU_FEATURES%" == "" (
     echo    Building with default features (OpenBLAS CPU optimization)
     cargo build --release
@@ -142,11 +156,8 @@ if "%GPU_FEATURES%" == "" (
 if errorlevel 1 (
     echo.
     echo ❌ Build failed
-    cd ..
     exit /b 1
 )
-
-cd ..
 
 echo.
 echo ========================================
