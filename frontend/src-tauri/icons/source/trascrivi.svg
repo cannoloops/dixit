@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#13756B"/>
+      <stop offset="1" stop-color="#0B4750"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.10"/>
+      <stop offset="0.35" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <!-- macOS icon grid: 824×824 body on a 1024 canvas -->
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#bg)" filter="url(#shadow)"/>
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#rim)"/>
+  <g transform="translate(0 22)">
+    <g fill="#FFFFFF" fill-opacity="0.95">
+      <!-- row 1: the voice settles into a line of text -->
+      <rect x="354" y="320" width="30" height="104" rx="15"/>
+      <rect x="404" y="288" width="30" height="168" rx="15"/>
+      <rect x="454" y="308" width="30" height="128" rx="15"/>
+      <rect x="504" y="330" width="30" height="84" rx="15"/>
+      <rect x="554" y="342" width="236" height="60" rx="30"/>
+      <!-- rows 2 and 3: written lines -->
+      <rect x="354" y="482" width="436" height="60" rx="30"/>
+      <rect x="354" y="622" width="286" height="60" rx="30"/>
+    </g>
+    <!-- speakers -->
+    <circle cx="276" cy="372" r="38" fill="#F6B93B"/>
+    <circle cx="276" cy="512" r="38" fill="#7CC8FF"/>
+    <circle cx="276" cy="652" r="38" fill="#FF9AA8"/>
+  </g>
+</svg>
