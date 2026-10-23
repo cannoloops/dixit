@@ -86,6 +86,24 @@ Queste prove richiedono call vere e non sono automatizzate.
   - con Annulla o con lo stop manuale non la ferma.
 - [ ] **Minuta:** `parse_teams.py` della skill `minuta-call`, lanciato sul file `<titolo>-Trascrizione della riunione.docx` nella cartella della riunione, riporta i nomi.
 
+### Esito del collaudo del 23/10/2026
+
+Tre call Teams vere (80 min di riunione, una 1:1 di 14 min, più una ripresa a metà call):
+
+- **Funzionano:**
+  - avvio e stop automatici;
+  - una call nuova dopo la fine della precedente viene registrata a parte;
+  - separazione Io/Altri;
+  - `.docx` e salvataggio nel DB.
+- **Corretto dopo il collaudo:**
+  - parlanti divisi in troppi gruppi: soglia 0,6 → 0,35, più l'accorpamento dei gruppi piccoli; sulla call di 80 minuti i gruppi passano da 167 a 14;
+  - titolo nella vista compatta di Teams.
+- **Ancora da verificare in una call con la finestra della riunione ingrandita:**
+  - sottotitoli live e trascrizione nativa (nella vista compatta di Teams manca il menu "Altro", quindi l'app aspetta l'ingrandimento);
+  - Zoom e Meet;
+  - Annulla immediato.
+- **Da chiarire:** una registrazione partita all'avvio dell'app, a call già in corso, si è fermata dopo 5 s. Ora i log sono in `~/Library/Logs/Trascrivi/trascrivi.log` (avvio con `scripts/install-local.sh`).
+
 **Se Teams cambia interfaccia** (sottotitoli o trascrizione nativa non si attivano più):
 1. durante una call apri Impostazioni → Automazione → **Salva diagnostica**;
 2. il JSON salvato in `diagnostics/` serve ad aggiornare i selettori in `frontend/src-tauri/src/teams/ax.rs`.
