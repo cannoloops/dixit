@@ -1,5 +1,6 @@
 'use client';
 
+import { listen } from '@tauri-apps/api/event';
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, MutableRefObject } from 'react';
 import { Transcript, TranscriptUpdate } from '@/types';
 import { toast } from 'sonner';
@@ -85,6 +86,7 @@ export function TranscriptProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let unlistenRecordingStarted: (() => void) | undefined;
     let unlistenRecordingStopped: (() => void) | undefined;
+    let unlistenRecordingCancelled: (() => void) | undefined;
 
     const setupRecordingListeners = async () => {
       try {
@@ -142,6 +144,18 @@ export function TranscriptProvider({ children }: { children: ReactNode }) {
           }
         });
 
+        // Trascrivi: a cancelled recording leaves nothing behind, not even a recovery entry
+        unlistenRecordingCancelled = await listen('recording-cancelled', async () => {
+          const meetingId = currentMeetingId || sessionStorage.getItem('indexeddb_current_meeting_id');
+          try {
+            if (meetingId) await indexedDBService.deleteMeeting(meetingId);
+          } catch (error) {
+            console.error('Failed to delete cancelled meeting from IndexedDB:', error);
+          }
+          sessionStorage.removeItem('indexeddb_current_meeting_id');
+          window.location.assign('/');
+        });
+
         // Listen for recording-stopped event
         unlistenRecordingStopped = await recordingService.onRecordingStopped(async (payload) => {
           try {
@@ -174,6 +188,7 @@ export function TranscriptProvider({ children }: { children: ReactNode }) {
         unlistenRecordingStopped();
         console.log('🧹 Recording stopped listener cleaned up');
       }
+      unlistenRecordingCancelled?.();
     };
   }, [currentMeetingId]);
 

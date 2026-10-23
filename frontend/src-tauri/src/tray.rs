@@ -40,6 +40,7 @@ fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, item_id: &str) {
         "pause_recording" => pause_recording_handler(app),
         "resume_recording" => resume_recording_handler(app),
         "stop_recording" => stop_recording_handler(app),
+        "cancel_recording" => crate::autopilot::cancel_in_background(app),
         "open_window" => focus_main_window(app),
         "settings" => {
             focus_main_window(app);
@@ -152,8 +153,15 @@ fn resume_recording_handler<R: Runtime>(app: &AppHandle<R>) {
 fn stop_recording_handler<R: Runtime>(app: &AppHandle<R>) {
     // Immediately show stopping state
     set_tray_state(app, RecordingState::Stopping);
+    stop_recording_in_background(app, true);
+}
 
-    focus_main_window(app);
+/// Stop + frontend post-processing (SQLite save), as the tray Stop item does.
+/// `focus`: bring the main window forward (false for the autopilot's automatic stop).
+pub(crate) fn stop_recording_in_background<R: Runtime>(app: &AppHandle<R>, focus: bool) {
+    if focus {
+        focus_main_window(app);
+    }
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
         log::info!("Tray: Stopping recording...");
@@ -343,7 +351,8 @@ fn build_menu<R: Runtime>(
             RecordingState::Recording => {
                 builder = builder
                     .item(&MenuItemBuilder::with_id("pause_recording", "⏸ Pause Recording").build(app)?)
-                    .item(&MenuItemBuilder::with_id("stop_recording", "⏹ Stop Recording").build(app)?);
+                    .item(&MenuItemBuilder::with_id("stop_recording", "⏹ Stop Recording").build(app)?)
+                    .item(&MenuItemBuilder::with_id("cancel_recording", "✖ Annulla registrazione").build(app)?);
             }
             RecordingState::Pausing => {
                 builder = builder
@@ -360,7 +369,8 @@ fn build_menu<R: Runtime>(
                         &MenuItemBuilder::with_id("resume_recording", "▶ Resume Recording")
                             .build(app)?,
                     )
-                    .item(&MenuItemBuilder::with_id("stop_recording", "⏹ Stop Recording").build(app)?);
+                    .item(&MenuItemBuilder::with_id("stop_recording", "⏹ Stop Recording").build(app)?)
+                    .item(&MenuItemBuilder::with_id("cancel_recording", "✖ Annulla registrazione").build(app)?);
             }
             RecordingState::Resuming => {
                 builder = builder
