@@ -53,6 +53,7 @@ pub mod groq;
 pub mod openrouter;
 pub mod parakeet_engine;
 pub mod state;
+pub mod speakers;
 pub mod summary;
 pub mod teams;
 pub mod tray;

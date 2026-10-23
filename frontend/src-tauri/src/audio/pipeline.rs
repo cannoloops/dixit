@@ -707,6 +707,8 @@ pub struct AudioPipeline {
     mixer: ProfessionalAudioMixer,
     // Recording sender for pre-mixed audio
     recording_sender_for_mixed: Option<mpsc::UnboundedSender<AudioChunk>>,
+    // Trascrivi: unmixed (mic, system) windows for post-call speaker attribution
+    speaker_tap: Option<mpsc::UnboundedSender<crate::speakers::tracks::TrackWindow>>,
 }
 
 impl AudioPipeline {
@@ -785,6 +787,7 @@ impl AudioPipeline {
             ring_buffer,
             mixer,
             recording_sender_for_mixed: None,  // Will be set by manager
+            speaker_tap: None,
         })
     }
 
@@ -847,6 +850,9 @@ impl AudioPipeline {
                     // STEP 2: Mix audio in fixed windows when both streams have sufficient data
                     while self.ring_buffer.can_mix() {
                         if let Some((mic_window, sys_window)) = self.ring_buffer.extract_window() {
+                            if let Some(ref tap) = self.speaker_tap {
+                                let _ = tap.send((mic_window.clone(), sys_window.clone()));
+                            }
                             // Simple mixing without aggressive ducking
                             let mixed_clean = self.mixer.mix_window(&mic_window, &sys_window);
 
@@ -987,6 +993,7 @@ impl AudioPipelineManager {
         target_chunk_duration_ms: u32,
         sample_rate: u32,
         recording_sender: Option<mpsc::UnboundedSender<AudioChunk>>,
+        speaker_tap: Option<mpsc::UnboundedSender<crate::speakers::tracks::TrackWindow>>,
         mic_device_name: String,
         mic_device_kind: super::device_detection::InputDeviceKind,
         system_device_name: String,
@@ -1018,6 +1025,7 @@ impl AudioPipelineManager {
         // CRITICAL FIX: Connect recording sender to receive pre-mixed audio
         // This ensures both mic AND system audio are captured in recordings
         pipeline.recording_sender_for_mixed = recording_sender;
+        pipeline.speaker_tap = speaker_tap;
 
         let handle = tokio::spawn(async move {
             pipeline.run().await

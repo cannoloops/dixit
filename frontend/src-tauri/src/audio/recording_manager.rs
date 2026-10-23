@@ -236,6 +236,8 @@ impl RecordingManager {
         // Set up transcription channel
         let (transcription_sender, transcription_receiver) = mpsc::unbounded_channel::<AudioChunk>();
         let (recording_sender, recording_receiver) = mpsc::unbounded_channel::<AudioChunk>();
+        let (speaker_tap, speaker_tap_receiver) =
+            mpsc::unbounded_channel::<crate::speakers::tracks::TrackWindow>();
 
         // Start recording state first
         self.state.start_recording()?;
@@ -267,6 +269,7 @@ impl RecordingManager {
             0, // Ignored - using dynamic sizing internally
             48000, // 48kHz sample rate
             Some(recording_sender), // CRITICAL: Pass recording sender to receive pre-mixed audio
+            Some(speaker_tap),
             mic_name,
             mic_kind,
             sys_name,
@@ -277,6 +280,10 @@ impl RecordingManager {
         }
 
         self.recording_saver.start_accumulation(auto_save, recording_receiver);
+        match self.recording_saver.get_meeting_folder() {
+            Some(folder) => crate::speakers::tracks::run_writer(folder.clone(), speaker_tap_receiver),
+            None => warn!("No meeting folder: speaker attribution tracks not recorded"),
+        }
         self.recording_saver.set_device_info(
             microphone_device.as_ref().map(|d| d.name.clone()),
             system_device.as_ref().map(|d| d.name.clone())
