@@ -38,6 +38,7 @@ pub(crate) use perf_trace;
 pub mod analytics;
 pub mod api;
 pub mod audio;
+pub mod autopilot;
 pub mod config;
 pub mod console_utils;
 pub mod database;
@@ -830,6 +831,9 @@ pub fn run() {
             audio::import::start_import_audio_command,
             audio::import::cancel_import_command,
             audio::import::is_import_in_progress_command,
+            // Trascrivi
+            autopilot::settings::autopilot_get_settings,
+            autopilot::settings::autopilot_save_settings,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
