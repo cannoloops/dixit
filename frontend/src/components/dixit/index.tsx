@@ -23,7 +23,7 @@ export function useMe(): string {
 
 /**
  * CSS color of a speaker: Dixit green for the user, a distinct colour per other person
- * (by order of appearance in `roster`, so a meeting never repeats a colour before the sixth voice),
+ * (by position in `roster`, so a meeting never repeats a colour before the eighth voice),
  * stone grey for "Altri"/unknown.
  */
 export function speakerColor(name: string | undefined, roster: string[], me: string): string {
@@ -32,7 +32,7 @@ export function speakerColor(name: string | undefined, roster: string[], me: str
   const others = roster.filter((n) => n && n !== me && n !== 'Io' && n !== 'Altri');
   let i = others.indexOf(name);
   if (i < 0) i = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 0);
-  return `hsl(var(--speaker-${(i % 5) + 1}))`;
+  return `hsl(var(--speaker-${(i % 7) + 1}))`;
 }
 
 /** Display label: translates the backend's placeholders ("Parlante A", "Altri", "Io"). */

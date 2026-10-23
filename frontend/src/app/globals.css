@@ -116,11 +116,14 @@
     --live-foreground: 0 0% 100%;
 
     --speaker-me: 93 69% 29%;        /* tu: verde Dixit */
+    /* Other speakers, most distinct first (roster = most turns first) */
     --speaker-1: 202 74% 39%;        /* blu Dixit */
-    --speaker-2: 262 37% 50%;        /* viola */
-    --speaker-3: 33 89% 35%;         /* ambra */
-    --speaker-4: 313 46% 45%;        /* magenta */
-    --speaker-5: 177 75% 29%;        /* teal Dixit */
+    --speaker-2: 33 89% 35%;         /* ambra */
+    --speaker-3: 313 46% 45%;        /* magenta */
+    --speaker-4: 177 75% 29%;        /* teal Dixit */
+    --speaker-5: 262 37% 50%;        /* viola */
+    --speaker-6: 14 68% 40%;         /* ruggine */
+    --speaker-7: 233 47% 48%;        /* indaco */
     --speaker-other: 218 3% 45%;
 
     --shadow-float: 0 12px 32px -12px hsl(240 2% 17% / 0.25), 0 2px 6px -2px hsl(240 2% 17% / 0.10);
@@ -162,10 +165,12 @@
 
       --speaker-me: 82 67% 47%;
       --speaker-1: 202 79% 64%;
-      --speaker-2: 261 66% 77%;
-      --speaker-3: 33 87% 62%;
-      --speaker-4: 318 64% 72%;
-      --speaker-5: 175 57% 51%;
+      --speaker-2: 33 87% 62%;
+      --speaker-3: 318 64% 72%;
+      --speaker-4: 175 57% 51%;
+      --speaker-5: 261 66% 77%;
+      --speaker-6: 14 80% 66%;
+      --speaker-7: 232 80% 76%;
       --speaker-other: 223 4% 63%;
 
       --shadow-float: 0 12px 32px -12px hsl(0 0% 0% / 0.55), 0 2px 6px -2px hsl(0 0% 0% / 0.35);

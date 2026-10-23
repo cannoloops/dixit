@@ -8,7 +8,7 @@ interface ConfidenceIndicatorProps {
   showIndicator?: boolean;
 }
 
-// Bronze when the transcription is reliable, stone when middling, porphyry when it likely needs checking.
+// Primary colour when the transcription is reliable, muted when middling, red when it likely needs checking.
 function level(conf: number) {
   if (conf >= 0.8) return { dot: 'bg-primary', label: t('confidenceHigh') };
   if (conf >= 0.7) return { dot: 'bg-primary/60', label: t('confidenceGood') };

@@ -48,6 +48,8 @@ module.exports = {
   				'3': 'hsl(var(--speaker-3))',
   				'4': 'hsl(var(--speaker-4))',
   				'5': 'hsl(var(--speaker-5))',
+  				'6': 'hsl(var(--speaker-6))',
+  				'7': 'hsl(var(--speaker-7))',
   				other: 'hsl(var(--speaker-other))'
   			},
   			card: {

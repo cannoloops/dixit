@@ -5,9 +5,19 @@ import type { PaginatedTranscriptsResponse, Transcript } from '@/types';
 // One read for the whole meeting: even a 3.5 h call is a few thousand lines.
 const ALL_LINES = 1_000_000;
 
-/** Distinct speakers in order of first appearance: the roster that fixes each speaker's colour. */
+/**
+ * Distinct speakers, most turns first (ties: first appearance), the same order as the speaker
+ * band's legend: the roster that fixes each speaker's colour, so the people who talk most never
+ * share one. A turn is a run of consecutive lines of the same speaker.
+ */
 export function rosterOf(lines: { speaker?: string }[]): string[] {
-  return Array.from(new Set(lines.map((l) => l.speaker).filter((s): s is string => !!s)));
+  const turns = new Map<string, number>();
+  let previous: string | undefined;
+  for (const l of lines) {
+    if (l.speaker && l.speaker !== previous) turns.set(l.speaker, (turns.get(l.speaker) ?? 0) + 1);
+    if (l.speaker) previous = l.speaker;
+  }
+  return Array.from(turns.keys()).sort((a, b) => turns.get(b)! - turns.get(a)!);
 }
 
 /**

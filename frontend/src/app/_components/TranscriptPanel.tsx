@@ -14,7 +14,7 @@ import { t } from '@/i18n/recording';
 /**
  * TranscriptPanel Component
  *
- * The live transcript: a fixed-measure column that grows like an inscription while Dixit records,
+ * The live transcript: a fixed-measure column that grows while Dixit records,
  * with a teaching empty state before the first recording.
  */
 
