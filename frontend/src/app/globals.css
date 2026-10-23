@@ -95,7 +95,7 @@
     --muted-foreground: 210 7% 36%;
     --accent: 210 14% 89%;
     --accent-foreground: 80 5% 11%;
-    --destructive: 356 55% 38%;      /* rosso mattone */
+    --destructive: 340 48% 36%;      /* vinaccia: lontano dal minio */
     --destructive-foreground: 210 20% 98%;
     --border: 210 11% 84%;
     --input: 210 9% 79%;
@@ -115,7 +115,7 @@
 
     --speaker-me: 151 40% 30%;       /* verde antico: l'utente */
     --speaker-1: 218 53% 39%;        /* lapislazzuli */
-    --speaker-2: 42 72% 30%;         /* giallo antico */
+    --speaker-2: 188 60% 27%;        /* blu egizio */
     --speaker-3: 330 40% 36%;        /* porfido */
     --speaker-4: 21 53% 35%;         /* terra di Siena */
     --speaker-5: 255 30% 42%;        /* pavonazzetto */
@@ -140,7 +140,7 @@
       --muted-foreground: 67 5% 63%;
       --accent: 72 6% 17%;
       --accent-foreground: 60 12% 90%;
-      --destructive: 356 60% 66%;
+      --destructive: 340 55% 68%;
       --destructive-foreground: 90 4% 11%;
       --border: 70 6% 20%;
       --input: 80 5% 24%;
@@ -158,7 +158,7 @@
 
       --speaker-me: 148 36% 60%;
       --speaker-1: 221 64% 73%;
-      --speaker-2: 42 65% 60%;
+      --speaker-2: 188 50% 60%;
       --speaker-3: 330 45% 70%;
       --speaker-4: 21 58% 65%;
       --speaker-5: 254 51% 75%;

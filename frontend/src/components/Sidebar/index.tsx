@@ -37,6 +37,11 @@ import { Label } from '@/components/ui/label';
 import Logo from '../Logo';
 import Info from '../Info';
 
+/** Automatic titles end with "dd-mm-YYYY HH.MM", already shown by the row's date and time. */
+function railTitle(title: string): string {
+  return title.replace(/\s*\d{2}-\d{2}-\d{4} \d{2}\.\d{2}$/, '') || title;
+}
+
 /** Compact meeting length for the archive: "14 min", "1h19". */
 function formatDuration(seconds: number): string {
   const minutes = Math.max(1, Math.round(seconds / 60));
@@ -494,7 +499,7 @@ const Sidebar: React.FC = () => {
           )}
         >
           <span className="w-10 shrink-0 text-xs tabular-nums text-rail-muted">{time}</span>
-          <span className="incisa min-w-0 flex-1 truncate text-[11px]">{inscribe(meeting.title)}</span>
+          <span className="incisa min-w-0 flex-1 truncate text-[11px]" title={meeting.title}>{inscribe(railTitle(meeting.title))}</span>
           {meeting.duration_secs ? (
             <span className="shrink-0 text-xs tabular-nums text-rail-muted group-hover:hidden group-has-[:focus-visible]:hidden">
               {formatDuration(meeting.duration_secs)}

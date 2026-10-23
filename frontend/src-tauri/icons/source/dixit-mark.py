@@ -81,7 +81,7 @@ def letter(H, cx, cy, shift=0.0, **k):
     ymI = cy - 0.02 * H           # counter extreme a touch higher: stress below the middle
     kx = ky = 0.60                # outer fullness
     ix, iy = 0.58, 0.62           # counter fullness
-    f = 0.035 * H                 # fillets in the counter corners
+    f = 0.006 * H                 # counter corners nearly sharp: a clean mitre instead of a fan of tones
     cR = xR - B
     outer = [
         ('L', (x0 - Ls, yT), (xa, yT)),

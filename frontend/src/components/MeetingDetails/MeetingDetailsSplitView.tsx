@@ -139,7 +139,7 @@ export function MeetingDetailsSplitView({
         <TabsContent
           value="transcript"
           forceMount
-          className="mt-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden md:w-[var(--transcript-pane-width)] md:flex-none md:data-[state=inactive]:flex"
+          className="mt-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden md:w-[max(var(--transcript-pane-width),min(36rem,75%))] md:flex-none md:data-[state=inactive]:flex"
           {...transcriptPanelProps}
         >
           {transcript}
