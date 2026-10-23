@@ -1,8 +1,8 @@
 {
     "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-    "productName": "meetily",
+    "productName": "Trascrivi",
     "version": "0.4.1",
-    "identifier": "com.meetily.ai",
+    "identifier": "com.vitomanuguerra.trascrivi",
     "build": {
         "frontendDist": "../out",
         "devUrl": "http://localhost:3118",
@@ -12,7 +12,7 @@
     "app": {
         "windows": [
             {
-                "title": "meetily",
+                "title": "Trascrivi",
                 "width": 1100,
                 "height": 700,
                 "resizable": true,
@@ -81,10 +81,6 @@
     "bundle": {
         "active": true,
         "targets": [
-            "deb",
-            "appimage",
-            "msi",
-            "nsis",
             "app",
             "dmg"
         ],
@@ -104,7 +100,8 @@
         "macOS": {
             "entitlements": "entitlements.plist",
             "signingIdentity": "-",
-            "hardenedRuntime": true
+            "hardenedRuntime": true,
+            "minimumSystemVersion": "14.4"
         },
         "windows": {
             "signCommand": "powershell -ExecutionPolicy Bypass -File scripts/sign-windows.ps1 -FilePath %1"
@@ -114,7 +111,7 @@
         "updater": {
             "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVDQTYzMUQ3ODc5N0M4MkEKUldRcXlKZUgxekdtN09DRkVWSHNpZlJseEVOUmpNd1dDSTNaLzZ3MXJGTnY3WW1pdnlOYjBpbkIK",
             "endpoints": [
-                "https://github.com/Zackriya-Solutions/meeting-minutes/releases/latest/download/latest.json"
+                "https://github.com/cannoloops/trascrivi-releases/releases/latest/download/latest.json"
             ]
         }
     }

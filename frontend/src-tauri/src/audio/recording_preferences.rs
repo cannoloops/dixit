@@ -56,14 +56,14 @@ pub fn get_default_recordings_folder() -> PathBuf {
 
     #[cfg(target_os = "macos")]
     {
-        // macOS: ~/Movies/meetily-recordings
+        // macOS: ~/Movies/trascrivi-recordings (kept apart from Meetily's folder)
         if let Some(movies_dir) = dirs::video_dir() {
-            movies_dir.join("meetily-recordings")
+            movies_dir.join("trascrivi-recordings")
         } else {
             // Fallback to Documents if Movies folder is not available
             dirs::document_dir()
                 .unwrap_or_else(|| PathBuf::from("."))
-                .join("meetily-recordings")
+                .join("trascrivi-recordings")
         }
     }
 
