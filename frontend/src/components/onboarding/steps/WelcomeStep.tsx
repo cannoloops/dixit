@@ -13,7 +13,7 @@ export function WelcomeStep() {
       <div className="my-auto flex flex-col items-center text-center">
         <DixitMark className="h-20 w-20 text-5xl text-primary" />
 
-        <h1 className="incisa mt-6 text-6xl">Dixit</h1>
+        <h1 className="mt-6 font-display text-5xl font-bold">Dixit</h1>
 
         <p className="mt-6 max-w-md text-base">{t('welcomeTagline')}</p>
 

@@ -1,7 +1,7 @@
 'use client'
 
 import './globals.css'
-import { Cinzel } from 'next/font/google'
+import { Montserrat, Open_Sans } from 'next/font/google'
 import { lang } from '@/i18n'
 import { t } from '@/i18n/shell'
 import Sidebar from '@/components/Sidebar'
@@ -29,11 +29,16 @@ import { ImportDialogProvider } from '@/contexts/ImportDialogContext'
 import { isAudioExtension, getAudioFormatsDisplayList } from '@/constants/audioFormats'
 
 
-// Inscriptional capitals for speaker names and titles (self-hosted by next/font at build).
-const cinzel = Cinzel({
+// Dixit design system fonts, self-hosted by next/font at build.
+const montserrat = Montserrat({
   subsets: ['latin'],
-  weight: ['600'],
-  variable: '--font-cinzel',
+  weight: ['600', '700'],
+  variable: '--font-montserrat',
+})
+const openSans = Open_Sans({
+  subsets: ['latin'],
+  weight: ['400', '600'],
+  variable: '--font-open-sans',
 })
 
 // Module-level component — stable reference across RootLayout re-renders.
@@ -239,7 +244,7 @@ export default function RootLayout({
 
   return (
     <html lang={lang} suppressHydrationWarning>
-      <body className={`${cinzel.variable} font-sans antialiased`}>
+      <body className={`${montserrat.variable} ${openSans.variable} font-sans antialiased`}>
         {mounted && (<>
         <AnalyticsProvider>
           <RecordingStateProvider>

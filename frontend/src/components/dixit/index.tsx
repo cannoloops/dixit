@@ -1,8 +1,8 @@
 'use client';
 
-// Dixit signature components ("Epigrafe romana"): carved speaker names, the recording light,
+// Dixit shared components (Dixit design system): speaker names, the recording light,
 // and the fixed meeting-state vocabulary. Use these instead of ad-hoc labels.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { cn } from '@/lib/utils';
 import { t } from '@/i18n/app';
@@ -22,7 +22,7 @@ export function useMe(): string {
 }
 
 /**
- * CSS color of a speaker: verde antico for the user, a Roman pigment per other person
+ * CSS color of a speaker: Dixit green for the user, a distinct colour per other person
  * (by order of appearance in `roster`, so a meeting never repeats a colour before the sixth voice),
  * stone grey for "Altri"/unknown.
  */
@@ -35,11 +35,6 @@ export function speakerColor(name: string | undefined, roster: string[], me: str
   return `hsl(var(--speaker-${(i % 5) + 1}))`;
 }
 
-/** Words of an inscription joined by interpuncts (ROSSI·MARIO); display only, never stored. */
-export function inscribe(text: string): string {
-  return text.trim().split(/\s+/).join('·');
-}
-
 /** Display label: translates the backend's placeholders ("Parlante A", "Altri", "Io"). */
 export function speakerLabel(name: string | undefined, me: string): string {
   if (!name || name === 'Altri') return t('others');
@@ -48,10 +43,7 @@ export function speakerLabel(name: string | undefined, me: string): string {
   return placeholder ? t('speaker', { letter: placeholder[1] }) : name;
 }
 
-/**
- * A speaker's name carved in inscriptional capitals with interpuncts (ROSSI·MARIO), in its pigment.
- * Signature move: when the name changes (e.g. "Parlante A" resolves to a real name) it is chiselled in once.
- */
+/** A speaker's name in their colour (Montserrat semibold), the same everywhere in the app. */
 export function SpeakerName({
   name,
   roster = [],
@@ -62,27 +54,19 @@ export function SpeakerName({
   className?: string;
 }) {
   const me = useMe();
-  const previous = useRef(name);
-  const [chisel, setChisel] = useState(false);
-  useEffect(() => {
-    if (previous.current !== name) setChisel(true);
-    previous.current = name;
-  }, [name]);
-
   const label = speakerLabel(name, me);
   return (
     <span
-      key={label}
       title={label}
-      className={cn('incisa inline-block truncate align-baseline text-[12px] leading-5', chisel && 'chisel', className)}
+      className={cn('inline-block truncate align-baseline font-display text-[13px] font-semibold leading-5', className)}
       style={{ color: speakerColor(name, roster, me) }}
     >
-      {inscribe(label)}
+      {label}
     </span>
   );
 }
 
-/** The only use of minium red: Dixit is recording right now. `onRail` for the dark stone rail. */
+/** Recording light: red only while Dixit is recording. `onRail` for the sidebar. */
 export function LiveIndicator({
   label = t('recording'),
   onRail = false,

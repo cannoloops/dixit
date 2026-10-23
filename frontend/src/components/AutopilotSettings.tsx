@@ -118,7 +118,7 @@ export function AutopilotSettings() {
         </SettingRow>
         <SettingRow label={t('accessibility')} description={t('accessibilityDesc')}>
           {trusted ? (
-            <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5 text-sm text-success">
               <Check className="h-4 w-4" />
               {t('granted')}
             </span>

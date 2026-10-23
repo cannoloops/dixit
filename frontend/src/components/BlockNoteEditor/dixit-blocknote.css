@@ -29,7 +29,7 @@
 
 .bn-container.bn-container,
 .bn-container.bn-container[data-color-scheme] {
-  --bn-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --bn-font-family: var(--font-open-sans), -apple-system, BlinkMacSystemFont, sans-serif;
   --bn-colors-editor-text: hsl(var(--foreground));
   --bn-colors-editor-background: transparent;
   --bn-colors-menu-text: hsl(var(--popover-foreground));

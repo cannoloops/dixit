@@ -2,7 +2,6 @@ import { VirtualizedTranscriptView } from '@/components/VirtualizedTranscriptVie
 import { PermissionWarning } from '@/components/PermissionWarning';
 import { Button } from '@/components/ui/button';
 import { Copy, Globe } from 'lucide-react';
-import { inscribe } from '@/components/dixit';
 import { useTranscripts } from '@/contexts/TranscriptContext';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useRecordingState } from '@/contexts/RecordingStateContext';
@@ -60,7 +59,7 @@ export function TranscriptPanel({
       {showToolbar && (
         <div className="sticky top-0 z-10 flex h-11 shrink-0 items-center gap-3 border-b border-border bg-background px-6">
           {isRecording && (
-            <h1 className="incisa min-w-0 truncate text-[13px] leading-5">{inscribe(meetingTitle)}</h1>
+            <h1 className="min-w-0 truncate font-display text-sm font-semibold">{meetingTitle}</h1>
           )}
           <div className="ml-auto flex items-center gap-1">
             {transcripts.length > 0 && (

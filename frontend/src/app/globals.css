@@ -76,95 +76,99 @@
   animation-delay: 150ms;
 }
 
-/* Dixit design tokens: "Epigrafe romana". Carrara marble ground, peperino rail,
-   bronze for the primary action, minium red ONLY while recording, one Roman pigment per speaker.
+/* Dixit design tokens: Dixit design system (template Dixit 2023).
+   Antracite #2B2B2D and white, petrolio #1F7E92 for the primary action, Dixit green #8DC928
+   for positive states, the blue→green scale for speakers. Montserrat for titles, Open Sans for text.
    Light/dark follow macOS (tailwind darkMode: media). Values are HSL triplets. */
 @layer base {
   :root {
-    --background: 210 16% 96%;       /* marmo di Carrara, freddo */
-    --foreground: 80 5% 11%;         /* inchiostro */
-    --card: 210 20% 98%;
-    --card-foreground: 80 5% 11%;
-    --popover: 210 20% 98%;
-    --popover-foreground: 80 5% 11%;
-    --primary: 39 54% 31%;           /* bronzo */
-    --primary-foreground: 210 20% 98%;
-    --secondary: 210 14% 91%;
-    --secondary-foreground: 80 5% 11%;
-    --muted: 210 14% 92%;
-    --muted-foreground: 210 7% 36%;
-    --accent: 210 14% 89%;
-    --accent-foreground: 80 5% 11%;
-    --destructive: 340 48% 36%;      /* vinaccia: lontano dal minio */
-    --destructive-foreground: 210 20% 98%;
-    --border: 210 11% 84%;
-    --input: 210 9% 79%;
-    --ring: 40 42% 43%;
-    --radius: 0.25rem;
+    --background: 0 0% 100%;
+    --foreground: 240 2% 17%;         /* antracite Dixit */
+    --card: 0 0% 100%;
+    --card-foreground: 240 2% 17%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 2% 17%;
+    --primary: 190 65% 35%;          /* petrolio Dixit */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 13% 94%;
+    --secondary-foreground: 240 2% 17%;
+    --muted: 210 10% 96%;
+    --muted-foreground: 218 4% 40%;
+    --accent: 195 31% 95%;
+    --accent-foreground: 240 2% 17%;
+    --destructive: 358 56% 49%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 93 69% 29%;           /* verde Dixit, versione leggibile su bianco */
+    --border: 210 12% 90%;
+    --input: 210 10% 84%;
+    --ring: 190 65% 35%;
+    --radius: 0.5rem;
 
-    --rail: 90 5% 16%;               /* peperino */
-    --rail-foreground: 60 12% 90%;
-    --rail-muted: 67 5% 63%;
-    --rail-border: 84 4% 23%;
-    --rail-active: 80 5% 22%;
-    --rail-accent: 39 51% 57%;       /* lettere di bronzo */
-    --rail-live: 9 77% 56%;          /* minio leggibile sulla pietra */
+    --rail: 210 11% 96%;             /* sidebar chiara, stile macOS */
+    --rail-foreground: 240 2% 17%;
+    --rail-muted: 218 4% 40%;
+    --rail-border: 210 12% 90%;
+    --rail-active: 192 37% 92%;
+    --rail-accent: 190 65% 35%;
+    --rail-live: 358 67% 54%;
 
-    --live: 9 76% 45%;               /* minio: only while recording */
+    --live: 358 67% 54%;             /* registrazione in corso */
     --live-foreground: 0 0% 100%;
 
-    --speaker-me: 151 40% 30%;       /* verde antico: l'utente */
-    --speaker-1: 218 53% 39%;        /* lapislazzuli */
-    --speaker-2: 188 60% 27%;        /* blu egizio */
-    --speaker-3: 88 34% 28%;         /* terra verde */
-    --speaker-4: 21 53% 35%;         /* terra di Siena */
-    --speaker-5: 255 30% 42%;        /* pavonazzetto */
-    --speaker-other: 210 6% 42%;
+    --speaker-me: 93 69% 29%;        /* tu: verde Dixit */
+    --speaker-1: 202 74% 39%;        /* blu Dixit */
+    --speaker-2: 262 37% 50%;        /* viola */
+    --speaker-3: 33 89% 35%;         /* ambra */
+    --speaker-4: 313 46% 45%;        /* magenta */
+    --speaker-5: 177 75% 29%;        /* teal Dixit */
+    --speaker-other: 218 3% 45%;
 
-    --shadow-float: 0 12px 32px -12px hsl(80 5% 11% / 0.35), 0 2px 6px -2px hsl(80 5% 11% / 0.12);
+    --shadow-float: 0 12px 32px -12px hsl(240 2% 17% / 0.25), 0 2px 6px -2px hsl(240 2% 17% / 0.10);
   }
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --background: 90 4% 11%;       /* peperino */
-      --foreground: 60 12% 90%;
-      --card: 80 4% 14%;
-      --card-foreground: 60 12% 90%;
-      --popover: 80 4% 14%;
-      --popover-foreground: 60 12% 90%;
-      --primary: 39 51% 57%;
-      --primary-foreground: 90 4% 11%;
-      --secondary: 75 5% 16%;
-      --secondary-foreground: 60 12% 90%;
-      --muted: 80 4% 15%;
-      --muted-foreground: 67 5% 63%;
-      --accent: 72 6% 17%;
-      --accent-foreground: 60 12% 90%;
-      --destructive: 340 55% 68%;
-      --destructive-foreground: 90 4% 11%;
-      --border: 70 6% 20%;
-      --input: 80 5% 24%;
-      --ring: 39 51% 57%;
+      --background: 240 2% 17%;      /* antracite Dixit */
+      --foreground: 240 4% 95%;
+      --card: 240 3% 21%;
+      --card-foreground: 240 4% 95%;
+      --popover: 240 3% 21%;
+      --popover-foreground: 240 4% 95%;
+      --primary: 191 61% 48%;
+      --primary-foreground: 194 44% 10%;
+      --secondary: 240 3% 22%;
+      --secondary-foreground: 240 4% 95%;
+      --muted: 240 3% 21%;
+      --muted-foreground: 223 4% 68%;
+      --accent: 240 3% 24%;
+      --accent-foreground: 240 4% 95%;
+      --destructive: 358 82% 68%;
+      --destructive-foreground: 240 2% 10%;
+      --success: 82 67% 47%;         /* verde Dixit #8DC928 */
+      --border: 228 4% 26%;
+      --input: 230 4% 31%;
+      --ring: 191 61% 48%;
 
-      --rail: 90 6% 7%;              /* basalto */
-      --rail-foreground: 60 11% 88%;
-      --rail-muted: 73 4% 55%;
-      --rail-border: 80 4% 15%;
-      --rail-active: 72 7% 13%;
-      --rail-accent: 39 51% 57%;
+      --rail: 240 3% 14%;
+      --rail-foreground: 240 4% 95%;
+      --rail-muted: 223 4% 68%;
+      --rail-border: 228 4% 22%;
+      --rail-active: 195 15% 22%;
+      --rail-accent: 191 63% 61%;
+      --rail-live: 358 100% 68%;
 
-      --live: 9 77% 56%;
-      --live-foreground: 90 4% 11%;
+      --live: 358 100% 68%;
+      --live-foreground: 240 2% 10%;
 
-      --speaker-me: 148 36% 60%;
-      --speaker-1: 221 64% 73%;
-      --speaker-2: 188 50% 60%;
-      --speaker-3: 88 32% 60%;
-      --speaker-4: 21 58% 65%;
-      --speaker-5: 254 51% 75%;
-      --speaker-other: 73 4% 59%;
+      --speaker-me: 82 67% 47%;
+      --speaker-1: 202 79% 64%;
+      --speaker-2: 261 66% 77%;
+      --speaker-3: 33 87% 62%;
+      --speaker-4: 318 64% 72%;
+      --speaker-5: 175 57% 51%;
+      --speaker-other: 223 4% 63%;
 
-      --shadow-float: 0 12px 32px -12px hsl(0 0% 0% / 0.6), 0 2px 6px -2px hsl(0 0% 0% / 0.4);
+      --shadow-float: 0 12px 32px -12px hsl(0 0% 0% / 0.55), 0 2px 6px -2px hsl(0 0% 0% / 0.35);
     }
   }
 }
@@ -196,6 +200,8 @@
   html { color-scheme: light dark; }
   ::selection { background: hsl(var(--primary) / 0.22); }
   body { caret-color: hsl(var(--primary)); }
+  /* Dixit: titles in Montserrat, text in Open Sans */
+  h1, h2, h3, h4 { font-family: var(--font-montserrat), var(--font-open-sans), sans-serif; }
   :focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -203,7 +209,7 @@
   ::-webkit-scrollbar-thumb:hover { background: hsl(var(--foreground) / 0.32); background-clip: content-box; }
 
   /* Sonner toasts on the Dixit surfaces */
-  [data-sonner-toaster] {
+  html [data-sonner-toaster][data-sonner-theme] {
     --normal-bg: hsl(var(--popover));
     --normal-text: hsl(var(--popover-foreground));
     --normal-border: hsl(var(--border));
@@ -213,21 +219,6 @@
   [data-sonner-toast] { box-shadow: var(--shadow-float); }
   [data-sonner-toast][data-type='error'] [data-icon] { color: hsl(var(--destructive)); }
 
-  /* Inscriptional capitals: speaker names and meeting titles only (never buttons or labels). */
-  .incisa {
-    font-family: var(--font-cinzel), serif;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-weight: 600;
-  }
-
-  /* Signature move: a resolved name is chiselled in once, left to right. */
-  @keyframes chisel {
-    from { clip-path: inset(0 100% 0 0); }
-    to { clip-path: inset(0 0 0 0); }
-  }
-  .chisel { animation: chisel 420ms cubic-bezier(0.16, 1, 0.3, 1) both; }
-  @media (prefers-reduced-motion: reduce) { .chisel { animation: none; } }
 
   /* BlockNote Editor - Override fixed dimensions for responsive layout */
   .bn-container {

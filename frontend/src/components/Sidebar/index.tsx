@@ -17,7 +17,7 @@ import { useRecordingState } from '@/contexts/RecordingStateContext';
 import { useTranscripts } from '@/contexts/TranscriptContext';
 import { useImportDialog } from '@/contexts/ImportDialogContext';
 import { useConfig } from '@/contexts/ConfigContext';
-import { LiveIndicator, StateStamp, inscribe } from '@/components/dixit';
+import { LiveIndicator, StateStamp } from '@/components/dixit';
 import { cn } from '@/lib/utils';
 import { locale } from '@/i18n';
 import { t } from '@/i18n/shell';
@@ -48,7 +48,7 @@ function formatDuration(seconds: number): string {
   return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, '0')}`;
 }
 
-// Rail controls (peperino stone, dark in both themes).
+// Sidebar controls.
 const railItem =
   'flex h-8 w-full items-center gap-2 rounded-sm px-2 text-sm text-rail-foreground transition-colors duration-150 hover:bg-rail-active focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rail-accent [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0 [&_svg]:text-rail-muted';
 const railIcon =
@@ -499,18 +499,20 @@ const Sidebar: React.FC = () => {
           )}
         >
           <span className="w-10 shrink-0 text-xs tabular-nums text-rail-muted">{time}</span>
-          <span className="incisa min-w-0 flex-1 truncate text-[11px]" title={meeting.title}>{inscribe(railTitle(meeting.title))}</span>
+          <span className="min-w-0 flex-1 truncate" title={meeting.title}>{railTitle(meeting.title)}</span>
+          {meeting.unnamed_speakers && (
+            <span
+              className="h-1.5 w-1.5 shrink-0 rounded-full bg-rail-accent"
+              title={tApp('verifyNames')}
+              aria-label={tApp('verifyNames')}
+            />
+          )}
           {meeting.duration_secs ? (
             <span className="shrink-0 text-xs tabular-nums text-rail-muted group-hover:hidden group-has-[:focus-visible]:hidden">
               {formatDuration(meeting.duration_secs)}
             </span>
           ) : null}
         </button>
-        {meeting.unnamed_speakers && (
-          <div className="pb-1 pl-14">
-            <StateStamp state="verify" className="border-rail-accent/50 text-rail-accent" />
-          </div>
-        )}
         {snippet && (
           <p className="line-clamp-2 pb-1 pl-14 pr-2 text-xs text-rail-muted">{snippet}</p>
         )}

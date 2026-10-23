@@ -125,7 +125,7 @@ export function ModelRow({ name, detail, size, labels, state, onSelect, onDownlo
 
         <span className="w-24 shrink-0 text-xs">
           {state.kind === 'installed' && state.active ? (
-            <span className="inline-flex items-center gap-1 font-medium text-primary">
+            <span className="inline-flex items-center gap-1 font-medium text-success">
               <Check className="h-4 w-4" />
               {t('inUse')}
             </span>

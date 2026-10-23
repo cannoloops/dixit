@@ -452,7 +452,7 @@ interface DownloadRowProps {
   onRetry: () => void;
 }
 
-/** One model download: name and size, state on the right, a bronze bar while it runs, the remedy if it fails. */
+/** One model download: name and size, state on the right, a primary-colour bar while it runs, the remedy if it fails. */
 function DownloadRow({ title, icon, state, modelSize, sizeUnit = 'MB', onRetry }: DownloadRowProps) {
   const showBar = state.status === 'downloading' || state.status === 'completed';
   const isCancelled = state.status === 'cancelled';

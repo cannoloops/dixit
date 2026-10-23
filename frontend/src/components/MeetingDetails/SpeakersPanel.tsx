@@ -13,13 +13,13 @@ interface SpeakersPanelProps {
   meetingId: string;
   /** Speaker labels with how many turns each has. */
   speakers: [string, number][];
-  /** Ordered distinct speakers of the meeting, so pigments match the rest of the screen. */
+  /** Ordered distinct speakers of the meeting, so colours match the rest of the screen. */
   roster?: string[];
   onChanged: () => unknown;
 }
 
 /**
- * Legend of the speaker band: each speaker carved in its pigment with its number of turns.
+ * Legend of the speaker band: each speaker in its colour with its number of turns.
  * One click on a name opens the rename field (updates DB, transcripts.json and .md).
  */
 // ponytail: fixed cap; long meetings can have dozens of unnamed voices.

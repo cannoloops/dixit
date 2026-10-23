@@ -51,7 +51,7 @@ export function OnboardingContainer({
   return (
     <div className="fixed inset-0 z-50 flex justify-center overflow-hidden bg-background">
       <div className={cn('flex h-full max-h-screen w-full max-w-xl flex-col px-6 py-8', className)}>
-        {/* Steps: bronze for the current one, hairlines for the others */}
+        {/* Steps: primary colour for the current one, hairlines for the others */}
         {step && !hideProgress && (
           <div className="mb-8 flex flex-shrink-0 items-center gap-2">
             {showNavigation && (

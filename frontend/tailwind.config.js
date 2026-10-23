@@ -9,9 +9,9 @@ module.exports = {
   theme: {
   	extend: {
   		fontFamily: {
-  			// Dixit: system UI sans for everything; inscriptional capitals only for names and titles.
-  			sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"Helvetica Neue"', 'sans-serif'],
-  			incisa: ['var(--font-cinzel)', 'serif']
+  			// Dixit design system: Open Sans for text, Montserrat for titles and speaker names.
+  			sans: ['var(--font-open-sans)', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+  			display: ['var(--font-montserrat)', 'var(--font-open-sans)', 'sans-serif']
   		},
   		colors: {
   			background: 'hsl(var(--background))',
@@ -36,6 +36,7 @@ module.exports = {
   				accent: 'hsl(var(--rail-accent))',
   				live: 'hsl(var(--rail-live))'
   			},
+  			success: 'hsl(var(--success))',
   			live: {
   				DEFAULT: 'hsl(var(--live))',
   				foreground: 'hsl(var(--live-foreground))'

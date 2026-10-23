@@ -5,7 +5,7 @@ import type { PaginatedTranscriptsResponse, Transcript } from '@/types';
 // One read for the whole meeting: even a 3.5 h call is a few thousand lines.
 const ALL_LINES = 1_000_000;
 
-/** Distinct speakers in order of first appearance: the roster that fixes each speaker's pigment. */
+/** Distinct speakers in order of first appearance: the roster that fixes each speaker's colour. */
 export function rosterOf(lines: { speaker?: string }[]): string[] {
   return Array.from(new Set(lines.map((l) => l.speaker).filter((s): s is string => !!s)));
 }

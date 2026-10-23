@@ -25,7 +25,6 @@ import { cn } from '@/lib/utils';
 import { lang, locale } from '@/i18n';
 import { t } from '@/i18n/recording';
 import { t as tApp } from '@/i18n/app';
-import { inscribe } from '@/components/dixit';
 
 const PREVIEW_LIMIT = 10;
 
@@ -161,7 +160,7 @@ export function TranscriptRecovery({
                       selectedMeetingId === meeting.meetingId && 'bg-accent'
                     )}
                   >
-                    <span className="incisa block truncate text-[12px] leading-5">{inscribe(meeting.title)}</span>
+                    <span className="block truncate text-sm font-semibold">{meeting.title}</span>
                     <span className="block truncate text-xs text-muted-foreground">
                       {relativeTime(meeting.lastUpdated)} · <span className="tabular-nums">{segmentsLabel(meeting.transcriptCount)}</span>
                       {!meeting.folderPath && <> · {t('noAudio')}</>}
@@ -177,7 +176,7 @@ export function TranscriptRecovery({
             {selectedMeeting ? (
               <>
                 <div className="border-b border-border px-6 py-3">
-                  <h4 className="incisa truncate text-sm">{inscribe(selectedMeeting.title)}</h4>
+                  <h4 className="truncate font-display text-sm font-semibold">{selectedMeeting.title}</h4>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {t('startedAt', { date: new Date(selectedMeeting.startTime).toLocaleString(locale) })}
                     {' · '}<span className="tabular-nums">{segmentsLabel(selectedMeeting.transcriptCount)}</span>

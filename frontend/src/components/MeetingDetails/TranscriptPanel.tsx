@@ -30,7 +30,7 @@ interface TranscriptPanelProps {
   meetingFolderPath?: string | null;
   onRefetchTranscripts?: () => Promise<void>;
 
-  /** Ordered distinct speakers of the meeting, so each name keeps its pigment. */
+  /** Ordered distinct speakers of the meeting, so each name keeps its colour. */
   roster?: string[];
   /** Line to scroll to (from the speaker band); a new nonce repeats the jump. */
   jumpTo?: { id: string; nonce: number } | null;

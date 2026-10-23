@@ -16,7 +16,7 @@ import { t } from "@/i18n/recording";
 export interface VirtualizedTranscriptViewProps {
     /** Transcript segments to display */
     segments: TranscriptSegmentData[];
-    /** Distinct speaker names in order of appearance (fixes each speaker's pigment). Derived from `segments` when omitted. */
+    /** Distinct speaker names in order of appearance (fixes each speaker's colour). Derived from `segments` when omitted. */
     roster?: string[];
     /** Whether recording is in progress */
     isRecording?: boolean;

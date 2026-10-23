@@ -22,7 +22,7 @@ const SIZES = {
   large: { meter: 'h-3', text: 'text-sm' },
 };
 
-// Levels in bronze on a stone track: minium is reserved for "Dixit is recording".
+// Levels in the primary colour on a muted track: red is reserved for "Dixit is recording".
 export function AudioLevelMeter({
   rmsLevel,
   peakLevel,

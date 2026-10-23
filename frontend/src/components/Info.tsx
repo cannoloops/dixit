@@ -9,7 +9,7 @@ interface InfoProps {
     isCollapsed: boolean;
 }
 
-// Same look as the other rail controls in Sidebar (peperino stone).
+// Same look as the other sidebar controls.
 const railFocus = "transition-colors duration-150 hover:bg-rail-active focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rail-accent";
 
 const Info = React.forwardRef<HTMLButtonElement, InfoProps>(({ isCollapsed }, ref) => {

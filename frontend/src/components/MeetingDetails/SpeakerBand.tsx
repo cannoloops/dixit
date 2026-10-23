@@ -58,7 +58,7 @@ function buildTurns(lines: Transcript[]) {
 }
 
 /**
- * Speaker band: a thin strip where every turn is a segment in its speaker's pigment, on one time
+ * Speaker band: a thin strip where every turn is a segment in its speaker's colour, on one time
  * scale, with the carved names below (each one click away from renaming). Without times, legend only.
  */
 export function SpeakerBand({

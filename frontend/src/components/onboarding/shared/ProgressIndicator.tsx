@@ -8,7 +8,7 @@ interface ProgressIndicatorProps {
   onStepClick?: (step: number) => void;
 }
 
-/** One hairline per step: bronze and heavier for the current one, a faint bronze for the done ones. */
+/** One hairline per step: primary and heavier for the current one, faint primary for the done ones. */
 export function ProgressIndicator({ current, total, onStepClick }: ProgressIndicatorProps) {
   const steps = Array.from({ length: total }, (_, i) => i + 1);
 

@@ -3,7 +3,6 @@
 import { useRef, useEffect } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { inscribe } from '@/components/dixit';
 import { t } from '@/i18n/meeting';
 
 interface EditableTitleProps {
@@ -13,10 +12,8 @@ interface EditableTitleProps {
   onFinishEditing: () => void;
   onChange: (value: string) => void;
   onDelete?: () => void;
-  /** Type of the title in both states, e.g. "incisa text-2xl" for a meeting title. */
+  /** Type of the title in both states, e.g. "font-display text-2xl font-bold" for a meeting title. */
   className?: string;
-  /** Show the words joined by interpuncts (meeting titles in inscriptional capitals). */
-  inscribed?: boolean;
 }
 
 export const EditableTitle: React.FC<EditableTitleProps> = ({
@@ -27,7 +24,6 @@ export const EditableTitle: React.FC<EditableTitleProps> = ({
   onChange,
   onDelete,
   className,
-  inscribed = false,
 }) => {
   const titleInputRef = useRef<HTMLTextAreaElement>(null);
   const type = cn('text-base font-semibold', className);
@@ -70,7 +66,7 @@ export const EditableTitle: React.FC<EditableTitleProps> = ({
         className={cn(type, 'min-w-0 cursor-text whitespace-pre-wrap rounded-sm px-1 transition-colors duration-150 hover:bg-accent')}
         onClick={onStartEditing}
       >
-        {inscribed ? inscribe(title) : title}
+        {title}
       </h1>
       <button
         type="button"

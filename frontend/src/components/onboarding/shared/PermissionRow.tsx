@@ -10,7 +10,7 @@ type Props = PermissionRowProps & {
   deniedHint?: string;
 };
 
-/** One permission: name, what it is for, state and the "Concedi" button. Granted = a bronze check. */
+/** One permission: name, what it is for, state and the "Concedi" button. Granted = a green check. */
 export function PermissionRow({ icon, title, description, status, isPending = false, onAction, deniedHint }: Props) {
   const isAuthorized = status === 'authorized';
   const isDenied = status === 'denied';
@@ -33,7 +33,7 @@ export function PermissionRow({ icon, title, description, status, isPending = fa
 
       <div className="flex-shrink-0">
         {isAuthorized ? (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success">
             <Check className="h-4 w-4" aria-hidden />
             {t('granted')}
           </span>
