@@ -39,6 +39,8 @@ pub mod analytics;
 pub mod api;
 pub mod audio;
 pub mod autopilot;
+#[cfg(target_os = "macos")]
+pub mod ax_util;
 pub mod config;
 pub mod console_utils;
 pub mod database;
@@ -52,6 +54,7 @@ pub mod openrouter;
 pub mod parakeet_engine;
 pub mod state;
 pub mod summary;
+pub mod teams;
 pub mod tray;
 pub mod utils;
 pub mod whisper_engine;
@@ -834,6 +837,8 @@ pub fn run() {
             // Trascrivi
             autopilot::settings::autopilot_get_settings,
             autopilot::settings::autopilot_save_settings,
+            autopilot::autopilot_probe,
+            autopilot::autopilot_request_accessibility,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
