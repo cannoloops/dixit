@@ -220,3 +220,18 @@ pub fn dump_tree(pid: i32, depth: usize) -> serde_json::Value {
     enable_web_accessibility(&app);
     serde_json::Value::Array(ax_util::windows(&app).iter().map(|w| ax_util::dump(w, depth)).collect())
 }
+
+#[cfg(test)]
+mod tests {
+    /// Live diagnostics while a Teams call is on screen:
+    /// `TRASCRIVI_AX_OUT=/tmp/teams.json cargo test --lib dump_teams_tree -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn dump_teams_tree() {
+        let out = std::env::var("TRASCRIVI_AX_OUT").expect("set TRASCRIVI_AX_OUT");
+        let pid = super::teams_pid().expect("Teams not running");
+        std::fs::write(&out, serde_json::to_string_pretty(&super::dump_tree(pid, 60)).unwrap()).unwrap();
+        println!("call window: {}", super::call_window(pid).is_some());
+        println!("captions: {:?}", super::CaptionReader::default().read(pid));
+    }
+}
