@@ -77,6 +77,13 @@ Queste prove richiedono call vere e non sono automatizzate.
   - dove è consentita parte da sola, con la notifica "visibile a tutti";
   - dove non è consentita arriva la notifica "non avviata" e il resto funziona.
 - [ ] **Import del `.docx`:** scaricando dal recap di Teams il `.docx` della trascrizione, entro circa 1 minuto arriva la notifica "Trascrizione Teams collegata".
+- [ ] **Due riunioni Teams una dopo l'altra** (lasci A, entri in B entro 30 s): producono due riunioni distinte, con al massimo circa 30 s di B finiti in A.
+- [ ] **Stop manuale in A, poi entri in B:** B viene registrata.
+- [ ] **Meet:** se passi a un altro tab per più di un minuto o condividi un tab, la registrazione continua.
+- [ ] **Annulla subito:** premuto entro 2 secondi dalla comparsa del banner, la call non viene registrata e la cartella non resta.
+- [ ] **Trascrizione già avviata da un altro** (es. l'organizzatore):
+  - Trascrivi non mostra "avviata";
+  - con Annulla o con lo stop manuale non la ferma.
 - [ ] **Minuta:** `parse_teams.py` della skill `minuta-call`, lanciato sul file `<titolo>-Trascrizione della riunione.docx` nella cartella della riunione, riporta i nomi.
 
 **Se Teams cambia interfaccia** (sottotitoli o trascrizione nativa non si attivano più):

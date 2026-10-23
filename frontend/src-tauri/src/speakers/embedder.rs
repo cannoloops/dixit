@@ -27,7 +27,11 @@ pub async fn ensure_model(models_dir: &Path) -> Result<PathBuf> {
     }
     std::fs::create_dir_all(&dir)?;
     log::info!("Downloading speaker model to {}", path.display());
-    let bytes = reqwest::get(MODEL_URL).await?.error_for_status()?.bytes().await?;
+    let client = reqwest::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(15))
+        .timeout(std::time::Duration::from_secs(300))
+        .build()?;
+    let bytes = client.get(MODEL_URL).send().await?.error_for_status()?.bytes().await?;
     let digest = format!("{:x}", Sha256::digest(&bytes));
     if digest != MODEL_SHA256 {
         bail!("speaker model checksum mismatch ({digest})");

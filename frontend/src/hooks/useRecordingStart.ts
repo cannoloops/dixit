@@ -242,10 +242,8 @@ export function useRecordingStart(
 
           // Start the actual backend recording
           try {
-            // Trascrivi: the autopilot passes the call's title; tray starts fall back to a generated one
-            const autopilotTitle = sessionStorage.getItem('autoStartMeetingTitle');
-            sessionStorage.removeItem('autoStartMeetingTitle');
-            const generatedMeetingTitle = autopilotTitle || generateMeetingTitle();
+            // Generate meeting title
+            const generatedMeetingTitle = generateMeetingTitle();
 
             // Set STARTING status before initiating backend recording
             setStatus(RecordingStatus.STARTING, 'Initializing recording...');

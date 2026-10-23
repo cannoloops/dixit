@@ -45,15 +45,38 @@ pub struct CallTracker {
     session: Option<Platform>,
     /// Set by a manual stop; cleared once the call is gone for `stop_after`.
     suppressed: bool,
+    /// Recording state at the previous observation (to spot manual stops of manual recordings).
+    was_recording: bool,
+    /// A Stop was issued by the tracker: the next recording→stopped transition is ours.
+    expecting_stop: bool,
 }
 
 impl CallTracker {
     pub fn new(start_after: Duration, stop_after: Duration) -> Self {
-        Self { start_after, stop_after, mic_since: None, last_seen: None, session: None, suppressed: false }
+        Self { start_after, stop_after, mic_since: None, last_seen: None, session: None, suppressed: false, was_recording: false, expecting_stop: false }
     }
 
     pub fn is_auto_session(&self) -> bool {
         self.session.is_some()
+    }
+
+    pub fn is_suppressed(&self) -> bool {
+        self.suppressed
+    }
+
+    /// Settings changed: new thresholds, same session.
+    pub fn set_thresholds(&mut self, start_after: Duration, stop_after: Duration) {
+        self.start_after = start_after;
+        self.stop_after = stop_after;
+    }
+
+    /// The meeting app is now in a different call (title changed): end the session or the
+    /// suppression that belonged to the previous call, so the new one is recorded on its own.
+    pub fn new_call(&mut self) -> Option<Action> {
+        self.suppressed = false;
+        let stop = self.session.take().map(|_| Action::Stop);
+        self.expecting_stop |= stop.is_some();
+        stop
     }
 
     /// The user stopped the auto-started recording: don't restart until this call ends.
@@ -77,11 +100,21 @@ impl CallTracker {
         if self.suppressed && call_gone {
             self.suppressed = false;
         }
+        // A recording the user started by hand and then stopped during the call: same rule as a
+        // manual stop of an auto-started one, no restart until this call ends.
+        let stopped_now = self.was_recording && !recording;
+        self.was_recording = recording;
+        if stopped_now && self.expecting_stop {
+            self.expecting_stop = false;
+        } else if stopped_now && self.session.is_none() && !call_gone {
+            self.suppressed = true;
+        }
 
         if let Some(active) = self.session {
             let switched = matches!(obs.mic, Some(p) if p != active);
             if switched || call_gone {
                 self.session = None;
+                self.expecting_stop = true;
                 return Some(Action::Stop);
             }
             return None;
@@ -93,6 +126,7 @@ impl CallTracker {
         match self.mic_since {
             Some((p, since)) if now.saturating_duration_since(since) >= self.start_after => {
                 self.session = Some(p);
+                self.expecting_stop = false;
                 Some(Action::Start(p))
             }
             _ => None,
@@ -194,5 +228,43 @@ mod tests {
         run(&mut tr, t0, 0, 20, &MIC_TEAMS, false);
         assert_eq!(run(&mut tr, t0, 20, 21, &MIC_ZOOM, true), vec![(20, Action::Stop)]);
         assert_eq!(run(&mut tr, t0, 21, 26, &MIC_ZOOM, false), vec![(25, Action::Start(Platform::Zoom))]);
+    }
+
+    #[test]
+    fn stopping_a_manual_recording_mid_call_does_not_restart() {
+        let (mut tr, t0) = (tracker(), Instant::now());
+        assert!(run(&mut tr, t0, 0, 30, &MIC_TEAMS, true).is_empty()); // manual recording during the call
+        assert!(run(&mut tr, t0, 30, 120, &MIC_TEAMS, false).is_empty()); // user stopped it: no auto restart
+        assert!(run(&mut tr, t0, 120, 170, &NOTHING, false).is_empty()); // call ends at 165
+        assert_eq!(run(&mut tr, t0, 170, 176, &MIC_TEAMS, false), vec![(175, Action::Start(Platform::Teams))]);
+    }
+
+    #[test]
+    fn threshold_change_keeps_the_session() {
+        let (mut tr, t0) = (tracker(), Instant::now());
+        run(&mut tr, t0, 0, 10, &MIC_TEAMS, false);
+        tr.set_thresholds(Duration::from_secs(3), Duration::from_secs(20));
+        assert!(tr.is_auto_session());
+        assert!(run(&mut tr, t0, 10, 29, &NOTHING, true).is_empty());
+        assert_eq!(run(&mut tr, t0, 29, 30, &NOTHING, true), vec![(29, Action::Stop)]); // 20 s after last seen (9)
+    }
+
+    #[test]
+    fn new_call_splits_the_session() {
+        let (mut tr, t0) = (tracker(), Instant::now());
+        run(&mut tr, t0, 0, 60, &MIC_TEAMS, false);
+        assert_eq!(tr.new_call(), Some(Action::Stop));
+        assert_eq!(run(&mut tr, t0, 60, 61, &MIC_TEAMS, false), vec![(60, Action::Start(Platform::Teams))]);
+    }
+
+    #[test]
+    fn new_call_lifts_manual_suppression() {
+        let (mut tr, t0) = (tracker(), Instant::now());
+        run(&mut tr, t0, 0, 6, &MIC_TEAMS, false);
+        tr.manual_stop();
+        assert!(tr.is_suppressed());
+        assert!(run(&mut tr, t0, 6, 30, &MIC_TEAMS, false).is_empty());
+        assert_eq!(tr.new_call(), None);
+        assert_eq!(run(&mut tr, t0, 30, 31, &MIC_TEAMS, false), vec![(30, Action::Start(Platform::Teams))]);
     }
 }

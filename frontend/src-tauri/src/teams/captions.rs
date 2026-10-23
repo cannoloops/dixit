@@ -14,6 +14,23 @@ pub struct Turn {
 
 // ponytail: captions trail the voice by about this much; calibrate on real calls.
 pub const CAPTION_LAG_SECS: f64 = 1.5;
+/// While the captions region isn't found, look for it at most this often (tree walks are costly).
+pub const REGION_SEARCH_EVERY: std::time::Duration = std::time::Duration::from_secs(20);
+
+#[derive(Default)]
+pub struct SearchThrottle {
+    last: Option<std::time::Instant>,
+}
+
+impl SearchThrottle {
+    pub fn due(&self, now: std::time::Instant) -> bool {
+        self.last.map_or(true, |t| now.saturating_duration_since(t) >= REGION_SEARCH_EVERY)
+    }
+
+    pub fn mark(&mut self, now: std::time::Instant) {
+        self.last = Some(now);
+    }
+}
 
 fn normalize(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
@@ -47,8 +64,11 @@ impl CaptionLog {
             });
             match matched {
                 Some(i) => {
-                    self.turns[i].text = text;
-                    self.turns[i].end = t;
+                    // A line left on screen while others talk must not stretch the turn.
+                    if self.turns[i].text != text {
+                        self.turns[i].text = text;
+                        self.turns[i].end = t;
+                    }
                     still_open.push(i);
                 }
                 None => {
@@ -82,7 +102,7 @@ mod tests {
         log.ingest(13.0, &[line("Rossi Mario", "ciao a tutti, oggi")]);
         assert_eq!(
             log.turns(),
-            vec![Turn { name: "Rossi Mario".into(), text: "ciao a tutti, oggi".into(), start: 8.5, end: 13.0 }]
+            vec![Turn { name: "Rossi Mario".into(), text: "ciao a tutti, oggi".into(), start: 8.5, end: 12.0 }]
         );
     }
 
@@ -113,5 +133,27 @@ mod tests {
         assert_eq!(log.turns()[0].start, 0.0); // clamped at recording start
         log.ingest(20.0, &[line("B", "y")]);
         assert_eq!(log.turns()[1].start, 20.0 - CAPTION_LAG_SECS);
+    }
+
+    #[test]
+    fn lingering_line_does_not_extend_turn() {
+        // Teams keeps A's line on screen while B talks: A's turn ends when its text stopped changing.
+        let mut log = CaptionLog::default();
+        log.ingest(10.0, &[line("A", "ciao")]);
+        log.ingest(11.0, &[line("A", "ciao a tutti")]);
+        for t in 12..20 {
+            log.ingest(t as f64, &[line("A", "ciao a tutti"), line("B", "buongiorno")]);
+        }
+        assert_eq!(log.turns()[0].end, 11.0);
+    }
+
+    #[test]
+    fn search_throttle_backs_off() {
+        let t0 = std::time::Instant::now();
+        let mut th = SearchThrottle::default();
+        assert!(th.due(t0));
+        th.mark(t0);
+        assert!(!th.due(t0 + std::time::Duration::from_secs(5)));
+        assert!(th.due(t0 + REGION_SEARCH_EVERY));
     }
 }

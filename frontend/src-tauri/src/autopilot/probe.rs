@@ -47,40 +47,38 @@ fn teams_call_window() -> bool {
         .any(crate::teams::ax::has_call_controls)
 }
 
-/// Meeting title for the platform, read when a session starts (walks the Teams tree, not cheap).
-pub fn title_for(platform: Platform) -> Option<String> {
+/// Title of the call on screen, only from unambiguous sources (Teams call window, Meet tab):
+/// used to tell one call from the next. Walks the Teams tree, not cheap.
+pub fn call_title(platform: Platform) -> Option<String> {
     match platform {
-        Platform::Teams => {
-            let from_call = ax_util::pids_for_bundle(TEAMS_BUNDLE)
-                .into_iter()
-                .filter_map(crate::teams::ax::call_window)
-                .filter_map(|w| ax_util::string_attr(&w, "AXTitle"))
-                .find_map(|t| platform::meeting_title(Platform::Teams, &t));
-            from_call.or_else(|| {
-                window_titles(TEAMS_BUNDLE)
-                    .iter()
-                    .find_map(|t| platform::meeting_title(Platform::Teams, t))
-            })
-        }
+        Platform::Teams => ax_util::pids_for_bundle(TEAMS_BUNDLE)
+            .into_iter()
+            .filter_map(crate::teams::ax::call_window)
+            .filter_map(|w| ax_util::string_attr(&w, "AXTitle"))
+            .find_map(|t| platform::meeting_title(Platform::Teams, &t)),
         Platform::Meet => meet_window_title().and_then(|t| platform::meeting_title(Platform::Meet, &t)),
         Platform::Zoom => None,
     }
 }
 
-/// `in_session`: only then is the (costly) Teams call-window walk worth doing.
-pub fn observe(in_session: bool) -> Observation {
+/// Meeting title for the platform, read when a session starts (walks the Teams tree, not cheap).
+pub fn title_for(platform: Platform) -> Option<String> {
+    match platform {
+        Platform::Teams => call_title(Platform::Teams).or_else(|| {
+            window_titles(TEAMS_BUNDLE)
+                .iter()
+                .find_map(|t| platform::meeting_title(Platform::Teams, t))
+        }),
+        other => call_title(other),
+    }
+}
+
+/// `session`: platform of the running auto session; only then is the (costly) Teams call-window
+/// walk worth doing, and a browser keeps counting as Meet when another tab is active.
+pub fn observe(session: Option<Platform>) -> Observation {
     let users = mic_users();
     let meet_window = meet_window_title().is_some();
-
-    let mic = if users.contains(&AppKind::Teams) {
-        Some(Platform::Teams)
-    } else if users.contains(&AppKind::Zoom) {
-        Some(Platform::Zoom)
-    } else if meet_window && users.iter().any(|k| matches!(k, AppKind::Browser(_))) {
-        Some(Platform::Meet)
-    } else {
-        None
-    };
+    let mic = platform::mic_platform(&users, meet_window, session);
 
     // Window presence only matters while nobody holds the mic (muted or reconnecting), and only
     // from unambiguous meeting UIs: a Teams window title can name a channel, so Teams counts
@@ -91,7 +89,7 @@ pub fn observe(in_session: bool) -> Observation {
         Some(Platform::Zoom)
     } else if meet_window {
         Some(Platform::Meet)
-    } else if in_session && teams_call_window() {
+    } else if session.is_some() && teams_call_window() {
         Some(Platform::Teams)
     } else {
         None
@@ -105,7 +103,7 @@ mod tests {
     #[test]
     #[ignore]
     fn probe_smoke() {
-        let obs = super::observe(true);
+        let obs = super::observe(Some(super::Platform::Teams));
         let title = obs.mic.and_then(super::title_for);
         println!("observation={obs:?} title={title:?} trusted={}", crate::ax_util::is_trusted(false));
     }

@@ -8,7 +8,6 @@ use captions::Turn;
 use once_cell::sync::Lazy;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager, Runtime};
@@ -19,7 +18,7 @@ pub const SESSION_FILE: &str = "teams-session.json";
 
 /// Meeting folders whose Teams session thread is still collecting captions.
 static ACTIVE: Lazy<Mutex<HashSet<PathBuf>>> = Lazy::new(|| Mutex::new(HashSet::new()));
-static NATIVE_STARTED: AtomicBool = AtomicBool::new(false);
+static NATIVE: Lazy<Mutex<NativeState>> = Lazy::new(|| Mutex::new(NativeState::default()));
 
 pub fn read_captions(folder: &Path) -> Vec<Turn> {
     std::fs::read_to_string(folder.join(CAPTIONS_FILE))
@@ -53,59 +52,104 @@ pub fn wait_session_finished(folder: &Path) {
     }
 }
 
+/// Which auto session started the native Teams transcription (only that one may stop it).
+#[derive(Default)]
+pub struct NativeState {
+    owner: Option<u64>,
+}
+
+impl NativeState {
+    pub fn started_by(&mut self, session: u64) {
+        self.owner = Some(session);
+    }
+
+    /// True (once) when `session` started the transcription and should now stop it.
+    pub fn take_if_owned(&mut self, session: u64) -> bool {
+        let owned = self.owner == Some(session);
+        if owned {
+            self.owner = None;
+        }
+        owned
+    }
+
+    pub fn session_ended(&mut self, session: u64) {
+        if self.owner == Some(session) {
+            self.owner = None;
+        }
+    }
+}
+
 /// Called when the autopilot starts a Teams session: captions on, native transcription (if
 /// enabled), caption collection until the recording ends. Every failure is non-fatal.
-pub fn on_session_start<R: Runtime>(app: &AppHandle<R>) {
+pub fn on_session_start<R: Runtime>(app: &AppHandle<R>, session: u64) {
     #[cfg(target_os = "macos")]
     {
         let app = app.clone();
-        std::thread::spawn(move || run_session(app));
+        std::thread::spawn(move || run_session(app, session));
     }
     #[cfg(not(target_os = "macos"))]
-    let _ = app;
+    let _ = (app, session);
 }
 
+// ponytail: the call controls may appear only after the lobby; give up after this long.
 #[cfg(target_os = "macos")]
-fn run_session<R: Runtime>(app: AppHandle<R>) {
+const CALL_UI_WAIT: Duration = Duration::from_secs(300);
+
+#[cfg(target_os = "macos")]
+fn run_session<R: Runtime>(app: AppHandle<R>, session: u64) {
     use crate::audio::recording_commands as rc;
     use tauri::async_runtime::block_on;
+    let alive = || crate::autopilot::is_session_alive(session) && block_on(rc::is_recording());
 
-    // Wait for the recording (started by the frontend) to exist, to anchor caption times.
-    let deadline = Instant::now() + Duration::from_secs(60);
-    let (folder, rec_start) = loop {
-        if Instant::now() > deadline || crate::autopilot::current_session().is_none() {
-            return;
-        }
-        std::thread::sleep(Duration::from_secs(1));
-        let state = block_on(rc::get_recording_state());
-        let folder = block_on(rc::get_meeting_folder_path()).ok().flatten();
-        if let (true, Some(folder)) = (state["is_recording"].as_bool() == Some(true), folder) {
-            let elapsed = state["recording_duration"].as_f64().unwrap_or(0.0);
-            break (PathBuf::from(folder), Instant::now() - Duration::from_secs_f64(elapsed));
-        }
-    };
+    // Anchor caption times on the recording (already started by the autopilot).
+    let state = block_on(rc::get_recording_state());
+    let Some(folder) = block_on(rc::get_meeting_folder_path()).ok().flatten().map(PathBuf::from) else { return };
+    let elapsed = state["recording_duration"].as_f64().unwrap_or(0.0);
+    let rec_start = Instant::now() - Duration::from_secs_f64(elapsed);
     let Some(pid) = ax::teams_pid() else { return };
     ACTIVE.lock().unwrap().insert(folder.clone());
 
-    std::thread::sleep(Duration::from_secs(3)); // let the meeting UI settle
-    if let Err(e) = ax::enable_live_captions(pid) {
-        log::warn!("Teams live captions not enabled: {e:#}");
+    // Wait for the in-call UI (the session may start on the pre-join screen or in the lobby).
+    let deadline = Instant::now() + CALL_UI_WAIT;
+    let mut in_call = false;
+    while alive() && Instant::now() < deadline {
+        if ax::call_window(pid).is_some() {
+            in_call = true;
+            break;
+        }
+        std::thread::sleep(Duration::from_secs(10));
     }
-    if crate::autopilot::settings::load(&app).native_teams_transcription {
-        match ax::start_native_transcription(pid) {
-            Ok(()) => {
-                NATIVE_STARTED.store(true, Ordering::SeqCst);
-                let offset = rec_start.elapsed().as_secs_f64();
-                write_json(&folder.join(SESSION_FILE), &serde_json::json!({ "native_transcription_offset": offset }));
-                crate::autopilot::notify(
-                    &app,
-                    "Trascrizione Teams avviata (visibile a tutti)",
-                    "Teams mostra ai partecipanti che la riunione viene trascritta.",
-                );
-            }
-            Err(e) => {
-                log::warn!("Teams native transcription not started: {e:#}");
-                crate::autopilot::notify(&app, "Trascrizione Teams non avviata", "Continuo con la trascrizione locale.");
+
+    if in_call && alive() {
+        std::thread::sleep(Duration::from_secs(3)); // let the meeting UI settle
+        if let Err(e) = ax::enable_live_captions(pid) {
+            log::warn!("Teams live captions not enabled: {e:#}");
+        }
+        // Re-check right before a visible action: the user may have cancelled meanwhile.
+        if crate::autopilot::settings::load(&app).native_teams_transcription
+            && alive()
+            && !crate::autopilot::is_cancel_pending()
+        {
+            NATIVE.lock().unwrap().started_by(session);
+            match ax::start_native_transcription(pid) {
+                Ok(ax::NativeStart::Started) => {
+                    let offset = rec_start.elapsed().as_secs_f64();
+                    write_json(&folder.join(SESSION_FILE), &serde_json::json!({ "native_transcription_offset": offset }));
+                    crate::autopilot::notify(
+                        &app,
+                        "Trascrizione Teams avviata (visibile a tutti)",
+                        "Teams mostra ai partecipanti che la riunione viene trascritta.",
+                    );
+                }
+                Ok(ax::NativeStart::AlreadyRunning) => {
+                    log::info!("Teams transcription already running (started by someone else)");
+                    NATIVE.lock().unwrap().session_ended(session);
+                }
+                Err(e) => {
+                    log::warn!("Teams native transcription not started: {e:#}");
+                    NATIVE.lock().unwrap().session_ended(session);
+                    crate::autopilot::notify(&app, "Trascrizione Teams non avviata", "Continuo con la trascrizione locale.");
+                }
             }
         }
     }
@@ -113,7 +157,7 @@ fn run_session<R: Runtime>(app: AppHandle<R>) {
     let mut reader = ax::CaptionReader::default();
     let mut log = captions::CaptionLog::default();
     let mut last_write = Instant::now();
-    while crate::autopilot::current_session().is_some() && block_on(rc::is_recording()) {
+    while alive() {
         std::thread::sleep(Duration::from_secs(1));
         log.ingest(rec_start.elapsed().as_secs_f64(), &reader.read(pid));
         if last_write.elapsed() > Duration::from_secs(10) {
@@ -122,21 +166,24 @@ fn run_session<R: Runtime>(app: AppHandle<R>) {
         }
     }
     write_json(&folder.join(CAPTIONS_FILE), &log.turns());
+    NATIVE.lock().unwrap().session_ended(session);
     ACTIVE.lock().unwrap().remove(&folder);
 }
 
-/// Cancel / manual stop: also stop the native Teams transcription if Trascrivi started it.
-pub fn stop_native_in_background() {
-    #[cfg(target_os = "macos")]
-    if NATIVE_STARTED.swap(false, Ordering::SeqCst) {
-        std::thread::spawn(|| {
-            if let Some(pid) = ax::teams_pid() {
-                if let Err(e) = ax::stop_native_transcription(pid) {
-                    log::warn!("Teams native transcription not stopped: {e:#}");
-                }
-            }
-        });
+/// Cancel / manual stop of `session`: stop the native Teams transcription only if this session
+/// started it (never one somebody else started, never one from an earlier call).
+pub fn stop_native_in_background(session: u64) {
+    if !NATIVE.lock().unwrap().take_if_owned(session) {
+        return;
     }
+    #[cfg(target_os = "macos")]
+    std::thread::spawn(|| {
+        if let Some(pid) = ax::teams_pid() {
+            if let Err(e) = ax::stop_native_transcription(pid) {
+                log::warn!("Teams native transcription not stopped: {e:#}");
+            }
+        }
+    });
 }
 
 /// Settings → Diagnostica Teams: writes the Teams accessibility tree to a JSON file.
@@ -158,5 +205,35 @@ pub async fn teams_dump_ax_tree<R: Runtime>(app: AppHandle<R>) -> Result<String,
     {
         let _ = app;
         Err("Solo macOS".into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn already_running_transcription_is_never_stopped() {
+        let mut n = NativeState::default();
+        assert!(!n.take_if_owned(1)); // someone else started it: not ours to stop
+    }
+
+    #[test]
+    fn owner_session_stops_once() {
+        let mut n = NativeState::default();
+        n.started_by(1);
+        assert!(n.take_if_owned(1));
+        assert!(!n.take_if_owned(1));
+    }
+
+    #[test]
+    fn stale_session_does_not_stop_a_later_call() {
+        let mut n = NativeState::default();
+        n.started_by(1);
+        n.session_ended(1); // call 1 auto-stopped
+        assert!(!n.take_if_owned(2));
+        n.started_by(2);
+        n.session_ended(1); // late cleanup of an old session must not clear the new owner
+        assert!(n.take_if_owned(2));
     }
 }

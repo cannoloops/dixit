@@ -164,6 +164,12 @@ pub(crate) fn stop_recording_in_background<R: Runtime>(app: &AppHandle<R>, focus
     }
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
+        // Nothing recording: no stop, and above all no "stop complete" (the frontend would save
+        // whatever transcripts it still holds as a new meeting).
+        if !crate::is_recording().await {
+            update_tray_menu_async(&app_clone).await;
+            return;
+        }
         log::info!("Tray: Stopping recording...");
 
         // Generate save path (same as RecordingControls.tsx)

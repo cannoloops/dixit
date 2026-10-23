@@ -9,7 +9,7 @@ use super::transcript_io::{parse_teams_docx, parse_vtt, write_teams_docx};
 use super::wav::WavReader;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Local};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 pub const DIARIZATION_FILE: &str = "diarization.json";
@@ -52,7 +52,8 @@ fn read_secs(track: &mut WavReader, start: f64, end: f64) -> Vec<f32> {
 
 /// Me/others by track energy, clusters for others (when an embedder is available).
 /// Reads only each segment's slice: a 3-hour meeting's tracks would not fit comfortably in RAM.
-fn diarize(folder: &Path, segs: &[Segment], embedder: Option<&mut Embedder>) -> Result<Vec<SegmentInfo>> {
+/// Returns the segment infos and whether they are final (voices clustered, or nothing to cluster).
+fn diarize(folder: &Path, segs: &[Segment], embedder: Option<&mut Embedder>) -> Result<(Vec<SegmentInfo>, bool)> {
     let mut mic = WavReader::open(&folder.join(MIC_TRACK))?;
     let mut sys = WavReader::open(&folder.join(SYS_TRACK))?;
     let mut infos: Vec<SegmentInfo> = segs
@@ -65,6 +66,8 @@ fn diarize(folder: &Path, segs: &[Segment], embedder: Option<&mut Embedder>) -> 
             cluster: None,
         })
         .collect();
+    let needs_embedding = infos.iter().any(|i| i.source == Source::Others && i.end - i.start >= MIN_EMBED_SECS);
+    let complete = embedder.is_some() || !needs_embedding;
     if let Some(embedder) = embedder {
         let mut embedded = Vec::new();
         let mut embs = Vec::new();
@@ -91,10 +94,46 @@ fn diarize(folder: &Path, segs: &[Segment], embedder: Option<&mut Embedder>) -> 
                 .map(|a| a.1);
         }
     }
-    Ok(infos)
+    Ok((infos, complete))
 }
 
-fn native_turns(folder: &Path) -> Vec<Turn> {
+fn words(text: &str) -> HashSet<String> {
+    text.to_lowercase()
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| w.chars().count() >= 4)
+        .map(str::to_string)
+        .collect()
+}
+
+/// Shift that aligns a Teams transcript to the recording: median of (segment start − turn start)
+/// over turns whose wording matches a transcribed segment. None without enough evidence.
+pub fn estimate_offset(native: &[Turn], segs: &[(f64, &str)]) -> Option<f64> {
+    const MIN_SHARED_WORDS: usize = 3;
+    const MIN_MATCHES: usize = 3;
+    let seg_words: Vec<(f64, HashSet<String>)> = segs.iter().map(|(start, text)| (*start, words(text))).collect();
+    let mut deltas: Vec<f64> = native
+        .iter()
+        .filter_map(|turn| {
+            let w = words(&turn.text);
+            seg_words
+                .iter()
+                .map(|(start, sw)| (*start, w.intersection(sw).count()))
+                .filter(|(_, shared)| *shared >= MIN_SHARED_WORDS)
+                .max_by_key(|(_, shared)| *shared)
+                .map(|(start, _)| start - turn.start)
+        })
+        .collect();
+    if deltas.len() < MIN_MATCHES {
+        return None;
+    }
+    deltas.sort_by(f64::total_cmp);
+    Some(deltas[deltas.len() / 2])
+}
+
+/// Native Teams turns on the recording timeline. Offset: the one Trascrivi recorded when it
+/// started the transcription, else estimated from the text; when it can't be aligned and captions
+/// exist, the native transcript is ignored (a wrong shift would rename the whole meeting).
+fn native_turns(folder: &Path, segs: &[Segment], have_captions: bool) -> Vec<Turn> {
     let turns = if folder.join(NATIVE_DOCX).exists() {
         parse_teams_docx(&folder.join(NATIVE_DOCX)).map(|(_, t)| t).unwrap_or_else(|e| {
             log::warn!("Unreadable Teams transcript: {e:#}");
@@ -103,7 +142,18 @@ fn native_turns(folder: &Path) -> Vec<Turn> {
     } else {
         std::fs::read_to_string(folder.join(NATIVE_VTT)).map(|t| parse_vtt(&t)).unwrap_or_default()
     };
-    let offset = crate::teams::native_offset(folder).unwrap_or(0.0);
+    if turns.is_empty() {
+        return turns;
+    }
+    let texts: Vec<(f64, &str)> = segs.iter().map(|s| (s.start, s.text.as_str())).collect();
+    let offset = match crate::teams::native_offset(folder).or_else(|| estimate_offset(&turns, &texts)) {
+        Some(offset) => offset,
+        None if have_captions => {
+            log::info!("Teams transcript not aligned to the recording; using live captions instead");
+            return Vec::new();
+        }
+        None => 0.0,
+    };
     turns.into_iter().map(|t| Turn { start: t.start + offset, end: t.end + offset, ..t }).collect()
 }
 
@@ -134,25 +184,33 @@ pub fn attribute_folder(folder: &Path, me: &str, embedder: Option<&mut Embedder>
                 .map(|s| by_seq.get(&s.seq).cloned().unwrap_or(SegmentInfo { seq: s.seq, start: s.start, end: s.end, source: Source::Others, cluster: None }))
                 .collect()
         }
-        None => {
-            let infos = diarize(folder, &segs, embedder).unwrap_or_else(|e| {
+        None => match diarize(folder, &segs, embedder) {
+            Ok((infos, complete)) => {
+                // Persist and drop the tracks only once voices are clustered; otherwise keep them
+                // so a later rerun (with the speaker model available) can still cluster.
+                if complete {
+                    std::fs::write(&diarization_path, serde_json::to_string_pretty(&serde_json::json!({ "segments": infos }))?)?;
+                    for track in [MIC_TRACK, SYS_TRACK] {
+                        let _ = std::fs::remove_file(folder.join(track));
+                    }
+                }
+                infos
+            }
+            Err(e) => {
                 log::warn!("No speaker tracks for {} ({e:#}); names from Teams only", folder.display());
                 segs.iter()
                     .map(|s| SegmentInfo { seq: s.seq, start: s.start, end: s.end, source: Source::Others, cluster: None })
                     .collect()
-            });
-            std::fs::write(&diarization_path, serde_json::to_string_pretty(&serde_json::json!({ "segments": infos }))?)?;
-            for track in [MIC_TRACK, SYS_TRACK] {
-                let _ = std::fs::remove_file(folder.join(track));
             }
-            infos
-        }
+        },
     };
 
     let renames: HashMap<String, String> = read_json(&folder.join(SPEAKERS_FILE))
         .and_then(|v| serde_json::from_value(v["renames"].clone()).ok())
         .unwrap_or_default();
-    let names = assign_names(&infos, &native_turns(folder), &crate::teams::read_captions(folder), &renames, me);
+    let captions = crate::teams::read_captions(folder);
+    let native = native_turns(folder, &segs, !captions.is_empty());
+    let names = assign_names(&infos, &native, &captions, &renames, me);
 
     if let Some(arr) = transcripts["segments"].as_array_mut() {
         for (seg, name) in arr.iter_mut().zip(&names) {
@@ -238,8 +296,9 @@ mod tests {
         let saved: serde_json::Value =
             serde_json::from_str(&std::fs::read_to_string(dir.path().join("transcripts.json")).unwrap()).unwrap();
         assert_eq!(saved["segments"][1]["speaker"], "Rossi Mario");
-        assert!(dir.path().join(DIARIZATION_FILE).exists());
-        assert!(!dir.path().join(MIC_TRACK).exists() && !dir.path().join(SYS_TRACK).exists());
+        // No embedder: voices not clustered yet, so the tracks stay for a later rerun.
+        assert!(!dir.path().join(DIARIZATION_FILE).exists());
+        assert!(dir.path().join(MIC_TRACK).exists() && dir.path().join(SYS_TRACK).exists());
         assert_eq!(out.docx.file_name().unwrap(), "Sprint- review-Trascrizione della riunione.docx");
         let (_, turns) = crate::speakers::transcript_io::parse_teams_docx(&out.docx).unwrap();
         let names: Vec<_> = turns.iter().map(|t| t.name.as_str()).collect();
@@ -247,10 +306,10 @@ mod tests {
     }
 
     #[test]
-    fn rerun_uses_saved_diarization_and_renames() {
+    fn rerun_applies_renames() {
         let dir = tempfile::tempdir().unwrap();
         fixture(dir.path());
-        attribute_folder(dir.path(), "Manuguerra Vito", None).unwrap(); // tracks consumed
+        attribute_folder(dir.path(), "Manuguerra Vito", None).unwrap();
         std::fs::write(dir.path().join(SPEAKERS_FILE), r#"{"renames": {"Altri": "Ospiti"}}"#).unwrap();
         let out = attribute_folder(dir.path(), "Manuguerra Vito", None).unwrap();
         assert_eq!(out.speakers[0].1, "Manuguerra Vito");
@@ -296,5 +355,38 @@ mod tests {
         let out = attribute_folder(dir.path(), "Io", Some(&mut e)).unwrap();
         let labels: Vec<_> = out.speakers.iter().map(|s| s.1.as_str()).collect();
         assert_eq!(labels, vec!["Parlante A", "Parlante B", "Parlante A", "Parlante B"]);
+        assert!(dir.path().join(DIARIZATION_FILE).exists());
+        assert!(!dir.path().join(SYS_TRACK).exists());
+    }
+
+    #[test]
+    fn estimates_offset_from_text() {
+        let turn = |start: f64, text: &str| Turn { name: "X".into(), text: text.into(), start, end: start + 5.0 };
+        let native = [
+            turn(0.0, "buongiorno partiamo subito con il rilascio"),
+            turn(10.0, "il deploy della versione nuova è pronto"),
+            turn(20.0, "manca soltanto il collaudo del cliente"),
+        ];
+        let segs = [
+            (30.5, "buongiorno partiamo subito con il rilascio"),
+            (40.0, "il deploy della versione nuova è pronto"),
+            (50.0, "manca soltanto il collaudo del cliente finale"),
+        ];
+        let off = estimate_offset(&native, &segs).unwrap();
+        assert!((off - 30.0).abs() < 0.6, "offset {off}");
+        assert_eq!(estimate_offset(&native[..1], &segs[..1]), None); // too little evidence
+    }
+
+    #[test]
+    fn unaligned_native_is_ignored_when_captions_exist() {
+        let dir = tempfile::tempdir().unwrap();
+        fixture(dir.path());
+        let captions = serde_json::json!([{"name": "Rossi Mario", "text": "x", "start": 3.0, "end": 5.0}]);
+        std::fs::write(dir.path().join(crate::teams::CAPTIONS_FILE), captions.to_string()).unwrap();
+        // Native transcript Trascrivi didn't start (no offset) whose text matches nothing.
+        let vtt = "WEBVTT\n\n00:00:03.000 --> 00:00:05.000\n<v Verdi Luca>tutt'altro discorso</v>\n";
+        std::fs::write(dir.path().join(NATIVE_VTT), vtt).unwrap();
+        let out = attribute_folder(dir.path(), "Io", None).unwrap();
+        assert_eq!(out.speakers[1].1, "Rossi Mario");
     }
 }

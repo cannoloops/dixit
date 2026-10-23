@@ -83,9 +83,19 @@ enum Found {
     AlreadyDone,
 }
 
+/// Serializes menu automation: a cancel's "stop" must not interleave with a running "start".
+static AUTOMATION: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+pub enum NativeStart {
+    Started,
+    /// Someone (e.g. the organizer) is already transcribing: not ours to stop later.
+    AlreadyRunning,
+}
+
 /// Presses `target`, opening `openers` one by one until it shows up. `done` = target's
 /// "already active" twin (e.g. "Turn off captions"). Escapes and errors when nothing matches.
 fn reveal_and_press(pid: i32, openers: &[&Regex], target: &Regex, done: Option<&Regex>) -> anyhow::Result<Found> {
+    let _guard = AUTOMATION.lock().unwrap_or_else(|e| e.into_inner());
     let window = call_window(pid).ok_or_else(|| anyhow::anyhow!("no Teams call window"))?;
     let app = ax_util::app(pid);
     for i in 0..=openers.len() {
@@ -122,12 +132,14 @@ fn confirm_dialog_if_any(pid: i32) {
 }
 
 /// Starts Teams' own (visible to everyone) transcription.
-pub fn start_native_transcription(pid: i32) -> anyhow::Result<()> {
+pub fn start_native_transcription(pid: i32) -> anyhow::Result<NativeStart> {
     match reveal_and_press(pid, &[&MORE, &RECORD_TRANSCRIBE], &START_TRANSCRIPTION, Some(&STOP_TRANSCRIPTION))? {
-        Found::Pressed => confirm_dialog_if_any(pid),
-        Found::AlreadyDone => log::info!("Teams transcription already running"),
+        Found::Pressed => {
+            confirm_dialog_if_any(pid);
+            Ok(NativeStart::Started)
+        }
+        Found::AlreadyDone => Ok(NativeStart::AlreadyRunning),
     }
-    Ok(())
 }
 
 pub fn stop_native_transcription(pid: i32) -> anyhow::Result<()> {
@@ -139,10 +151,12 @@ pub fn stop_native_transcription(pid: i32) -> anyhow::Result<()> {
 
 // --- Live caption reading ----------------------------------------------------------------
 
-/// Reads the visible caption lines; caches the captions region between calls.
+/// Reads the visible caption lines; caches the captions region between calls and searches for
+/// it only every few seconds while it's missing.
 #[derive(Default)]
 pub struct CaptionReader {
     region: Option<El>,
+    search: super::captions::SearchThrottle,
 }
 
 fn texts(el: &El, out: &mut Vec<String>, budget: &mut usize) {
@@ -176,12 +190,15 @@ fn is_captions_region(e: &cidre::ax::UiElement) -> bool {
 impl CaptionReader {
     pub fn read(&mut self, pid: i32) -> Vec<(String, String)> {
         let alive = self.region.as_ref().is_some_and(|r| !ax_util::role(r).is_empty());
+        let now = std::time::Instant::now();
         if !alive {
-            self.region = call_window(pid).and_then(|w| {
-                ax_util::find_all(&w, 6000, &is_captions_region)
-                    .into_iter()
-                    .next()
-            });
+            self.region = None;
+            if self.search.due(now) {
+                self.search.mark(now);
+                self.region = call_window(pid).and_then(|w| {
+                    ax_util::find_all(&w, 6000, &is_captions_region).into_iter().next()
+                });
+            }
         }
         let Some(region) = &self.region else { return Vec::new() };
         ax_util::children(region)

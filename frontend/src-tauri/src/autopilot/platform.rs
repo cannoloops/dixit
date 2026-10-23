@@ -60,6 +60,22 @@ pub fn is_zoom_meeting_window(title: &str) -> bool {
         .any(|t| title.contains(t))
 }
 
+/// Which meeting platform holds the mic. A browser counts as Meet when a Meet window is the
+/// active tab, or when a Meet session is already running (the user may have switched tab).
+pub fn mic_platform(users: &[AppKind], meet_window: bool, session: Option<Platform>) -> Option<Platform> {
+    if users.contains(&AppKind::Teams) {
+        Some(Platform::Teams)
+    } else if users.contains(&AppKind::Zoom) {
+        Some(Platform::Zoom)
+    } else if users.iter().any(|k| matches!(k, AppKind::Browser(_)))
+        && (meet_window || session == Some(Platform::Meet))
+    {
+        Some(Platform::Meet)
+    } else {
+        None
+    }
+}
+
 /// Meeting title from a window title, or None when the title is generic.
 pub fn meeting_title(platform: Platform, window_title: &str) -> Option<String> {
     let title = match platform {
@@ -124,5 +140,17 @@ mod tests {
         assert!(is_zoom_meeting_window("Riunione Zoom"));
         assert!(is_zoom_meeting_window("Zoom Webinar"));
         assert!(!is_zoom_meeting_window("Zoom Workplace"));
+    }
+
+    #[test]
+    fn mic_platform_rules() {
+        let browser = AppKind::Browser("com.google.Chrome");
+        assert_eq!(mic_platform(&[browser, AppKind::Teams], false, None), Some(Platform::Teams));
+        assert_eq!(mic_platform(&[AppKind::Zoom], false, None), Some(Platform::Zoom));
+        assert_eq!(mic_platform(&[browser], true, None), Some(Platform::Meet));
+        assert_eq!(mic_platform(&[browser], false, None), None);
+        // Meet session running, user switched to another tab: still Meet.
+        assert_eq!(mic_platform(&[browser], false, Some(Platform::Meet)), Some(Platform::Meet));
+        assert_eq!(mic_platform(&[], false, Some(Platform::Meet)), None);
     }
 }

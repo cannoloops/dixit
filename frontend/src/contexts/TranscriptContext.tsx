@@ -96,6 +96,10 @@ export function TranscriptProvider({ children }: { children: ReactNode }) {
         // Listen for recording-started event
         unlistenRecordingStarted = await recordingService.onRecordingStarted(async () => {
           try {
+            // Trascrivi: recordings may start from the backend (autopilot) without the home page's
+            // clearTranscripts(); never carry the previous meeting's lines into the new one.
+            setTranscripts([]);
+
             // Generate unique meeting ID
             const meetingId = `meeting-${Date.now()}`;
             setCurrentMeetingId(meetingId);
