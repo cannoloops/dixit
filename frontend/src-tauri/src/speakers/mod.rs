@@ -1,4 +1,7 @@
 // Trascrivi: post-call speaker attribution (who said what).
+pub mod cluster;
+pub mod embedder;
+pub mod fbank;
 pub mod tracks;
 pub mod wav;
 
