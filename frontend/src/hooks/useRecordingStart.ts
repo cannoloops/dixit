@@ -15,7 +15,7 @@ import {
 import { toast } from 'sonner';
 
 const TRANSCRIPTION_RUNTIME_START_ERROR_CODE = 'TRANSCRIPTION_RUNTIME_INITIALIZATION_FAILED';
-const TRANSCRIPTION_RUNTIME_USER_MESSAGE = 'Speech recognition could not initialize. Restart Meetily. If the problem continues, repair or reinstall the app.';
+const TRANSCRIPTION_RUNTIME_USER_MESSAGE = "Impossibile inizializzare il riconoscimento vocale. Riavvia Dixit. Se il problema persiste, ripara o reinstalla l'app.";
 
 const isTranscriptionRuntimeStartError = (error: unknown) =>
   String(error) === TRANSCRIPTION_RUNTIME_START_ERROR_CODE;

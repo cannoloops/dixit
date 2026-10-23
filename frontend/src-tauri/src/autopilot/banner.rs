@@ -25,7 +25,7 @@ pub fn show<R: Runtime>(app: &AppHandle<R>, title: &str) {
         .unwrap_or((40.0, 40.0));
 
     let built = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App(format!("banner.html?{query}").into()))
-        .title("Trascrivi")
+        .title("Dixit")
         .inner_size(WIDTH, HEIGHT)
         .position(x, y)
         .decorations(false)

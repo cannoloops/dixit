@@ -150,7 +150,7 @@ export function PermissionsStep() {
   return (
     <OnboardingContainer
       title="Grant Permissions"
-      description="Trascrivi needs access to your microphone and system audio to record meetings"
+      description="Dixit needs access to your microphone and system audio to record meetings"
       step={4}
       hideProgress={true}
       showNavigation={allPermissionsGranted}

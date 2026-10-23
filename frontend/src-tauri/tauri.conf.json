@@ -1,6 +1,6 @@
 {
     "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-    "productName": "Trascrivi",
+    "productName": "Dixit",
     "version": "0.1.0",
     "identifier": "com.vitomanuguerra.trascrivi",
     "build": {
@@ -12,7 +12,7 @@
     "app": {
         "windows": [
             {
-                "title": "Trascrivi",
+                "title": "Dixit",
                 "width": 1100,
                 "height": 700,
                 "resizable": true,

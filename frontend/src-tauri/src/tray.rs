@@ -23,7 +23,7 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
 
     TrayIconBuilder::with_id("main-tray")
         .menu(&menu)
-        .tooltip("Trascrivi")
+        .tooltip("Dixit")
         // Monochrome template glyph: macOS tints it like the native menu-bar icons.
         .icon(tauri::include_image!("icons/tray-template.png"))
         .icon_as_template(true)

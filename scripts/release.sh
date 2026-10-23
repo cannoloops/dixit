@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Trascrivi release: build, sign with Developer ID, notarize, publish to the public releases repo.
+# Dixit release: build, sign with Developer ID, notarize, publish to the public releases repo.
 # Usage: scripts/release.sh <version> [--dry-run]     (see docs/RELEASE.md)
 set -euo pipefail
 
@@ -50,17 +50,17 @@ echo "==> Build app + dmg (firma: $SIGNING_IDENTITY)"
   --config "{\"bundle\":{\"macOS\":{\"signingIdentity\":\"$SIGNING_IDENTITY\"}}}")
 
 BUNDLE="$ROOT/target/release/bundle"
-DMG="$(ls "$BUNDLE"/dmg/Trascrivi_"${VERSION}"_*.dmg)"
-TARBALL="$BUNDLE/macos/Trascrivi.app.tar.gz"
+DMG="$(ls "$BUNDLE"/dmg/Dixit_"${VERSION}"_*.dmg)"
+TARBALL="$BUNDLE/macos/Dixit.app.tar.gz"
 [[ -f "$TARBALL.sig" ]] || { echo "Firma updater mancante: $TARBALL.sig"; exit 1; }
 
 echo "==> latest.json"
-python3 - "$VERSION" "$TARBALL.sig" "https://github.com/$RELEASES_REPO/releases/download/v$VERSION/Trascrivi.app.tar.gz" > "$BUNDLE/latest.json" <<'PY'
+python3 - "$VERSION" "$TARBALL.sig" "https://github.com/$RELEASES_REPO/releases/download/v$VERSION/Dixit.app.tar.gz" > "$BUNDLE/latest.json" <<'PY'
 import datetime, json, sys
 version, sig_path, url = sys.argv[1:4]
 print(json.dumps({
     "version": version,
-    "notes": f"Trascrivi {version}",
+    "notes": f"Dixit {version}",
     "pub_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "platforms": {"darwin-aarch64": {"signature": open(sig_path).read().strip(), "url": url}},
 }, indent=2))
@@ -72,5 +72,5 @@ if $DRY_RUN; then
 fi
 
 echo "==> Pubblicazione su $RELEASES_REPO"
-gh release create "v$VERSION" --repo "$RELEASES_REPO" --title "Trascrivi $VERSION" --notes "Trascrivi $VERSION" \
+gh release create "v$VERSION" --repo "$RELEASES_REPO" --title "Dixit $VERSION" --notes "Dixit $VERSION" \
   "$DMG" "$TARBALL" "$TARBALL.sig" "$BUNDLE/latest.json"

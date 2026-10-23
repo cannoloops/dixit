@@ -1,4 +1,4 @@
-# Trascrivi – release, installazione e collaudo
+# Dixit – release, installazione e collaudo
 
 ## Una tantum (Vito)
 
@@ -8,7 +8,7 @@
 2. **Password per app** per la notarizzazione: appleid.apple.com → Accesso e sicurezza → Password per le app.
 3. **Repo pubblico delle sole release**:
    ```bash
-   gh repo create cannoloops/trascrivi-releases --public --description "Trascrivi releases"
+   gh repo create cannoloops/trascrivi-releases --public --description "Dixit releases"
    ```
    Il codice resta nel repo privato. L'updater legge
    `https://github.com/cannoloops/trascrivi-releases/releases/latest/download/latest.json`.
@@ -45,7 +45,7 @@ Fai il commit del cambio di versione.
 
 ## Installazione (colleghi)
 
-1. Scarica il `.dmg` dall'ultima release di `cannoloops/trascrivi-releases` e trascina Trascrivi in Applicazioni.
+1. Scarica il `.dmg` dall'ultima release di `cannoloops/trascrivi-releases` e trascina Dixit in Applicazioni.
 2. Al primo avvio l'onboarding:
    - chiede i permessi di Microfono, Audio di sistema e Accessibilità;
    - chiede il tuo nome come appare in Teams;
@@ -53,7 +53,7 @@ Fai il commit del cambio di versione.
 3. In Teams imposta la lingua parlata su italiano.
 4. Gli aggiornamenti successivi arrivano da soli.
 
-Trascrivi convive con Meetily: dati in `~/Library/Application Support/com.vitomanuguerra.trascrivi`, registrazioni in `~/Movies/trascrivi-recordings`.
+Dixit convive con Meetily: dati in `~/Library/Application Support/com.vitomanuguerra.trascrivi`, registrazioni in `~/Documents/Dixit` (una cartella per riunione: `AAAA-MM-GG HH.MM titolo`).
 
 ## Collaudo su call reali (criteri 1–7 delle specifiche)
 
@@ -82,9 +82,9 @@ Queste prove richiedono call vere e non sono automatizzate.
 - [ ] **Meet:** se passi a un altro tab per più di un minuto o condividi un tab, la registrazione continua.
 - [ ] **Annulla subito:** premuto entro 2 secondi dalla comparsa del banner, la call non viene registrata e la cartella non resta.
 - [ ] **Trascrizione già avviata da un altro** (es. l'organizzatore):
-  - Trascrivi non mostra "avviata";
+  - Dixit non mostra "avviata";
   - con Annulla o con lo stop manuale non la ferma.
-- [ ] **Minuta:** `parse_teams.py` della skill `minuta-call`, lanciato sul file `<titolo>-Trascrizione della riunione.docx` nella cartella della riunione, riporta i nomi.
+- [ ] **Minuta:** `parse_teams.py` della skill `minuta-call`, lanciato sul file `<titolo>-Trascrizione della riunione.md` nella cartella della riunione, riporta i nomi.
 
 ### Esito del collaudo del 23/10/2026
 
@@ -102,7 +102,7 @@ Tre call Teams vere (80 min di riunione, una 1:1 di 14 min, più una ripresa a m
   - sottotitoli live e trascrizione nativa (nella vista compatta di Teams manca il menu "Altro", quindi l'app aspetta l'ingrandimento);
   - Zoom e Meet;
   - Annulla immediato.
-- **Da chiarire:** una registrazione partita all'avvio dell'app, a call già in corso, si è fermata dopo 5 s. Ora i log sono in `~/Library/Logs/Trascrivi/trascrivi.log` (avvio con `scripts/install-local.sh`).
+- **Da chiarire:** una registrazione partita all'avvio dell'app, a call già in corso, si è fermata dopo 5 s. Ora i log sono in `~/Library/Logs/Dixit/dixit.log` (avvio con `scripts/install-local.sh`).
 
 **Se Teams cambia interfaccia** (sottotitoli o trascrizione nativa non si attivano più):
 1. durante una call apri Impostazioni → Automazione → **Salva diagnostica**;

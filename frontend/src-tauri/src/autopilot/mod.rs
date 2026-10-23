@@ -209,7 +209,7 @@ async fn start<R: Runtime>(app: &AppHandle<R>, platform: Platform) -> Result<(),
 
     // Banner first: the user can say no while the recorder is still starting.
     banner::show(app, &title);
-    notify(app, &format!("Trascrizione avviata – {title}"), "Puoi annullarla dal banner o dal menu Trascrivi.");
+    notify(app, &format!("Trascrizione avviata – {title}"), "Puoi annullarla dal banner o dal menu Dixit.");
     if let Err(e) = crate::audio::recording_commands::start_recording_with_meeting_name(app.clone(), Some(title.clone())).await {
         banner::close(app);
         end_session();

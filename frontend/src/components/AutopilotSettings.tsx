@@ -69,7 +69,7 @@ export function AutopilotSettings() {
       <div>
         <h3 className="text-lg font-semibold mb-4">Automazione</h3>
         <p className="text-sm text-gray-600 mb-6">
-          Trascrivi avvia e ferma la trascrizione da solo quando inizia o finisce una call su Teams, Zoom o Meet.
+          Dixit avvia e ferma la trascrizione da solo quando inizia o finisce una call su Teams, Zoom o Meet.
         </p>
       </div>
 
