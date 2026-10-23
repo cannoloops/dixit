@@ -519,6 +519,7 @@ pub fn run() {
             // Trascrivi: automatic start/stop on Teams/Zoom/Meet calls, post-call speaker attribution
             autopilot::spawn(_app.handle().clone());
             speakers::listen_for_stops(_app.handle());
+            teams::downloads::spawn(_app.handle().clone());
 
             // Initialize notification system with proper defaults
             log::info!("Initializing notification system...");

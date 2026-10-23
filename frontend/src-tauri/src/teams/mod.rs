@@ -2,6 +2,7 @@
 #[cfg(target_os = "macos")]
 pub mod ax;
 pub mod captions;
+pub mod downloads;
 
 use captions::Turn;
 use once_cell::sync::Lazy;
