@@ -344,7 +344,6 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
           </span>
         ) : !isRecording ? (
           <Button
-            variant="live"
             onClick={() => {
               Analytics.trackButtonClick('start_recording', 'recording_controls');
               handleStartRecording();

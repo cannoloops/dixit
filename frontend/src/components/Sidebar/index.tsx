@@ -413,7 +413,6 @@ const Sidebar: React.FC = () => {
           {/* span keeps the tooltip working while the button is disabled */}
           <span>
             <Button
-              variant="live"
               size="icon"
               onClick={handleRecordingToggle}
               disabled={isRecording}
@@ -614,7 +613,7 @@ const Sidebar: React.FC = () => {
 
       {/* Actions */}
       <div className="shrink-0 space-y-0.5 border-t border-rail-border p-2">
-        <Button variant="live" className="mb-1.5 w-full" onClick={handleRecordingToggle} disabled={isRecording}>
+        <Button className="mb-1.5 w-full" onClick={handleRecordingToggle} disabled={isRecording}>
           <Mic />
           {isRecording ? t('recordingInProgress') : t('startRecording')}
         </Button>

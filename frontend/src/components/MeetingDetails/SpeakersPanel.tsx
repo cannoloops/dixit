@@ -22,12 +22,18 @@ interface SpeakersPanelProps {
  * Legend of the speaker band: each speaker carved in its pigment with its number of turns.
  * One click on a name opens the rename field (updates DB, transcripts.json and .md).
  */
+// ponytail: fixed cap; long meetings can have dozens of unnamed voices.
+const VISIBLE_SPEAKERS = 8;
+
 export function SpeakersPanel({ meetingId, speakers, roster = [], onChanged }: SpeakersPanelProps) {
+  const [showAll, setShowAll] = useState(false);
   if (speakers.length === 0) return null;
 
+  const hidden = speakers.length - VISIBLE_SPEAKERS;
+  const visible = showAll || hidden <= 0 ? speakers : speakers.slice(0, VISIBLE_SPEAKERS);
   return (
     <ul className="flex flex-wrap items-center gap-x-1 gap-y-1">
-      {speakers.map(([name, count]) => (
+      {visible.map(([name, count]) => (
         <SpeakerItem
           key={name}
           meetingId={meetingId}
@@ -37,6 +43,13 @@ export function SpeakersPanel({ meetingId, speakers, roster = [], onChanged }: S
           onChanged={onChanged}
         />
       ))}
+      {hidden > 0 && (
+        <li>
+          <Button variant="ghost" size="sm" onClick={() => setShowAll(!showAll)}>
+            {showAll ? t('fewerSpeakers') : t('moreSpeakers', { n: hidden })}
+          </Button>
+        </li>
+      )}
       <li className="ml-auto pl-2 text-xs text-muted-foreground">{t('renameHint')}</li>
     </ul>
   );

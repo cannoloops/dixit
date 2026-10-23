@@ -325,6 +325,9 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                             height: virtualizer.getTotalSize(),
                             width: "100%",
                             position: "relative",
+                            // The scroller is a flex column: without this the list shrinks to the
+                            // viewport and the load-more footer lands on top of the rows.
+                            flexShrink: 0,
                         }}
                     >
                         {virtualizer.getVirtualItems().map((virtualRow) => (
