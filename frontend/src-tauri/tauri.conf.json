@@ -1,7 +1,7 @@
 {
     "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
     "productName": "Trascrivi",
-    "version": "0.4.1",
+    "version": "0.1.0",
     "identifier": "com.vitomanuguerra.trascrivi",
     "build": {
         "frontendDist": "../out",
@@ -110,7 +110,7 @@
     },
     "plugins": {
         "updater": {
-            "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVDQTYzMUQ3ODc5N0M4MkEKUldRcXlKZUgxekdtN09DRkVWSHNpZlJseEVOUmpNd1dDSTNaLzZ3MXJGTnY3WW1pdnlOYjBpbkIK",
+            "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEUzOUJDNDJCMEQyNEYwRDUKUldUVjhDUU5LOFNiNDlFanFIZTlPY3ZuY3pMejB4bS92U3VuV0JXM2k0M01HRzJuRml5N1M2VngK",
             "endpoints": [
                 "https://github.com/cannoloops/trascrivi-releases/releases/latest/download/latest.json"
             ]
