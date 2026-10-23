@@ -5,54 +5,61 @@
 <title>Dixit</title>
 <style>
   /* Call-start banner (autopilot/banner.rs): 380×96, transparent window, top right.
-     Tokens copied from src/app/globals.css: marble ground in light, peperino in dark,
-     minium only for the recording light, porphyry for Annulla, bronze for OK. */
+     Dixit design system, tokens copied from src/app/globals.css: popover surface, live red only
+     for the recording light, destructive outline for Annulla, petrolio for OK.
+     Fonts self-hosted (Google Fonts, Latin subset, variable weight). */
   @font-face {
-    font-family: 'Cinzel';
-    font-weight: 600;
+    font-family: 'Montserrat';
+    font-weight: 100 900;
     font-display: block;
-    src: url(fonts/cinzel-600-latin.woff2) format('woff2');
+    src: url(fonts/montserrat-latin.woff2) format('woff2');
+  }
+  @font-face {
+    font-family: 'Open Sans';
+    font-weight: 300 800;
+    font-display: block;
+    src: url(fonts/open-sans-latin.woff2) format('woff2');
   }
   :root {
-    --background: 210 16% 96%;
-    --foreground: 80 5% 11%;
-    --muted-foreground: 210 7% 36%;
-    --border: 210 11% 84%;
-    --primary: 39 54% 31%;
-    --primary-foreground: 210 20% 98%;
-    --destructive: 340 48% 36%;
-    --ring: 40 42% 43%;
-    --live: 9 76% 45%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 2% 17%;
+    --muted-foreground: 218 4% 40%;
+    --border: 210 12% 90%;
+    --primary: 190 65% 35%;
+    --primary-foreground: 0 0% 100%;
+    --destructive: 358 56% 49%;
+    --ring: 190 65% 35%;
+    --live: 358 67% 54%;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --background: 90 4% 11%;
-      --foreground: 60 12% 90%;
-      --muted-foreground: 67 5% 63%;
-      --border: 70 6% 20%;
-      --primary: 39 51% 57%;
-      --primary-foreground: 90 4% 11%;
-      --destructive: 340 55% 68%;
-      --ring: 39 51% 57%;
-      --live: 9 77% 56%;
+      --popover: 240 3% 21%;
+      --popover-foreground: 240 4% 95%;
+      --muted-foreground: 223 4% 68%;
+      --border: 228 4% 26%;
+      --primary: 191 61% 48%;
+      --primary-foreground: 194 44% 10%;
+      --destructive: 358 82% 68%;
+      --ring: 191 61% 48%;
+      --live: 358 100% 68%;
     }
   }
   html, body { margin: 0; height: 100%; background: transparent; }
   body {
-    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-    color: hsl(var(--foreground));
+    font: 13px/1.4 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: hsl(var(--popover-foreground));
     -webkit-user-select: none; user-select: none; cursor: default;
     -webkit-font-smoothing: antialiased;
   }
   .banner {
-    box-sizing: border-box; height: 100%; padding: 14px 14px 13px;
+    box-sizing: border-box; height: 100%; padding: 14px 14px 13px 16px;
     display: flex; flex-direction: column; justify-content: space-between;
-    background: hsl(var(--background));
+    background: hsl(var(--popover));
     border: 1px solid hsl(var(--border));
     border-radius: 8px;
     overflow: hidden;
   }
-  .head { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .head { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .live { position: relative; flex: none; width: 8px; height: 8px; }
   .live span { position: absolute; inset: 0; border-radius: 50%; background: hsl(var(--live)); }
   .live span:first-child { animation: ping 1.4s cubic-bezier(0, 0, 0.2, 1) infinite; opacity: 0.6; }
@@ -60,20 +67,19 @@
   @media (prefers-reduced-motion: reduce) { .live span:first-child { animation: none; opacity: 0; } }
   .title {
     min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-    font: 600 15px/20px 'Cinzel', serif;
-    text-transform: uppercase; letter-spacing: 0.06em;
+    font: 600 15px/20px 'Montserrat', 'Open Sans', sans-serif;
   }
   .foot { display: flex; align-items: center; gap: 8px; }
   .sub { flex: 1; min-width: 0; font-size: 12px; color: hsl(var(--muted-foreground)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   button {
-    font: 500 13px/1 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-    height: 28px; padding: 0 12px; border-radius: 4px; cursor: default;
+    font: 600 13px/1 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    height: 28px; padding: 0 12px; border-radius: 6px; cursor: default;
     border: 1px solid transparent;
     transition: background-color 150ms, color 150ms, opacity 150ms;
   }
   button:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
   button:disabled { opacity: 0.6; }
-  .cancel { background: transparent; color: hsl(var(--destructive)); border-color: hsl(var(--destructive) / 0.55); }
+  .cancel { background: transparent; color: hsl(var(--destructive)); border-color: hsl(var(--destructive) / 0.5); }
   .cancel:hover:not(:disabled) { background: hsl(var(--destructive) / 0.08); }
   .ok { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); min-width: 48px; }
   .ok:hover:not(:disabled) { background: hsl(var(--primary) / 0.9); }
@@ -99,7 +105,7 @@
   document.documentElement.lang = it ? 'it' : 'en';
   const meeting = (new URLSearchParams(location.search).get('title') || '').trim() || s.started;
   const title = document.getElementById('title');
-  title.textContent = meeting.split(/\s+/).join('·');
+  title.textContent = meeting;
   title.title = meeting;
   document.getElementById('sub').textContent = s.sub;
   document.getElementById('live').setAttribute('aria-label', s.live);

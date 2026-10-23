@@ -39,8 +39,9 @@ Fully local (audio and text never leave the Mac) and fully automatic, with real 
 ## Brand Commitments
 
 - Name: **Dixit** (Latin, "said": who said what). Replaces the provisional name "Trascrivi" and the Meetily brand.
-- The logo will be redesigned together with the new design system; the current teal squircle with three text lines and speaker dots is not binding.
-- Must not look like Meetily.
+- Visual identity: the **Dixit design system** (user's decision, 2026-10-23), taken from the official Dixit 2023 template (`~/Documents/template.pptx`, theme "Dixit2023"): antracite #2B2B2D and white, petrolio #1F7E92, Dixit green #8DC928, the blue→green scale (#2099D8 … #7EC44E); Montserrat Bold for titles, Open Sans for text. Clean, Mac-like, no themed decoration.
+- Rejected by the user: the "Epigrafe romana" world (inscriptional capitals, bronze, stone), judged too themed, too dark and cluttered.
+- Must not look like Meetily. The Dixit logo/cross is the company's mark, not Dixit's: Dixit has its own mark in Dixit colours.
 
 ## Evidence on Hand
 
