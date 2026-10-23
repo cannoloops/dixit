@@ -64,11 +64,18 @@ pub async fn process_meeting<R: Runtime>(app: AppHandle<R>, folder: PathBuf, not
     let updated = TranscriptsRepository::set_speakers_for_folder(&pool(&app), &folder.to_string_lossy(), &outcome.speakers).await?;
     log::info!("Speakers attributed for '{}' ({} DB rows)", outcome.title, updated);
     if notify {
-        crate::autopilot::notify(
-            &app,
-            &format!("Trascrizione salvata – {}", outcome.title),
-            "Parlanti riconosciuti; la trascrizione .md è nella cartella della riunione.",
-        );
+        let (head, body) = if crate::i18n::it() {
+            (
+                format!("Trascrizione salvata – {}", outcome.title),
+                "Parlanti riconosciuti; la trascrizione .md è nella cartella della riunione.",
+            )
+        } else {
+            (
+                format!("Transcript saved – {}", outcome.title),
+                "Speakers identified; the .md transcript is in the meeting folder.",
+            )
+        };
+        crate::autopilot::notify(&app, &head, body);
     }
     let _ = app.emit("speakers-updated", serde_json::json!({ "folder": folder }));
     Ok(())

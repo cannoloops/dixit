@@ -3,9 +3,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { toast } from 'sonner';
-import { X, Download, Check, Loader2, ArrowBigDownDash } from 'lucide-react';
+import { X, Download, Check } from 'lucide-react';
 import { getDownloadTotalMb } from '@/lib/onboarding-summary-model';
 import type { ParakeetDownloadProgressEvent } from '@/lib/parakeet';
+import { locale } from '@/i18n';
+import { t } from '@/i18n/models';
 
 interface DownloadProgress {
   modelName: string;
@@ -27,21 +29,21 @@ function categorizeError(error: string): string {
     lowerError.includes('connection') ||
     lowerError.includes('timeout') ||
     lowerError.includes('failed to start download')) {
-    return 'Network error - Check your internet connection';
+    return t('errNetwork');
   }
 
   if (lowerError.includes('status:') || lowerError.includes('http')) {
-    return 'Server error - Download temporarily unavailable';
+    return t('errServer');
   }
 
   if (lowerError.includes('disk') ||
     lowerError.includes('write') ||
     lowerError.includes('file')) {
-    return 'Storage error - Check available disk space';
+    return t('errStorage');
   }
 
   if (lowerError.includes('invalid') || lowerError.includes('validation')) {
-    return 'File validation failed - Please retry download';
+    return t('errValidation');
   }
 
   // Fallback to original error
@@ -61,59 +63,53 @@ function DownloadToastContent({
   const isCancelled = download.status === 'cancelled';
   const unitLabel = download.unitLabel ?? 'MB';
 
-  return (
-    <div className="flex items-center gap-3 w-full max-w-sm bg-white rounded-lg shadow-lg border border-gray-200 p-3 relative">
+  const fmt = (n: number) => n.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
+  return (
+    <div className="flex w-full max-w-sm items-center gap-3 rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-[var(--shadow-float)]">
       {/* Icon */}
-      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${isComplete ? 'bg-green-100' : hasError ? 'bg-red-100' : isCancelled ? 'bg-gray-100' : 'bg-gray-100'
-        }`}>
+      <div className="flex-shrink-0">
         {isComplete ? (
-          <Check className="w-4 h-4 text-green-600" />
+          <Check className="h-4 w-4 text-primary" />
         ) : hasError ? (
-          <X className="w-4 h-4 text-red-600" />
+          <X className="h-4 w-4 text-destructive" />
         ) : isCancelled ? (
-          <X className="w-4 h-4 text-gray-600" />
+          <X className="h-4 w-4 text-muted-foreground" />
         ) : (
-          <ArrowBigDownDash className="size-5 text-gray-600 " />
+          <Download className="h-4 w-4 text-muted-foreground" />
         )}
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2 mb-1">
-          <p className="text-sm font-medium text-gray-900 truncate">
-            {download.displayName}
-          </p>
-        </div>
+      <div className="min-w-0 flex-1">
+        <p className="mb-1 truncate text-sm font-medium text-foreground">{download.displayName}</p>
 
         {hasError ? (
-          <p className="text-xs text-red-600">{download.error || 'Download failed'}</p>
+          <p className="text-xs text-destructive">{download.error || t('toastDownloadFailed')}</p>
         ) : isComplete ? (
-          <p className="text-xs text-green-600">Download complete</p>
+          <p className="text-xs text-muted-foreground">{t('toastDownloadComplete')}</p>
         ) : isCancelled ? (
-          <p className="text-xs text-gray-600">Download cancelled</p>
+          <p className="text-xs text-muted-foreground">{t('toastDownloadCancelled')}</p>
         ) : (
           <>
             {/* Progress bar */}
-            <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden mb-1.5">
+            <div className="mb-1.5 h-1.5 w-full overflow-hidden rounded-sm bg-muted">
               <div
-                className="h-full bg-gray-900 rounded-full transition-all duration-300"
+                className="h-full bg-primary transition-[width] duration-200"
                 style={{ width: `${download.progress}%` }}
               />
             </div>
 
             {/* Progress text */}
-            <div className="flex items-center justify-between text-xs text-gray-500">
+            <div className="flex items-center justify-between text-xs tabular-nums text-muted-foreground">
               <span>
-                {download.downloadedMb.toFixed(1)} / {download.totalMb.toFixed(1)} {unitLabel}
+                {fmt(download.downloadedMb)} / {fmt(download.totalMb)} {unitLabel}
               </span>
               <span className="flex items-center gap-1">
                 {download.speedMbps > 0 && (
-                  <span>{download.speedMbps.toFixed(1)} {unitLabel}/s</span>
+                  <span>{fmt(download.speedMbps)} {unitLabel}/s</span>
                 )}
-                <span className="text-gray-900 font-medium">
-                  {Math.round(download.progress)}%
-                </span>
+                <span className="font-medium text-foreground">{Math.round(download.progress)}%</span>
               </span>
             </div>
           </>
@@ -181,7 +177,7 @@ export function useDownloadProgressToast() {
     };
 
     toast.custom(
-      (t) => (
+      () => (
         <DownloadToastContent
           download={download}
           onDismiss={dismissToast}
@@ -228,7 +224,7 @@ export function useDownloadProgressToast() {
         const { modelName, progress, downloaded_mb, total_mb, speed_mbps, status } = event.payload;
         const downloadData: DownloadProgress = {
           modelName,
-          displayName: 'Transcription Model (Parakeet)',
+          displayName: t('toastTranscriptionModel'),
           progress,
           downloadedMb: downloaded_mb ?? 0,
           totalMb: total_mb ?? 670,
@@ -253,7 +249,7 @@ export function useDownloadProgressToast() {
         const { modelName } = event.payload;
         const downloadData: DownloadProgress = {
           modelName,
-          displayName: 'Transcription Model (Parakeet)',
+          displayName: t('toastTranscriptionModel'),
           progress: 100,
           downloadedMb: 670,
           totalMb: 670,
@@ -272,7 +268,7 @@ export function useDownloadProgressToast() {
         const { modelName, error } = event.payload;
         const downloadData: DownloadProgress = {
           modelName,
-          displayName: 'Transcription Model (Parakeet)',
+          displayName: t('toastTranscriptionModel'),
           progress: 0,
           downloadedMb: 0,
           totalMb: 670,
@@ -308,7 +304,7 @@ export function useDownloadProgressToast() {
 
       const downloadData: DownloadProgress = {
         modelName: model,
-        displayName: `Summary Model (${model})`,
+        displayName: t('toastSummaryModel', { model }),
         progress: progress ?? 0,
         downloadedMb: downloaded_mb ?? 0,
         totalMb: getDownloadTotalMb(total_mb, model),
@@ -321,7 +317,7 @@ export function useDownloadProgressToast() {
             : status === 'error'
               ? 'error'
               : 'downloading',
-        error: status === 'error' ? categorizeError(error || 'Download failed') : undefined,
+        error: status === 'error' ? categorizeError(error || t('toastDownloadFailed')) : undefined,
       };
 
       updateDownload(model, downloadData);

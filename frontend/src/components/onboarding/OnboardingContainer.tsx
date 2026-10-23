@@ -1,9 +1,14 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { ProgressIndicator } from './shared/ProgressIndicator';
 import { useOnboarding } from '@/contexts/OnboardingContext';
+import { t } from '@/i18n/onboarding';
 import type { OnboardingContainerProps } from '@/types/onboarding';
+
+// hideHeader: the step draws its own heading (the welcome screen).
+type ContainerProps = OnboardingContainerProps & { hideHeader?: boolean };
 
 export function OnboardingContainer({
   title,
@@ -13,13 +18,14 @@ export function OnboardingContainer({
   totalSteps = 5,
   stepOffset = 0,
   hideProgress = false,
+  hideHeader = false,
   className,
   showNavigation = false,
   onNext,
   onPrevious,
   canGoNext = true,
   canGoPrevious = true,
-}: OnboardingContainerProps) {
+}: ContainerProps) {
   const { goToStep, goPrevious, goNext } = useOnboarding();
 
   const handlePrevious = () => {
@@ -43,61 +49,50 @@ export function OnboardingContainer({
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-50 flex items-center justify-center z-50 overflow-hidden">
-      <div className={cn('w-full max-w-2xl h-full max-h-screen flex flex-col px-6 py-6', className)}>
-        {/* Progress Indicator with Navigation - Fixed */}
+    <div className="fixed inset-0 z-50 flex justify-center overflow-hidden bg-background">
+      <div className={cn('flex h-full max-h-screen w-full max-w-xl flex-col px-6 py-8', className)}>
+        {/* Steps: bronze for the current one, hairlines for the others */}
         {step && !hideProgress && (
-          <div className="mb-2 relative flex-shrink-0">
-            {/* Navigation Buttons */}
+          <div className="mb-8 flex flex-shrink-0 items-center gap-2">
             {showNavigation && (
-              <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 flex justify-between pointer-events-none">
-                <button
-                  onClick={handlePrevious}
-                  disabled={!canGoPrevious || step === 1}
-                  className={cn(
-                    'pointer-events-auto w-8 h-8 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center transition-all duration-200',
-                    canGoPrevious && step !== 1
-                      ? 'hover:bg-gray-50 hover:shadow-md hover:scale-110 text-gray-700'
-                      : 'opacity-0 cursor-not-allowed'
-                  )}
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-
-                <button
-                  onClick={handleNext}
-                  disabled={!canGoNext || step === totalSteps}
-                  className={cn(
-                    'pointer-events-auto w-8 h-8 rounded-full bg-white border border-gray-200 shadow-sm flex items-center justify-center transition-all duration-200',
-                    canGoNext && step !== totalSteps
-                      ? 'hover:bg-gray-50 hover:shadow-md hover:scale-110 text-gray-700'
-                      : 'opacity-0 cursor-not-allowed'
-                  )}
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t('back')}
+                onClick={handlePrevious}
+                disabled={!canGoPrevious || step === 1}
+                className={cn((!canGoPrevious || step === 1) && 'invisible')}
+              >
+                <ChevronLeft />
+              </Button>
             )}
 
-            {/* Progress Indicator */}
             <ProgressIndicator current={step} total={totalSteps} onStepClick={handleStepClick} />
+
+            {showNavigation && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t('next')}
+                onClick={handleNext}
+                disabled={!canGoNext || step === totalSteps}
+                className={cn((!canGoNext || step === totalSteps) && 'invisible')}
+              >
+                <ChevronRight />
+              </Button>
+            )}
           </div>
         )}
 
-        {/* Header - Fixed */}
-        <div className="mb-4 text-center space-y-3 flex-shrink-0">
-          <h1 className="text-4xl font-semibold text-gray-900 animate-fade-in-up">{title}</h1>
-          {description && (
-            <p className="text-base text-gray-600 max-w-md mx-auto animate-fade-in-up delay-75">
-              {description}
-            </p>
-          )}
-        </div>
+        {!hideHeader && (
+          <div className="mb-6 flex-shrink-0 space-y-1">
+            <h1 className="text-xl font-semibold">{title}</h1>
+            {description && <p className="text-sm text-muted-foreground">{description}</p>}
+          </div>
+        )}
 
-        {/* Content - Scrollable */}
-        <div className="flex-1 overflow-y-auto pr-2">
-          <div className="space-y-6">{children}</div>
-        </div>
+        {/* Content: scrolls when the window is short */}
+        <div className="flex flex-1 flex-col overflow-y-auto">{children}</div>
       </div>
     </div>
   );

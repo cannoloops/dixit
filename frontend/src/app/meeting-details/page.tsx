@@ -7,6 +7,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Analytics from "@/lib/analytics";
 import { invoke } from "@tauri-apps/api/core";
 import { LoaderIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { t } from "@/i18n/meeting";
 import { useConfig } from "@/contexts/ConfigContext";
 import { usePaginatedTranscripts } from "@/hooks/usePaginatedTranscripts";
 import { parseSummaryContent } from "@/lib/summary-content";
@@ -179,7 +181,7 @@ function MeetingDetailsContent() {
 
     if (!meetingId || meetingId === 'intro-call') {
       console.warn('No valid meeting ID in URL - meetingId:', meetingId);
-      setError("No meeting selected");
+      setError(t('noMeetingSelected'));
       setIsLoading(false);
       Analytics.trackPageView('meeting_details');
       return;
@@ -248,16 +250,21 @@ function MeetingDetailsContent() {
   }, [meetingDetails, meetingSummary, summaryResponse, isLoading, hasCheckedAutoGen, setupAutoGeneration]);
 
   if (error) {
+    const noMeeting = !meetingId || meetingId === 'intro-call';
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">{error}</p>
-          <button
-            onClick={() => router.push('/')}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Go Back
-          </button>
+      <div className="flex h-screen items-center justify-center bg-background p-8">
+        <div className="max-w-sm space-y-3 text-center">
+          {noMeeting ? (
+            <p className="text-sm text-muted-foreground">{error}</p>
+          ) : (
+            <>
+              <h1 className="text-sm font-semibold text-destructive">{t('openFailed')}</h1>
+              <p role="alert" className="text-sm text-muted-foreground">{error}</p>
+            </>
+          )}
+          <Button variant="outline" onClick={() => router.push('/')}>
+            {t('goBack')}
+          </Button>
         </div>
       </div>
     );
@@ -265,8 +272,8 @@ function MeetingDetailsContent() {
 
   // Show loading spinner while initial data loads
   if (isLoading || !meetingDetails || meetingDetails.id !== meetingId) {
-    return <div className="flex items-center justify-center h-screen">
-      <LoaderIcon className="animate-spin size-6 " />
+    return <div role="status" aria-label={t('loading')} className="flex h-screen items-center justify-center bg-background">
+      <LoaderIcon className="h-4 w-4 animate-spin text-muted-foreground" />
     </div>;
   }
 
@@ -297,8 +304,8 @@ function MeetingDetailsContent() {
 export default function MeetingDetails() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center h-screen">
-        <LoaderIcon className="animate-spin size-6" />
+      <div role="status" aria-label={t('loading')} className="flex h-screen items-center justify-center bg-background">
+        <LoaderIcon className="h-4 w-4 animate-spin text-muted-foreground" />
       </div>
     }>
       <MeetingDetailsContent />

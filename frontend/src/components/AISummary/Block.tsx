@@ -2,6 +2,8 @@
 
 import { Block } from '@/types';
 import { useRef, useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
+import { t } from '@/i18n/meeting';
 
 interface BlockProps {
   block: Block;
@@ -27,34 +29,10 @@ interface CommandOption {
 }
 
 const COMMANDS: CommandOption[] = [
-  { 
-    id: 'text', 
-    label: 'Text', 
-    type: 'text', 
-    icon: 'T', 
-    description: 'Just start writing with plain text' 
-  },
-  { 
-    id: 'bullet', 
-    label: 'Bullet List', 
-    type: 'bullet', 
-    icon: '•', 
-    description: 'Create a bulleted list' 
-  },
-  { 
-    id: 'h1', 
-    label: 'Heading 1', 
-    type: 'heading1', 
-    icon: 'H1', 
-    description: 'Big section heading' 
-  },
-  { 
-    id: 'h2', 
-    label: 'Heading 2', 
-    type: 'heading2', 
-    icon: 'H2', 
-    description: 'Medium section heading' 
-  },
+  { id: 'text', label: t('cmdText'), type: 'text', icon: 'T', description: t('cmdTextDesc') },
+  { id: 'bullet', label: t('cmdBullet'), type: 'bullet', icon: '•', description: t('cmdBulletDesc') },
+  { id: 'h1', label: t('cmdHeading1'), type: 'heading1', icon: 'H1', description: t('cmdHeading1Desc') },
+  { id: 'h2', label: t('cmdHeading2'), type: 'heading2', icon: 'H2', description: t('cmdHeading2Desc') },
 ];
 
 export const BlockComponent: React.FC<BlockProps> = ({
@@ -220,8 +198,10 @@ export const BlockComponent: React.FC<BlockProps> = ({
 
   return (
     <div 
-      className={`group relative min-h-[24px] flex items-start rounded transition-all duration-150 ease-in-out
-        ${isSelected ? 'bg-blue-50 ring-1 ring-blue-200 shadow-sm' : 'hover:bg-gray-50'}`}
+      className={cn(
+        'group relative flex min-h-[24px] items-start rounded-sm transition-colors duration-150',
+        isSelected ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-accent'
+      )}
       onMouseDown={onMouseDown}
       onMouseEnter={onMouseEnter}
       onMouseUp={onMouseUp}
@@ -243,38 +223,36 @@ export const BlockComponent: React.FC<BlockProps> = ({
           onMouseUp={(e) => onMouseUp(e as unknown as React.MouseEvent<HTMLDivElement>)}
           onContextMenu={onContextMenu}
           rows={1}
-          className={`
-            w-full resize-none overflow-hidden bg-transparent border-none p-0 focus:outline-none focus:ring-0
-            transition-all duration-150 ease-in-out
-            ${block.color === 'gray' ? 'text-gray-500' : ''}
-            ${block.type === 'heading1' ? 'text-xl font-bold' : ''}
-            ${block.type === 'heading2' ? 'text-lg font-semibold' : ''}
-          `}
-          placeholder="Type '/' for commands..."
+          className={cn(
+            'w-full resize-none overflow-hidden border-none bg-transparent p-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-0',
+            block.color === 'gray' && 'text-muted-foreground',
+            block.type === 'heading1' && 'text-base font-semibold',
+            block.type === 'heading2' && 'text-sm font-semibold'
+          )}
+          placeholder={t('blockPlaceholder')}
         />
 
         {showCommands && (
           <div 
             ref={commandsRef}
-            className="absolute left-0 top-full mt-1 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50
-                       animate-in fade-in slide-in-from-top-2 duration-150"
+            className="absolute left-0 top-full z-50 mt-1 w-64 rounded-md border border-border bg-popover py-1 text-popover-foreground shadow-[var(--shadow-float)]"
           >
             {filteredCommands.map((cmd, index) => (
               <button
                 key={cmd.id}
-                className={`
-                  w-full text-left px-3 py-2 flex items-center space-x-3 hover:bg-gray-50
-                  ${index === selectedCommandIndex ? 'bg-gray-50' : ''}
-                `}
+                className={cn(
+                  'flex w-full items-center gap-3 px-3 py-1.5 text-left transition-colors duration-150 hover:bg-accent',
+                  index === selectedCommandIndex && 'bg-accent'
+                )}
                 onClick={() => handleCommandSelect(cmd)}
                 onMouseEnter={() => setSelectedCommandIndex(index)}
               >
-                <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-gray-100 rounded text-gray-600">
+                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-sm bg-muted text-xs text-muted-foreground">
                   {cmd.icon}
                 </span>
                 <div className="flex-1">
-                  <div className="font-medium">{cmd.label}</div>
-                  <div className="text-sm text-gray-500">{cmd.description}</div>
+                  <div className="text-sm font-medium">{cmd.label}</div>
+                  <div className="text-xs text-muted-foreground">{cmd.description}</div>
                 </div>
               </button>
             ))}

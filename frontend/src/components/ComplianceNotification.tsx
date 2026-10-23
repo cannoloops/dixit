@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './ui/button';
-import { AlertTriangle, CheckCircle, X } from 'lucide-react';
+import { AlertTriangle, Check, X } from 'lucide-react';
+import { t } from '@/i18n/shell';
+import { t as tApp } from '@/i18n/app';
 
 interface ComplianceNotificationProps {
   isOpen: boolean;
@@ -62,8 +64,8 @@ export const ComplianceNotification: React.FC<ComplianceNotificationProps> = ({
 
   return (
     <div 
-      className={`fixed z-50 transition-all duration-300 ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
+      className={`fixed z-50 transition-opacity duration-150 ${
+        isVisible ? 'opacity-100' : 'opacity-0'
       }`}
       style={{
         top: `${position.top}px`,
@@ -71,33 +73,32 @@ export const ComplianceNotification: React.FC<ComplianceNotificationProps> = ({
         width: `${position.width}px`,
       }}
     >
-      <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+      <div className="rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-[var(--shadow-float)]">
         {/* Header with close button */}
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-1">
-            <AlertTriangle className="h-3 w-3 text-amber-500 flex-shrink-0" />
-            <h3 className="text-xs font-semibold text-gray-900">
-              Recording Notice
+            <AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <h3 className="text-xs font-semibold">
+              {t('recordingNotice')}
             </h3>
           </div>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-0.5 rounded hover:bg-gray-100"
+            className="rounded-sm p-0.5 text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            aria-label={tApp('close')}
           >
-            <X className="h-3 w-3" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Content */}
         <div className="mb-2">
-          <p className="text-xs text-gray-600 mb-1">
-            Inform participants about recording.
+          <p className="text-xs text-muted-foreground">
+            {t('informParticipants')}
           </p>
-          <div className="bg-amber-50 border border-amber-200 rounded p-1">
-            <p className="text-xs text-amber-800 font-medium">
-              US compliance required
-            </p>
-          </div>
+          <p className="mt-1 text-xs font-medium">
+            {t('usCompliance')}
+          </p>
         </div>
 
         {/* Actions */}
@@ -106,17 +107,17 @@ export const ComplianceNotification: React.FC<ComplianceNotificationProps> = ({
             variant="outline"
             size="sm"
             onClick={handleClose}
-            className="text-xs px-2 py-0.5 h-6 flex-1"
+            className="flex-1"
           >
-            Later
+            {t('later')}
           </Button>
           <Button
             size="sm"
             onClick={handleAcknowledge}
-            className="text-xs px-2 py-0.5 h-6 bg-green-600 hover:bg-green-700 flex-1"
+            className="flex-1"
           >
-            <CheckCircle className="h-2 w-2 mr-1" />
-            Done
+            <Check />
+            {t('done')}
           </Button>
         </div>
       </div>

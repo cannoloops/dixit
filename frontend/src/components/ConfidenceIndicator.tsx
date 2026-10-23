@@ -1,49 +1,38 @@
 'use client';
 
+import { cn } from '@/lib/utils';
+import { t } from '@/i18n/recording';
+
 interface ConfidenceIndicatorProps {
   confidence: number;
   showIndicator?: boolean;
+}
+
+// Bronze when the transcription is reliable, stone when middling, porphyry when it likely needs checking.
+function level(conf: number) {
+  if (conf >= 0.8) return { dot: 'bg-primary', label: t('confidenceHigh') };
+  if (conf >= 0.7) return { dot: 'bg-primary/60', label: t('confidenceGood') };
+  if (conf >= 0.4) return { dot: 'bg-muted-foreground', label: t('confidenceMedium') };
+  return { dot: 'bg-destructive', label: t('confidenceLow') };
 }
 
 export const ConfidenceIndicator: React.FC<ConfidenceIndicatorProps> = ({
   confidence,
   showIndicator = true,
 }) => {
-  // Don't render if preference is disabled
-  if (!showIndicator) {
-    return null;
-  }
+  if (!showIndicator) return null;
 
-  // Get color class based on confidence threshold
-  const getColorClass = (conf: number): string => {
-    if (conf >= 0.8) return 'bg-green-500'; // 80-100%: High confidence
-    if (conf >= 0.7) return 'bg-yellow-500'; // 70-79%: Good confidence
-    if (conf >= 0.4) return 'bg-orange-500'; // 40-79%: Medium confidence
-    return 'bg-red-500'; // Below 50%: Low confidence
-  };
-
-  // Get descriptive label for accessibility
-  const getConfidenceLabel = (conf: number): string => {
-    if (conf >= 0.8) return 'High confidence';
-    if (conf >= 0.7) return 'Good confidence';
-    if (conf >= 0.4) return 'Medium confidence';
-    return 'Low confidence';
-  };
-
-  const confidencePercent = (confidence * 100).toFixed(0);
-  const colorClass = getColorClass(confidence);
-  const label = getConfidenceLabel(confidence);
+  const percent = (confidence * 100).toFixed(0);
+  const { dot, label } = level(confidence);
 
   return (
-    <div
-      className="flex items-center gap-1"
-      title={`${confidencePercent}% confidence - ${label}`}
-      aria-label={`Transcription confidence: ${confidencePercent}%`}
+    <span
+      className="inline-flex items-center gap-1.5 text-xs"
+      role="status"
+      aria-label={t('confidenceAria', { percent })}
     >
-      <div
-        className={`w-2 h-2 rounded-full ${colorClass} transition-colors duration-200`}
-        role="status"
-      />
-    </div>
+      <span className={cn('h-2 w-2 rounded-full', dot)} />
+      {label} · <span className="tabular-nums">{percent}%</span>
+    </span>
   );
 };

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
-import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
   ModelStatus,
@@ -12,6 +11,8 @@ import {
   getModelDisplayInfo,
   getModelDisplayName
 } from '../lib/parakeet';
+import { t } from '@/i18n/models';
+import { ModelList, ModelListError, ModelListLoading, ModelRow, ModelRowState, modelErrorMessage } from './ModelRow';
 
 interface ParakeetModelManagerProps {
   selectedModel?: string;
@@ -71,9 +72,9 @@ export function ParakeetModelManager({
         setInitialized(true);
       } catch (err) {
         console.error('Failed to initialize Parakeet:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load models');
-        toast.error('Failed to load transcription models', {
-          description: err instanceof Error ? err.message : 'Unknown error',
+        setError(err instanceof Error ? err.message : t('loadModelsFailed'));
+        toast.error(t('loadTranscriptionModelsFailed'), {
+          description: err instanceof Error ? err.message : t('unknownError'),
           duration: 5000
         });
       } finally {
@@ -113,7 +114,7 @@ export function ParakeetModelManager({
                     : model
                 )
               );
-              toast.info(`${getModelDisplayName(modelName)} download cancelled`, {
+              toast.info(t('downloadCancelled', { name: getModelDisplayName(modelName) }), {
                 duration: 3000
               });
               return;
@@ -169,8 +170,8 @@ export function ParakeetModelManager({
             // Clean up throttle data
             progressThrottleRef.current.delete(modelName);
 
-            toast.success(`${displayInfo?.icon || '✓'} ${displayName} ready!`, {
-              description: 'Model downloaded and ready to use',
+            toast.success(t('modelReady', { name: displayName }), {
+              description: t('modelReadyDescription'),
               duration: 4000
             });
 
@@ -209,11 +210,11 @@ export function ParakeetModelManager({
             // Clean up throttle data
             progressThrottleRef.current.delete(modelName);
 
-            toast.error(`Failed to download ${displayName}`, {
+            toast.error(t('downloadFailedTitle', { name: displayName }), {
               description: error,
               duration: 6000,
               action: {
-                label: 'Retry',
+                label: t('retry'),
                 onClick: () => downloadModel(modelName)
               }
             });
@@ -235,7 +236,7 @@ export function ParakeetModelManager({
             ? failedRegistration.reason.message
             : typeof failedRegistration.reason === 'string'
               ? failedRegistration.reason
-              : 'Failed to listen for Parakeet model updates';
+              : t('listenFailed');
           setError(message);
           setLoading(false);
         }
@@ -275,16 +276,16 @@ export function ParakeetModelManager({
     try {
       const outcome = await ParakeetAPI.cancelDownload(modelName);
       if (outcome === 'pending') {
-        toast.info(`Cancelling ${displayName}...`, {
-          description: 'The download is still shutting down. Retry will be available when cleanup completes.',
+        toast.info(t('cancellingTitle', { name: displayName }), {
+          description: t('cancellingDescription'),
           duration: 4000
         });
       }
     } catch (err) {
       clearCancellingModel(modelName);
       console.error('Failed to cancel download:', err);
-      toast.error('Failed to cancel download', {
-        description: err instanceof Error ? err.message : 'Unknown error',
+      toast.error(t('cancelFailed'), {
+        description: err instanceof Error ? err.message : t('unknownError'),
         duration: 4000
       });
     }
@@ -308,8 +309,8 @@ export function ParakeetModelManager({
         )
       );
 
-      toast.info(`Downloading ${displayName}...`, {
-        description: 'This may take a few minutes',
+      toast.info(t('downloadingTitle', { name: displayName }), {
+        description: t('downloadingDescription'),
         duration: 5000  // Auto-dismiss after 5 seconds
       });
 
@@ -322,7 +323,7 @@ export function ParakeetModelManager({
         return newSet;
       });
 
-      const errorMessage = err instanceof Error ? err.message : 'Download failed';
+      const errorMessage = err instanceof Error ? err.message : t('downloadFailedFallback');
       setModels(prev =>
         prev.map(model =>
           model.name === modelName ? { ...model, status: { Error: errorMessage } } : model
@@ -342,7 +343,7 @@ export function ParakeetModelManager({
 
     const displayInfo = getModelDisplayInfo(modelName);
     const displayName = displayInfo?.friendlyName || modelName;
-    toast.success(`Switched to ${displayName}`, {
+    toast.success(t('switchedTo', { name: displayName }), {
       duration: 3000
     });
   };
@@ -358,8 +359,8 @@ export function ParakeetModelManager({
       const modelList = await ParakeetAPI.getAvailableModels();
       setModels(modelList);
 
-      toast.success(`${displayName} deleted`, {
-        description: 'Model removed to free up space',
+      toast.success(t('modelDeleted', { name: displayName }), {
+        description: t('modelDeletedDescription'),
         duration: 3000
       });
 
@@ -369,325 +370,70 @@ export function ParakeetModelManager({
       }
     } catch (err) {
       console.error('Failed to delete model:', err);
-      toast.error(`Failed to delete ${displayName}`, {
-        description: err instanceof Error ? err.message : 'Delete failed',
+      toast.error(t('deleteFailedTitle', { name: displayName }), {
+        description: err instanceof Error ? err.message : t('deleteFailedFallback'),
         duration: 4000
       });
     }
   };
 
-  if (loading) {
-    return (
-      <div className={`space-y-3 ${className}`}>
-        <div className="animate-pulse space-y-3">
-          <div className="h-20 bg-gray-100 rounded-lg"></div>
-          <div className="h-20 bg-gray-100 rounded-lg"></div>
-        </div>
-      </div>
-    );
-  }
+  const toRowState = (model: ParakeetModelInfo): ModelRowState => {
+    const status = model.status;
+    const progress = typeof status === 'object' && 'Downloading' in status ? status.Downloading.progress : null;
+    if (progress !== null || cancellingModels.has(model.name)) {
+      const shown = progress ?? 0;
+      return {
+        kind: 'downloading',
+        progress: shown,
+        cancelling: cancellingModels.has(model.name),
+        info: model.size_mb
+          ? `${formatFileSize(model.size_mb * shown / 100)} / ${formatFileSize(model.size_mb)}`
+          : undefined,
+      };
+    }
+    if (status === 'Available') return { kind: 'installed', active: selectedModel === model.name };
+    if (status === 'Missing') return { kind: 'missing' };
+    if (typeof status === 'object' && 'Error' in status) {
+      return { kind: 'error', message: modelErrorMessage(status.Error) };
+    }
+    return { kind: 'corrupted', message: t('corruptedMessage') };
+  };
 
-  if (error) {
-    return (
-      <div className={`bg-red-50 border border-red-200 rounded-lg p-4 ${className}`}>
-        <p className="text-sm text-red-800">Failed to load models</p>
-        <p className="text-xs text-red-600 mt-1">{error}</p>
-      </div>
-    );
-  }
+  if (loading) return <ModelListLoading />;
 
-  const recommendedModel = models.find(m =>
-    m.name === 'parakeet-tdt-0.6b-v3-int8'
-  );
-  const otherModels = models.filter(m =>
-    m.name !== 'parakeet-tdt-0.6b-v3-int8'
-  );
+  if (error) return <ModelListError message={error} className={className} />;
+
+  // The recommended model comes first, the others follow.
+  const recommendedName = 'parakeet-tdt-0.6b-v3-int8';
+  const ordered = [...models].sort((a, b) => Number(b.name === recommendedName) - Number(a.name === recommendedName));
 
   return (
     <div className={`space-y-3 ${className}`}>
-      {/* Recommended Model */}
-      {recommendedModel && (
-        <ModelCard
-          model={recommendedModel}
-          isSelected={selectedModel === recommendedModel.name}
-          isRecommended={true}
-          onSelect={() => {
-            if (recommendedModel.status === 'Available') {
-              selectModel(recommendedModel.name);
-            }
-          }}
-          onDownload={() => downloadModel(recommendedModel.name)}
-          onCancel={() => cancelDownload(recommendedModel.name)}
-          onDelete={() => deleteModel(recommendedModel.name)}
-          isDownloading={downloadingModels.has(recommendedModel.name)}
-          isCancelling={cancellingModels.has(recommendedModel.name)}
-        />
-      )}
-
-      {/* Other Models */}
-      {otherModels.length > 0 && (
-        <div className="space-y-3">
-          {otherModels.map(model => (
-            <ModelCard
+      <ModelList>
+        {ordered.map(model => {
+          const displayInfo = getModelDisplayInfo(model.name);
+          return (
+            <ModelRow
               key={model.name}
-              model={model}
-              isSelected={selectedModel === model.name}
-              isRecommended={false}
-              onSelect={() => {
-                if (model.status === 'Available') {
-                  selectModel(model.name);
-                }
-              }}
+              name={displayInfo?.friendlyName || model.name}
+              detail={displayInfo?.tagline || model.description}
+              size={formatFileSize(model.size_mb)}
+              labels={model.name === recommendedName ? [t('recommended')] : undefined}
+              state={toRowState(model)}
+              onSelect={() => selectModel(model.name)}
               onDownload={() => downloadModel(model.name)}
               onCancel={() => cancelDownload(model.name)}
               onDelete={() => deleteModel(model.name)}
-              isDownloading={downloadingModels.has(model.name)}
-              isCancelling={cancellingModels.has(model.name)}
             />
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </ModelList>
 
-      {/* Helper text */}
       {selectedModel && (
-        <motion.div
-          initial={{ opacity: 0, y: -5 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-xs text-gray-500 text-center pt-2"
-        >
-          Using {getModelDisplayName(selectedModel)} for transcription
-        </motion.div>
+        <p className="text-xs text-muted-foreground">
+          {t('usingForTranscription', { name: getModelDisplayName(selectedModel) })}
+        </p>
       )}
     </div>
-  );
-}
-
-// Model Card Component
-interface ModelCardProps {
-  model: ParakeetModelInfo;
-  isSelected: boolean;
-  isRecommended: boolean;
-  onSelect: () => void;
-  onDownload: () => void;
-  onCancel: () => void;
-  onDelete: () => void;
-  isDownloading: boolean;
-  isCancelling: boolean;
-}
-
-function ModelCard({
-  model,
-  isSelected,
-  isRecommended,
-  onSelect,
-  onDownload,
-  onCancel,
-  onDelete,
-  isDownloading,
-  isCancelling
-}: ModelCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
-  const displayInfo = getModelDisplayInfo(model.name);
-  const displayName = displayInfo?.friendlyName || model.name;
-  const icon = displayInfo?.icon || '📦';
-  const tagline = displayInfo?.tagline || model.description || '';
-
-  const isAvailable = model.status === 'Available';
-  const isMissing = model.status === 'Missing';
-  const isError = typeof model.status === 'object' && 'Error' in model.status;
-  const isCorrupted = typeof model.status === 'object' && 'Corrupted' in model.status;
-  const downloadProgress =
-    typeof model.status === 'object' && 'Downloading' in model.status
-      ? model.status.Downloading.progress
-      : null;
-  const displayedProgress = downloadProgress ?? 0;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 5 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className={`
-        relative rounded-lg border-2 transition-all cursor-pointer
-        ${isSelected && isAvailable
-          ? 'border-blue-500 bg-blue-50'
-          : isAvailable
-            ? 'border-gray-200 hover:border-gray-300 bg-white'
-            : 'border-gray-200 bg-gray-50'
-        }
-        ${isAvailable ? '' : 'cursor-default'}
-      `}
-      onClick={() => {
-        if (isAvailable) onSelect();
-      }}
-    >
-      {/* Recommended Badge */}
-      {isRecommended && (
-        <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full font-medium">
-          Recommended
-        </div>
-      )}
-
-      <div className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1">
-            {/* Model Name */}
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-2xl">{icon}</span>
-              <h3 className="font-semibold text-gray-900">{displayName}</h3>
-              {isSelected && isAvailable && (
-                <motion.span
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="bg-blue-600 text-white px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1"
-                >
-                  ✓
-                </motion.span>
-              )}
-            </div>
-
-            {/* Tagline */}
-            <p className="text-sm text-gray-600 ml-9">{tagline}</p>
-          </div>
-
-          {/* Status/Action */}
-          <div className="ml-4 flex items-center gap-2">
-            {isAvailable && !isCancelling && (
-              <>
-                <div className="flex items-center gap-1.5 text-green-600">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-xs font-medium">Ready</span>
-                </div>
-                <AnimatePresence>
-                  {isHovered && (
-                    <motion.button
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      transition={{ duration: 0.15 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete();
-                      }}
-                      className="text-gray-400 hover:text-red-600 transition-colors p-1"
-                      title="Delete model to free up space"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </motion.button>
-                  )}
-                </AnimatePresence>
-              </>
-            )}
-
-            {isMissing && !isCancelling && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDownload();
-                }}
-                className="bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
-              >
-                Download
-              </button>
-            )}
-
-            {downloadProgress === null && isError && !isCancelling && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDownload();
-                }}
-                className="bg-red-600 text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-red-700 transition-colors"
-              >
-                Retry
-              </button>
-            )}
-
-            {isCorrupted && !isCancelling && (
-              <div className="flex gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete();
-                  }}
-                  className="bg-orange-600 text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-orange-700 transition-colors"
-                >
-                  Delete
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDownload();
-                  }}
-                  className="bg-blue-600 text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Re-download
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Full-width Download Progress Bar - PROMINENT */}
-        {(downloadProgress !== null || isCancelling) && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mt-3 pt-3 border-t border-gray-200"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-blue-600">
-                  {isCancelling ? 'Cancelling…' : 'Downloading...'}
-                </span>
-                {!isCancelling && (
-                  <span className="text-sm font-semibold text-blue-600">
-                    {Math.round(displayedProgress)}%
-                  </span>
-                )}
-              </div>
-              {isCancelling ? (
-                <span className="text-xs text-gray-500 font-medium px-2 py-1">
-                  Cancellation requested
-                </span>
-              ) : (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCancel();
-                  }}
-                  className="text-xs text-gray-600 hover:text-red-600 font-medium transition-colors px-2 py-1 rounded hover:bg-red-50"
-                  title="Cancel download"
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full"
-                initial={{ width: 0 }}
-                animate={{ width: `${displayedProgress}%` }}
-                transition={{ duration: 0.3, ease: 'easeOut' }}
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {model.size_mb ? (
-                <>
-                  {formatFileSize(model.size_mb * displayedProgress / 100)} / {formatFileSize(model.size_mb)}
-                </>
-              ) : (
-                'Downloading...'
-              )}
-            </p>
-          </motion.div>
-        )}
-      </div>
-    </motion.div>
   );
 }

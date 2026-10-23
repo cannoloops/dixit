@@ -1,5 +1,6 @@
 import React from 'react';
-import { Check, Lock, Download, CheckCircle2, BrainCircuit } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { t } from '@/i18n/onboarding';
 
 interface ProgressIndicatorProps {
   current: number;
@@ -7,62 +8,44 @@ interface ProgressIndicatorProps {
   onStepClick?: (step: number) => void;
 }
 
-const stepIcons = [
-  Lock,         // 1. Welcome
-  BrainCircuit, // 2. Setup Overview
-  Download,     // 3. Download Progress
-  // Step 4 (Permissions) doesn't need icon - auto-skipped on non-macOS
-];
-
+/** One hairline per step: bronze and heavier for the current one, a faint bronze for the done ones. */
 export function ProgressIndicator({ current, total, onStepClick }: ProgressIndicatorProps) {
-  const visibleSteps = Array.from({ length: total }, (_, i) => i + 1);
+  const steps = Array.from({ length: total }, (_, i) => i + 1);
 
   return (
-    <div className="mb-8">
-      <div className="flex items-center justify-center gap-2">
-        {visibleSteps.map((step, index) => {
-          const isActive = step === current;
+    <nav aria-label={t('progress')} className="flex min-w-0 flex-1 items-center gap-3">
+      <ol className="flex flex-1 items-center gap-1.5">
+        {steps.map((step) => {
+          const isCurrent = step === current;
           const isCompleted = step < current;
-          const isClickable = isCompleted && onStepClick;
-          const StepIcon = stepIcons[step - 1] || CheckCircle2;
+          const isClickable = isCompleted && Boolean(onStepClick);
 
           return (
-            <React.Fragment key={step}>
-              {/* Step Circle */}
+            <li key={step} className="flex-1">
               <button
-                onClick={() => isClickable && onStepClick(step)}
+                type="button"
+                onClick={() => onStepClick?.(step)}
                 disabled={!isClickable}
-                className={`relative flex items-center justify-center transition-all duration-300 ${
-                  isCompleted
-                    ? 'w-7 h-7 bg-green-600 rounded-full'
-                    : isActive
-                      ? 'w-8 h-8 bg-gray-900 rounded-full'
-                      : 'w-6 h-6 bg-gray-300 rounded-full'
-                } ${isClickable ? 'cursor-pointer hover:scale-110 hover:shadow-md' : 'cursor-default'}`}
+                aria-label={isClickable ? t('goToStep', { step }) : t('stepOf', { current: step, total })}
+                aria-current={isCurrent ? 'step' : undefined}
+                className="group flex h-6 w-full items-center rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-default"
               >
-                {isCompleted ? (
-                  <Check className="w-4 h-4 text-white" />
-                ) : (
-                  <StepIcon
-                    className={`transition-all duration-300 ${
-                      isActive ? 'w-4 h-4 text-white' : 'w-3 h-3 text-gray-600'
-                    }`}
-                  />
-                )}
-              </button>
-
-              {/* Connector Line */}
-              {index < visibleSteps.length - 1 && (
-                <div
-                  className={`h-0.5 w-6 transition-all duration-300 ${
-                    isCompleted ? 'bg-green-600' : 'bg-gray-300'
-                  }`}
+                <span
+                  className={cn(
+                    'w-full transition-colors duration-150',
+                    isCurrent && 'h-0.5 bg-primary',
+                    isCompleted && 'h-px bg-primary/50 group-enabled:group-hover:bg-primary',
+                    !isCurrent && !isCompleted && 'h-px bg-border'
+                  )}
                 />
-              )}
-            </React.Fragment>
+              </button>
+            </li>
           );
         })}
-      </div>
-    </div>
+      </ol>
+      <span className="flex-shrink-0 text-xs tabular-nums text-muted-foreground">
+        {t('stepOf', { current, total })}
+      </span>
+    </nav>
   );
 }

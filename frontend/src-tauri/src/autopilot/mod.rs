@@ -160,7 +160,7 @@ pub fn spawn<R: Runtime>(app: AppHandle<R>) {
                         Ok(()) => seen_recording = true,
                         Err(e) => {
                             log::error!("Autopilot: recording did not start: {e}");
-                            notify(&app, "Avvio automatico non riuscito", &e);
+                            notify(&app, crate::i18n::tr("Avvio automatico non riuscito", "Automatic start failed"), &e);
                             // Don't retry every 2 s for the rest of this call.
                             tracker.manual_stop();
                         }
@@ -209,7 +209,12 @@ async fn start<R: Runtime>(app: &AppHandle<R>, platform: Platform) -> Result<(),
 
     // Banner first: the user can say no while the recorder is still starting.
     banner::show(app, &title);
-    notify(app, &format!("Trascrizione avviata – {title}"), "Puoi annullarla dal banner o dal menu Dixit.");
+    let (head, body) = if crate::i18n::it() {
+        (format!("Trascrizione avviata – {title}"), "Puoi annullarla dal banner o dal menu Dixit.")
+    } else {
+        (format!("Transcription started – {title}"), "You can cancel it from the banner or the Dixit menu.")
+    };
+    notify(app, &head, body);
     if let Err(e) = crate::audio::recording_commands::start_recording_with_meeting_name(app.clone(), Some(title.clone())).await {
         banner::close(app);
         end_session();

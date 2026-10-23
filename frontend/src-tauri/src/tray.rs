@@ -1,3 +1,4 @@
+use crate::i18n::tr;
 use tauri::{
     Emitter,
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
@@ -339,7 +340,7 @@ fn build_menu<R: Runtime>(
     // If recording is not allowed (during onboarding, no transcription model), show disabled message
     if !can_record {
         builder = builder.item(
-            &MenuItemBuilder::new("⏳ Downloading transcription model...")
+            &MenuItemBuilder::new(tr("Download del modello di trascrizione…", "Downloading transcription model…"))
                 .enabled(false)
                 .build(app)?,
         );
@@ -347,51 +348,51 @@ fn build_menu<R: Runtime>(
         match state {
             RecordingState::Stopped => {
                 builder = builder
-                    .item(&MenuItemBuilder::with_id("toggle_recording", "Start Recording").build(app)?);
+                    .item(&MenuItemBuilder::with_id("toggle_recording", tr("Avvia registrazione", "Start Recording")).build(app)?);
             }
             RecordingState::Starting => {
                 builder = builder.item(
-                    &MenuItemBuilder::new("🔄 Starting Recording...")
+                    &MenuItemBuilder::new(tr("Avvio della registrazione…", "Starting Recording…"))
                         .enabled(false)
                         .build(app)?,
                 );
             }
             RecordingState::Recording => {
                 builder = builder
-                    .item(&MenuItemBuilder::with_id("pause_recording", "⏸ Pause Recording").build(app)?)
-                    .item(&MenuItemBuilder::with_id("stop_recording", "⏹ Stop Recording").build(app)?)
-                    .item(&MenuItemBuilder::with_id("cancel_recording", "✖ Annulla registrazione").build(app)?);
+                    .item(&MenuItemBuilder::with_id("pause_recording", tr("Metti in pausa", "Pause Recording")).build(app)?)
+                    .item(&MenuItemBuilder::with_id("stop_recording", tr("Interrompi e salva", "Stop and Save")).build(app)?)
+                    .item(&MenuItemBuilder::with_id("cancel_recording", tr("Annulla registrazione", "Cancel Recording")).build(app)?);
             }
             RecordingState::Pausing => {
                 builder = builder
                     .item(
-                        &MenuItemBuilder::new("⏸ Pausing...")
+                        &MenuItemBuilder::new(tr("Pausa in corso…", "Pausing…"))
                             .enabled(false)
                             .build(app)?,
                     )
-                    .item(&MenuItemBuilder::with_id("stop_recording", "⏹ Stop Recording").build(app)?);
+                    .item(&MenuItemBuilder::with_id("stop_recording", tr("Interrompi e salva", "Stop and Save")).build(app)?);
             }
             RecordingState::Paused => {
                 builder = builder
                     .item(
-                        &MenuItemBuilder::with_id("resume_recording", "▶ Resume Recording")
+                        &MenuItemBuilder::with_id("resume_recording", tr("Riprendi registrazione", "Resume Recording"))
                             .build(app)?,
                     )
-                    .item(&MenuItemBuilder::with_id("stop_recording", "⏹ Stop Recording").build(app)?)
-                    .item(&MenuItemBuilder::with_id("cancel_recording", "✖ Annulla registrazione").build(app)?);
+                    .item(&MenuItemBuilder::with_id("stop_recording", tr("Interrompi e salva", "Stop and Save")).build(app)?)
+                    .item(&MenuItemBuilder::with_id("cancel_recording", tr("Annulla registrazione", "Cancel Recording")).build(app)?);
             }
             RecordingState::Resuming => {
                 builder = builder
                     .item(
-                        &MenuItemBuilder::new("▶ Resuming...")
+                        &MenuItemBuilder::new(tr("Ripresa in corso…", "Resuming…"))
                             .enabled(false)
                             .build(app)?,
                     )
-                    .item(&MenuItemBuilder::with_id("stop_recording", "⏹ Stop Recording").build(app)?);
+                    .item(&MenuItemBuilder::with_id("stop_recording", tr("Interrompi e salva", "Stop and Save")).build(app)?);
             }
             RecordingState::Stopping => {
                 builder = builder.item(
-                    &MenuItemBuilder::new("⏹ Stopping...")
+                    &MenuItemBuilder::new(tr("Interruzione in corso…", "Stopping…"))
                         .enabled(false)
                         .build(app)?,
                 );
@@ -401,11 +402,11 @@ fn build_menu<R: Runtime>(
 
     builder
         .item(&PredefinedMenuItem::separator(app)?)
-        .item(&MenuItemBuilder::with_id("open_window", "Open Main Window").build(app)?)
-        .item(&MenuItemBuilder::with_id("settings", "Settings").build(app)?)
-        .item(&MenuItemBuilder::with_id("check_updates", "Check for Updates").build(app)?)
+        .item(&MenuItemBuilder::with_id("open_window", tr("Apri Dixit", "Open Dixit")).build(app)?)
+        .item(&MenuItemBuilder::with_id("settings", tr("Impostazioni…", "Settings…")).build(app)?)
+        .item(&MenuItemBuilder::with_id("check_updates", tr("Controlla aggiornamenti…", "Check for Updates…")).build(app)?)
         .item(&PredefinedMenuItem::separator(app)?)
-        .item(&MenuItemBuilder::with_id("quit", "Quit").build(app)?)
+        .item(&MenuItemBuilder::with_id("quit", tr("Esci da Dixit", "Quit Dixit")).build(app)?)
         .build()
 }
 

@@ -33,7 +33,8 @@ module.exports = {
   				muted: 'hsl(var(--rail-muted))',
   				border: 'hsl(var(--rail-border))',
   				active: 'hsl(var(--rail-active))',
-  				accent: 'hsl(var(--rail-accent))'
+  				accent: 'hsl(var(--rail-accent))',
+  				live: 'hsl(var(--rail-live))'
   			},
   			live: {
   				DEFAULT: 'hsl(var(--live))',

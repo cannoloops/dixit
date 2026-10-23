@@ -1,11 +1,11 @@
 "use client";
 
 import { Transcript, TranscriptSegmentData } from '@/types';
-import { TranscriptView } from '@/components/TranscriptView';
 import { VirtualizedTranscriptView } from '@/components/VirtualizedTranscriptView';
+import { Textarea } from '@/components/ui/textarea';
 import { TranscriptButtonGroup } from './TranscriptButtonGroup';
-import { SpeakersPanel } from './SpeakersPanel';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import { t } from '@/i18n/meeting';
 
 interface TranscriptPanelProps {
   transcripts: Transcript[];
@@ -29,6 +29,24 @@ interface TranscriptPanelProps {
   meetingId?: string;
   meetingFolderPath?: string | null;
   onRefetchTranscripts?: () => Promise<void>;
+
+  /** Ordered distinct speakers of the meeting, so each name keeps its pigment. */
+  roster?: string[];
+  /** Line to scroll to (from the speaker band); a new nonce repeats the jump. */
+  jumpTo?: { id: string; nonce: number } | null;
+}
+
+/** Scrolls the list to a line, also when it sits outside the virtualized window. */
+function revealSegment(list: HTMLElement | null, id: string, index: number, count: number, attempt = 0) {
+  const row = document.getElementById(`segment-${id}`);
+  if (row) {
+    row.scrollIntoView({ block: 'start' });
+    return;
+  }
+  const scroller = list?.firstElementChild as HTMLElement | null;
+  if (!scroller || attempt > 4) return;
+  scroller.scrollTop = (index / Math.max(count, 1)) * scroller.scrollHeight;
+  window.setTimeout(() => revealSegment(list, id, index, count, attempt + 1), 60);
 }
 
 export function TranscriptPanel({
@@ -49,51 +67,73 @@ export function TranscriptPanel({
   meetingId,
   meetingFolderPath,
   onRefetchTranscripts,
+  roster,
+  jumpTo = null,
 }: TranscriptPanelProps) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const handledJump = useRef<number | null>(null);
+
   // Convert transcripts to segments if pagination is not used but we want virtualization
   const convertedSegments = useMemo(() => {
     if (usePagination && segments) {
       return segments;
     }
     // Convert transcripts to segments for virtualization
-    return transcripts.map(t => ({
-      id: t.id,
-      timestamp: t.audio_start_time ?? 0,
-      endTime: t.audio_end_time,
-      text: t.text,
-      confidence: t.confidence,
-      speaker: t.speaker,
+    return transcripts.map(line => ({
+      id: line.id,
+      timestamp: line.audio_start_time ?? 0,
+      endTime: line.audio_end_time,
+      text: line.text,
+      confidence: line.confidence,
+      speaker: line.speaker,
     }));
   }, [transcripts, usePagination, segments]);
 
-  // Trascrivi: distinct speakers (with segment counts) for the rename panel
-  const speakers = useMemo(() => {
-    const counts = new Map<string, number>();
-    convertedSegments.forEach((s) => s.speaker && counts.set(s.speaker, (counts.get(s.speaker) ?? 0) + 1));
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
-  }, [convertedSegments]);
+  // Jump from the speaker band: load pages until the line is there, then scroll to it.
+  useEffect(() => {
+    if (!jumpTo || handledJump.current === jumpTo.nonce) return;
+    const index = convertedSegments.findIndex((s) => s.id === jumpTo.id);
+    if (index >= 0) {
+      handledJump.current = jumpTo.nonce;
+      revealSegment(listRef.current, jumpTo.id, index, convertedSegments.length);
+      return;
+    }
+    if (!hasMore || !onLoadMore) {
+      handledJump.current = jumpTo.nonce;
+      return;
+    }
+    if (isLoadingMore) return;
+    // The pager ignores calls closer than 100 ms apart.
+    const timer = window.setTimeout(onLoadMore, 150);
+    return () => window.clearTimeout(timer);
+  }, [jumpTo, convertedSegments, hasMore, isLoadingMore, onLoadMore]);
+
+  const lineCount = usePagination ? (totalCount ?? convertedSegments.length) : (transcripts?.length || 0);
 
   return (
-    <div className="flex h-full min-w-0 w-full bg-white flex-col relative @container">
-      {/* Title area */}
-      <div className="p-4 border-b border-gray-200">
-        <TranscriptButtonGroup
-          transcriptCount={usePagination ? (totalCount ?? convertedSegments.length) : (transcripts?.length || 0)}
-          onCopyTranscript={onCopyTranscript}
-          onOpenMeetingFolder={onOpenMeetingFolder}
-          meetingId={meetingId}
-          meetingFolderPath={meetingFolderPath}
-          onRefetchTranscripts={onRefetchTranscripts}
-        />
+    <div className="@container relative flex h-full w-full min-w-0 flex-col bg-background">
+      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-4">
+        <h2 className="text-sm font-semibold">{t('transcript')}</h2>
+        <span className="text-xs tabular-nums text-muted-foreground">
+          {lineCount === 1 ? t('lineCountOne') : t('lineCount', { n: lineCount })}
+        </span>
+        <div className="ml-auto">
+          <TranscriptButtonGroup
+            transcriptCount={lineCount}
+            onCopyTranscript={onCopyTranscript}
+            onOpenMeetingFolder={onOpenMeetingFolder}
+            meetingId={meetingId}
+            meetingFolderPath={meetingFolderPath}
+            onRefetchTranscripts={onRefetchTranscripts}
+          />
+        </div>
       </div>
-      {meetingId && !isRecording && onRefetchTranscripts && (
-        <SpeakersPanel meetingId={meetingId} speakers={speakers} onChanged={onRefetchTranscripts} />
-      )}
 
-      {/* Transcript content - use virtualized view for better performance */}
-      <div className="flex-1 overflow-hidden pb-4">
+      {/* The rows keep a fixed measure themselves (names in the margin, text at most 68ch). */}
+      <div ref={listRef} className="min-h-0 w-full flex-1 overflow-hidden">
         <VirtualizedTranscriptView
           segments={convertedSegments}
+          roster={roster}
           isRecording={isRecording}
           isPaused={false}
           isProcessing={false}
@@ -109,12 +149,12 @@ export function TranscriptPanel({
         />
       </div>
 
-      {/* Custom prompt input at bottom of transcript section */}
       {!isRecording && convertedSegments.length > 0 && (
-        <div className="p-1 border-t border-gray-200">
-          <textarea
-            placeholder="Add context for AI summary. For example people involved, meeting overview, objective etc..."
-            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm min-h-[80px] resize-y"
+        <div className="shrink-0 border-t border-border p-2">
+          <Textarea
+            aria-label={t('contextLabel')}
+            placeholder={t('contextPlaceholder')}
+            className="min-h-[56px] resize-y bg-background"
             value={customPrompt}
             onChange={(e) => onPromptChange(e.target.value)}
           />

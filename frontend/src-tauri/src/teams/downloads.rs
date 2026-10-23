@@ -95,7 +95,12 @@ async fn link<R: Runtime>(app: &AppHandle<R>, path: &Path, mtime: DateTime<Utc>)
     std::fs::copy(path, &target)?;
     log::info!("Linked Teams transcript {name} to meeting '{}'", m.title);
     crate::speakers::process_meeting(app.clone(), m.folder.clone(), false).await?;
-    crate::autopilot::notify(app, &format!("Trascrizione Teams collegata – {}", m.title), "Nomi dei parlanti aggiornati.");
+    let (head, body) = if crate::i18n::it() {
+        (format!("Trascrizione Teams collegata – {}", m.title), "Nomi dei parlanti aggiornati.")
+    } else {
+        (format!("Teams transcript linked – {}", m.title), "Speaker names updated.")
+    };
+    crate::autopilot::notify(app, &head, body);
     Ok(())
 }
 

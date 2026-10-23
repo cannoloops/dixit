@@ -1,5 +1,7 @@
 import { toast } from 'sonner';
 import Analytics from '@/lib/analytics';
+import { Button } from '@/components/ui/button';
+import { t } from '@/i18n/recording';
 
 /**
  * Shows the recording notification toast with compliance message.
@@ -19,23 +21,23 @@ export async function showRecordingNotification(): Promise<void> {
     if (showNotification) {
       let dontShowAgain = false;
 
-      const toastId = toast.info('🔴 Recording Started', {
+      const toastId = toast.info(t('notifyTitle'), {
         description: (
-          <div className="space-y-3 min-w-[280px]">
-            <p className="text-sm font-medium text-gray-900">
-              Inform all participants this meeting is being recorded.
-            </p>
-            <label className="flex items-center gap-2 text-xs cursor-pointer hover:bg-blue-100 p-2 rounded transition-colors">
+          <div className="min-w-[280px] space-y-3">
+            <p className="text-sm text-foreground">{t('notifyBody')}</p>
+            <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
               <input
                 type="checkbox"
                 onChange={(e) => {
                   dontShowAgain = e.target.checked;
                 }}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 focus:ring-2"
+                className="h-4 w-4 rounded-sm border-input accent-primary"
               />
-              <span className="select-none text-gray-700">Don't show this again</span>
+              <span className="select-none">{t('dontShowAgain')}</span>
             </label>
-            <button
+            <Button
+              size="sm"
+              className="w-full"
               onClick={async () => {
                 if (dontShowAgain) {
                   const { Store } = await import('@tauri-apps/plugin-store');
@@ -46,10 +48,9 @@ export async function showRecordingNotification(): Promise<void> {
                 Analytics.trackButtonClick('recording_notification_acknowledged', 'toast');
                 toast.dismiss(toastId);
               }}
-              className="w-full px-3 py-1.5 bg-gray-900 text-white text-xs rounded hover:bg-gray-800 transition-colors font-medium"
             >
-              I've Notified Participants
-            </button>
+              {t('notifiedParticipants')}
+            </Button>
           </div>
         ),
         duration: 10000,

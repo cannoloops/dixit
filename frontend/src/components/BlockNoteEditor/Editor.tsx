@@ -5,7 +5,7 @@ import type { PartialBlock, Block } from "@blocknote/core";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/shadcn";
 import "@blocknote/shadcn/style.css";
-import "@blocknote/core/fonts/inter.css";
+import "./dixit-blocknote.css";
 
 interface EditorProps {
   initialContent?: Block[];
@@ -47,5 +47,6 @@ export default function Editor({ initialContent, onChange, editable = true }: Ed
     };
   }, [editor, onChange]);
 
-  return <BlockNoteView editor={editor} editable={editable} theme="light" />;
+  // No theme: BlockNote follows the system appearance, like the rest of Dixit.
+  return <BlockNoteView editor={editor} editable={editable} />;
 }

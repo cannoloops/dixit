@@ -3,6 +3,8 @@ import { AlertTriangle, Mic, Speaker, RefreshCw } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { invoke } from '@tauri-apps/api/core';
 import { useIsLinux } from '@/hooks/usePlatform';
+import { Button } from '@/components/ui/button';
+import { t } from '@/i18n/shell';
 
 interface PermissionWarningProps {
   hasMicrophone: boolean;
@@ -52,88 +54,64 @@ export function PermissionWarning({
   };
 
   return (
-    <div className="max-w-md mb-4 space-y-3">
+    <div className="mb-4 max-w-md">
       {/* Combined Permission Warning - Show when either permission is missing */}
       {(!hasMicrophone || !hasSystemAudio) && (
-        <Alert variant="destructive" className="border-amber-400 bg-amber-50">
-          <AlertTriangle className="h-5 w-5 text-amber-600" />
-          <AlertTitle className="text-amber-900 font-semibold">
-            <div className="flex items-center gap-2">
-              {!hasMicrophone && <Mic className="h-4 w-4" />}
-              {!hasSystemAudio && <Speaker className="h-4 w-4" />}
-              {!hasMicrophone && !hasSystemAudio ? 'Permissions Required' : !hasMicrophone ? 'Microphone Permission Required' : 'System Audio Permission Required'}
-            </div>
+        <Alert>
+          <AlertTriangle className="h-4 w-4 !text-destructive" />
+          <AlertTitle className="flex items-center gap-2 font-semibold">
+            {!hasMicrophone && !hasSystemAudio
+              ? t('permissionsRequired')
+              : !hasMicrophone
+                ? t('micPermissionRequired')
+                : t('systemAudioPermissionRequired')}
           </AlertTitle>
-          {/* Action Buttons */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            {isMacOS && !hasMicrophone && (
-              <button
-                onClick={openMicrophoneSettings}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-md transition-colors"
-              >
-                <Mic className="h-4 w-4" />
-                Open Microphone Settings
-              </button>
-            )}
-            {isMacOS && !hasSystemAudio && (
-              <button
-                onClick={openScreenRecordingSettings}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-              >
-                <Speaker className="h-4 w-4" />
-                Open Screen Recording Settings
-              </button>
-            )}
-            <button
-              onClick={onRecheck}
-              disabled={isRechecking}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-md transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`h-4 w-4 ${isRechecking ? 'animate-spin' : ''}`} />
-              Recheck
-            </button>
-          </div>
-          <AlertDescription className="text-amber-800 mt-2">
+          <AlertDescription className="mt-2 space-y-3 text-muted-foreground">
             {/* Microphone Warning */}
             {!hasMicrophone && (
-              <>
-                <p className="mb-3">
-                  Dixit needs access to your microphone to record meetings. No microphone devices were detected.
-                </p>
-                <div className="space-y-2 text-sm mb-4">
-                  <p className="font-medium">Please check:</p>
-                  <ul className="list-disc list-inside ml-2 space-y-1">
-                    <li>Your microphone is connected and powered on</li>
-                    <li>Microphone permission is granted in System Settings</li>
-                    <li>No other app is exclusively using the microphone</li>
-                  </ul>
-                </div>
-              </>
+              <div className="space-y-1">
+                <p>{t('micMissing')}</p>
+                <p className="font-medium text-foreground">{t('pleaseCheck')}</p>
+                <ul className="ml-4 list-disc space-y-0.5">
+                  {t('micChecks').split('\n').map((item) => <li key={item}>{item}</li>)}
+                </ul>
+              </div>
             )}
 
             {/* System Audio Warning */}
             {!hasSystemAudio && (
-              <>
-                <p className="mb-3">
-                  {hasMicrophone
-                    ? 'System audio capture is not available. You can still record with your microphone, but computer audio won\'t be captured.'
-                    : 'System audio capture is also not available.'}
-                </p>
+              <div className="space-y-1">
+                <p>{hasMicrophone ? t('systemAudioMissing') : t('systemAudioMissingToo')}</p>
                 {isMacOS && (
-                  <div className="space-y-2 text-sm mb-4">
-                    <p className="font-medium">To enable system audio on macOS:</p>
-                    <ul className="list-disc list-inside ml-2 space-y-1">
-                      <li>Install a virtual audio device (e.g., BlackHole 2ch)</li>
-                      <li>Grant Screen Recording permission to Dixit</li>
-                      <li>Configure your audio routing in Audio MIDI Setup</li>
+                  <>
+                    <p className="font-medium text-foreground">{t('enableSystemAudio')}</p>
+                    <ul className="ml-4 list-disc space-y-0.5">
+                      {t('systemAudioSteps').split('\n').map((item) => <li key={item}>{item}</li>)}
                     </ul>
-                  </div>
+                  </>
                 )}
-              </>
+              </div>
             )}
-
-
           </AlertDescription>
+          {/* Action Buttons */}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {isMacOS && !hasMicrophone && (
+              <Button variant="outline" size="sm" onClick={openMicrophoneSettings}>
+                <Mic />
+                {t('openMicSettings')}
+              </Button>
+            )}
+            {isMacOS && !hasSystemAudio && (
+              <Button variant="outline" size="sm" onClick={openScreenRecordingSettings}>
+                <Speaker />
+                {t('openScreenSettings')}
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={onRecheck} disabled={isRechecking}>
+              <RefreshCw className={isRechecking ? 'animate-spin' : ''} />
+              {t('recheck')}
+            </Button>
+          </div>
         </Alert>
       )}
     </div>

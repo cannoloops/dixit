@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Speaker, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { t } from '@/i18n/shell';
 
 interface AudioOutputInfo {
   device_name: string;
@@ -63,39 +64,21 @@ export function BluetoothPlaybackWarning({
   }
 
   return (
-    <Alert
-      className="mb-4 border-yellow-500 bg-yellow-50 text-yellow-900"
-      role="alert"
-      aria-live="polite"
-    >
-      <Speaker className="h-4 w-4 text-yellow-600" />
-      <div className="flex items-start justify-between w-full">
+    <Alert className="mb-4" aria-live="polite">
+      <Speaker className="h-4 w-4 !text-muted-foreground" />
+      <div className="flex w-full items-start justify-between">
         <div className="flex-1">
-          <AlertTitle className="text-yellow-900 font-semibold">
-            Bluetooth Playback Detected
-          </AlertTitle>
-          <AlertDescription className="text-yellow-800 mt-1">
-            You're using <strong>{deviceName}</strong> for playback.
-            Recordings may sound distorted or sped up through Bluetooth devices.
-            For accurate review, please use <strong>computer speakers</strong> or{' '}
-            <strong>wired headphones</strong>.
-            <br />
-            <a
-              href="https://github.com/your-org/meetily/blob/main/BLUETOOTH_PLAYBACK_NOTICE.md"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-yellow-900 font-medium mt-2 inline-block"
-            >
-              Learn why this happens →
-            </a>
+          <AlertTitle className="font-semibold">{t('bluetoothTitle')}</AlertTitle>
+          <AlertDescription className="mt-1 text-muted-foreground">
+            {t('bluetoothBody', { device: deviceName })}
           </AlertDescription>
         </div>
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setIsDismissed(true)}
-          className="ml-4 h-6 w-6 text-yellow-700 hover:text-yellow-900 hover:bg-yellow-100"
-          aria-label="Dismiss warning"
+          className="ml-4 h-6 w-6 text-muted-foreground"
+          aria-label={t('dismiss')}
         >
           <X className="h-4 w-4" />
         </Button>

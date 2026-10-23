@@ -1,62 +1,39 @@
+import { Loader2 } from 'lucide-react';
+import { t } from '@/i18n/recording';
+
 interface StatusOverlaysProps {
   // Status flags
   isProcessing: boolean;      // Processing transcription after recording stops
   isSaving: boolean;          // Saving transcript to database
-
-  // Layout
-  sidebarCollapsed: boolean;  // For responsive margin calculation
 }
 
-// Internal reusable component for individual status overlays
-interface StatusOverlayProps {
-  show: boolean;
-  message: string;
-  sidebarCollapsed: boolean;
-}
-
-function StatusOverlay({ show, message, sidebarCollapsed }: StatusOverlayProps) {
+// Floating status line at the bottom of the live view (in place of the recording controls).
+// Positioned against the page's relative container, so it follows the sidebar on its own.
+function StatusOverlay({ show, message }: { show: boolean; message: string }) {
   if (!show) return null;
 
   return (
-    <div className="fixed bottom-4 left-0 right-0 z-10">
+    <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex justify-center px-6">
       <div
-        className="flex justify-center pl-8 transition-[margin] duration-300"
-        style={{
-          marginLeft: sidebarCollapsed ? '4rem' : '16rem'
-        }}
+        className="flex h-11 items-center gap-2 rounded-md border border-border bg-popover px-4 text-sm text-popover-foreground shadow-[var(--shadow-float)]"
+        role="status"
       >
-        <div className="w-2/3 max-w-[750px] flex justify-center">
-          <div className="bg-white rounded-lg shadow-lg px-4 py-2 flex items-center space-x-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
-            <span className="text-sm text-gray-700">{message}</span>
-          </div>
-        </div>
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        <span>{message}</span>
       </div>
     </div>
   );
 }
 
 // Main exported component - renders multiple status overlays
-export function StatusOverlays({
-  isProcessing,
-  isSaving,
-  sidebarCollapsed
-}: StatusOverlaysProps) {
+export function StatusOverlays({ isProcessing, isSaving }: StatusOverlaysProps) {
   return (
     <>
-      {/* Processing status overlay - shown after recording stops while finalizing transcription */}
-      <StatusOverlay
-        show={isProcessing}
-        message="Finalizing transcription..."
-        sidebarCollapsed={sidebarCollapsed}
-      />
+      {/* Shown after recording stops while finalizing transcription */}
+      <StatusOverlay show={isProcessing} message={t('finalizing')} />
 
-      {/* Saving status overlay - shown while saving transcript to database */}
-      <StatusOverlay
-        show={isSaving}
-        message="Saving transcript..."
-        sidebarCollapsed={sidebarCollapsed}
-      />
+      {/* Shown while saving the meeting */}
+      <StatusOverlay show={isSaving} message={t('savingMeeting')} />
     </>
   );
 }

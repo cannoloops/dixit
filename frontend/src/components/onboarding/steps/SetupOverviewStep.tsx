@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Info } from 'lucide-react';
+import { Info, Mic, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { OnboardingContainer } from '../OnboardingContainer';
 import { useOnboarding } from '@/contexts/OnboardingContext';
+import { t } from '@/i18n/onboarding';
 import {
   Tooltip,
   TooltipContent,
@@ -26,87 +27,65 @@ export function SetupOverviewStep() {
     checkPlatform();
   }, []);
 
-  const steps = [
+  const models = [
     {
-      number: 1,
       type: 'transcription',
-      title: 'Download Transcription Engine',
+      icon: Mic,
+      title: t('transcriptionEngine'),
+      purpose: t('transcriptionPurpose'),
     },
     {
-      number: 2,
       type: 'summarization',
-      title: 'Download Summarization Engine',
+      icon: Sparkles,
+      title: t('summaryEngine'),
+      purpose: t('summaryPurpose'),
     },
   ];
 
-  const handleContinue = () => {
-    goNext();
-  };
-
   return (
     <OnboardingContainer
-      title="Setup Overview"
-      description="Dixit requires that you download the Transcription & Summarization AI models for the software to work."
+      title={t('overviewTitle')}
+      description={t('overviewDescription')}
       step={2}
       totalSteps={isMac ? 4 : 3}
     >
-      <div className="flex flex-col items-center space-y-10">
-        {/* Steps Card */}
-        <div className="w-full max-w-md bg-white rounded-lg border border-gray-200 p-4">
-          <div className="space-y-4">
-            {steps.map((step, idx) => {
-              return (
-                <div
-                  key={step.number}
-                  className={`flex items-start gap-4 p-1`}
-                >
-                  <div className="flex-1 ml-1">
-                    <h3 className="font-medium text-gray-900 flex items-center gap-2">
-                        Step {step.number} :  {step.title}
+      <ul className="divide-y divide-border border-y border-border">
+        {models.map((model) => {
+          const Icon = model.icon;
+          return (
+            <li key={model.type} className="flex items-center gap-3 py-3">
+              <Icon className="h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-1.5 text-sm font-medium">
+                  {model.title}
+                  {model.type === 'summarization' && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label={t('summaryInfoLabel')}
+                            className="rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                          >
+                            <Info className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">{t('summaryInfo')}</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground">{model.purpose}</p>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
 
-                        {step.type === "summarization" && (
-                            <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                <button className="text-gray-400 hover:text-gray-600">
-                                    <Info className="w-4 h-4" />
-                                </button>
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-xs text-sm">
-                                You can also select external AI providers like OpenAI, Claude, or
-                                Ollama for summary generation in settings.
-                                </TooltipContent>
-                            </Tooltip>
-                            </TooltipProvider>
-                        )}
-                        </h3>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-
-        {/* CTA Section */}
-        <div className="w-full max-w-xs space-y-4">
-          <Button
-            onClick={handleContinue}
-            className="w-full h-11 bg-gray-900 hover:bg-gray-800 text-white"
-          >
-            Let's Go
-          </Button>
-          <div className="text-center">
-            <a
-              href="https://github.com/Zackriya-Solutions/meeting-minutes"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-gray-600 hover:underline"
-            >
-              Report issues on GitHub
-            </a>
-          </div>
-        </div>
+      <div className="mt-8 flex justify-end">
+        <Button size="lg" onClick={goNext}>
+          {t('startDownloads')}
+        </Button>
       </div>
     </OnboardingContainer>
   );

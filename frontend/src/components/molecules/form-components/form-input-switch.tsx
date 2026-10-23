@@ -38,10 +38,10 @@ export const SwitchInput = ({
       name={name}
       render={({ field }) => (
         <FormItem
-          className={`flex flex-row items-center justify-between rounded-lg border p-4 ${formStyle}`}
+          className={`flex flex-row items-center justify-between gap-6 space-y-0 py-2.5 ${formStyle ?? ''}`}
         >
           <div className="space-y-0.5">
-            <FormLabel className="text-base">{label}</FormLabel>
+            <FormLabel>{label}</FormLabel>
             {isFormDescription && (
               <FormDescription>{description}</FormDescription>
             )}

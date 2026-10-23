@@ -77,13 +77,25 @@ export function SpeakerName({
   );
 }
 
-/** The only use of minium red: Dixit is recording right now. */
-export function LiveIndicator({ label = t('recording'), className }: { label?: string; className?: string }) {
+/** The only use of minium red: Dixit is recording right now. `onRail` for the dark stone rail. */
+export function LiveIndicator({
+  label = t('recording'),
+  onRail = false,
+  className,
+}: {
+  label?: string;
+  onRail?: boolean;
+  className?: string;
+}) {
+  const dot = onRail ? 'bg-rail-live' : 'bg-live';
   return (
-    <span className={cn('inline-flex items-center gap-1.5 text-xs font-medium text-live', className)} role="status">
+    <span
+      className={cn('inline-flex items-center gap-1.5 text-xs font-medium', onRail ? 'text-rail-live' : 'text-live', className)}
+      role="status"
+    >
       <span className="relative flex h-2 w-2">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-live opacity-60 motion-reduce:animate-none" />
-        <span className="relative inline-flex h-2 w-2 rounded-full bg-live" />
+        <span className={cn('absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 motion-reduce:animate-none', dot)} />
+        <span className={cn('relative inline-flex h-2 w-2 rounded-full', dot)} />
       </span>
       {label}
     </span>

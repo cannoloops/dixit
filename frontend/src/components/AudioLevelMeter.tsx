@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@/lib/utils';
 
 interface AudioLevelMeterProps {
   rmsLevel: number;    // 0.0 to 1.0
@@ -9,6 +10,19 @@ interface AudioLevelMeterProps {
   size?: 'small' | 'medium' | 'large';
 }
 
+// Log scaling for a more readable meter.
+const toPercent = (level: number) => {
+  const normalized = Math.max(0, Math.min(1, level));
+  return Math.round((normalized > 0 ? Math.log10(normalized * 9 + 1) : 0) * 100);
+};
+
+const SIZES = {
+  small: { meter: 'h-1.5', text: 'text-xs' },
+  medium: { meter: 'h-2', text: 'text-xs' },
+  large: { meter: 'h-3', text: 'text-sm' },
+};
+
+// Levels in bronze on a stone track: minium is reserved for "Dixit is recording".
 export function AudioLevelMeter({
   rmsLevel,
   peakLevel,
@@ -17,90 +31,33 @@ export function AudioLevelMeter({
   className = '',
   size = 'medium'
 }: AudioLevelMeterProps) {
-  // Normalize levels to 0-1 range and apply log scaling for better visual representation
-  const normalizedRms = Math.max(0, Math.min(1, rmsLevel));
-  const normalizedPeak = Math.max(0, Math.min(1, peakLevel));
-
-  // Apply logarithmic scaling for better visual representation of audio levels
-  const logRms = normalizedRms > 0 ? Math.log10(normalizedRms * 9 + 1) : 0;
-  const logPeak = normalizedPeak > 0 ? Math.log10(normalizedPeak * 9 + 1) : 0;
-
-  // Calculate percentages for display
-  const rmsPercent = Math.round(logRms * 100);
-  const peakPercent = Math.round(logPeak * 100);
-
-  // Color coding based on level
-  const getLevelColor = (level: number) => {
-    if (level < 0.3) return 'bg-green-500';
-    if (level < 0.7) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
-
-  const rmsColor = getLevelColor(logRms);
-  const peakColor = getLevelColor(logPeak);
-
-  // Size variants
-  const sizeClasses = {
-    small: {
-      container: 'h-2',
-      text: 'text-xs',
-      meter: 'h-1.5'
-    },
-    medium: {
-      container: 'h-3',
-      text: 'text-sm',
-      meter: 'h-2'
-    },
-    large: {
-      container: 'h-4',
-      text: 'text-base',
-      meter: 'h-3'
-    }
-  };
-
-  const sizes = sizeClasses[size];
+  const rmsPercent = toPercent(rmsLevel);
+  const peakPercent = toPercent(peakLevel);
+  const sizes = SIZES[size];
 
   return (
-    <div className={`flex items-center space-x-2 ${className}`}>
-      {/* Device activity indicator */}
-      <div className={`w-2 h-2 rounded-full ${
-        isActive ? 'bg-green-400 animate-pulse' : 'bg-gray-300'
-      }`} title={`${deviceName} - ${isActive ? 'Active' : 'Inactive'}`} />
+    <div className={cn('flex items-center gap-2', className)}>
+      <span
+        className={cn('h-2 w-2 shrink-0 rounded-full', isActive ? 'bg-primary' : 'bg-muted-foreground/40')}
+        title={deviceName}
+      />
 
-      {/* Level meter container */}
-      <div className={`flex-1 ${sizes.container} relative`}>
-        {/* Background */}
-        <div className="w-full h-full bg-gray-200 rounded-sm overflow-hidden">
-          {/* RMS level bar (main level) */}
+      <div className={cn('relative flex-1 overflow-hidden rounded-sm bg-muted', sizes.meter)}>
+        <div
+          className="h-full rounded-sm bg-primary transition-[width] duration-150 ease-out"
+          style={{ width: `${rmsPercent}%` }}
+        />
+        {peakPercent > rmsPercent && (
           <div
-            className={`${sizes.meter} ${rmsColor} transition-all duration-150 ease-out rounded-sm`}
-            style={{ width: `${rmsPercent}%` }}
+            className="absolute inset-y-0 w-0.5 bg-foreground/50 transition-[left] duration-75"
+            style={{ left: `${peakPercent}%` }}
           />
-
-          {/* Peak level indicator (thin line) */}
-          {peakPercent > rmsPercent && (
-            <div
-              className={`absolute top-0 bottom-0 w-0.5 ${peakColor} transition-all duration-75`}
-              style={{ left: `${peakPercent}%` }}
-            />
-          )}
-        </div>
-
-        {/* Level markers */}
-        <div className="absolute inset-0 flex justify-between items-center px-1 pointer-events-none">
-          {/* 25% marker */}
-          <div className="w-px h-full bg-gray-400 opacity-30" style={{ marginLeft: '25%' }} />
-          {/* 50% marker */}
-          <div className="w-px h-full bg-gray-400 opacity-30" style={{ marginLeft: '50%' }} />
-          {/* 75% marker */}
-          <div className="w-px h-full bg-gray-400 opacity-30" style={{ marginLeft: '75%' }} />
-        </div>
+        )}
       </div>
 
-      {/* Level percentage display */}
-      <div className={`${sizes.text} text-gray-600 font-mono min-w-[3rem] text-right`}>
+      <span className={cn('min-w-[3rem] text-right tabular-nums text-muted-foreground', sizes.text)}>
         {rmsPercent}%
-      </div>
+      </span>
     </div>
   );
 }
@@ -115,33 +72,16 @@ interface CompactAudioLevelMeterProps {
 // Compact version for inline display in dropdowns
 export function CompactAudioLevelMeter({
   rmsLevel,
-  peakLevel,
   isActive,
   className = ''
 }: CompactAudioLevelMeterProps) {
-  const normalizedRms = Math.max(0, Math.min(1, rmsLevel));
-  const logRms = normalizedRms > 0 ? Math.log10(normalizedRms * 9 + 1) : 0;
-  const rmsPercent = Math.round(logRms * 100);
-
-  const getLevelColor = (level: number) => {
-    if (level < 0.3) return 'bg-green-400';
-    if (level < 0.7) return 'bg-yellow-400';
-    return 'bg-red-400';
-  };
+  const rmsPercent = toPercent(rmsLevel);
 
   return (
-    <div className={`flex items-center space-x-1 ${className}`}>
-      {/* Activity dot */}
-      <div className={`w-1.5 h-1.5 rounded-full ${
-        isActive ? 'bg-green-400' : 'bg-gray-300'
-      }`} />
-
-      {/* Mini meter */}
-      <div className="w-8 h-1.5 bg-gray-200 rounded-sm overflow-hidden">
-        <div
-          className={`h-full ${getLevelColor(logRms)} transition-all duration-150`}
-          style={{ width: `${rmsPercent}%` }}
-        />
+    <div className={cn('flex items-center gap-1', className)}>
+      <span className={cn('h-1.5 w-1.5 rounded-full', isActive ? 'bg-primary' : 'bg-muted-foreground/40')} />
+      <div className="h-1.5 w-8 overflow-hidden rounded-sm bg-muted">
+        <div className="h-full bg-primary transition-[width] duration-150" style={{ width: `${rmsPercent}%` }} />
       </div>
     </div>
   );

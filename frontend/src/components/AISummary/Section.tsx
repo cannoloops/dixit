@@ -3,8 +3,8 @@
 import { Section as SectionType, Block } from '@/types';
 import { BlockComponent } from './Block';
 import { EditableTitle } from '../EditableTitle';
-import { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { t } from '@/i18n/meeting';
 
 interface SectionProps {
   section: SectionType;
@@ -42,7 +42,6 @@ export const Section: React.FC<SectionProps> = ({
   onCreateNewBlock,
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const handleTitleChange = (newTitle: string) => {
     if (onTitleChange) {
@@ -50,20 +49,9 @@ export const Section: React.FC<SectionProps> = ({
     }
   };
 
-  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      setIsEditingTitle(false);
-    }
-  };
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="mb-8"
-    >
-      <div className="flex items-center justify-between mb-4">
+    <section className="mb-6">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <EditableTitle
           title={section.title}
           isEditing={isEditingTitle}
@@ -74,51 +62,42 @@ export const Section: React.FC<SectionProps> = ({
         />
         {onSectionDelete && (
           <button
+            type="button"
             onClick={() => onSectionDelete(sectionKey)}
-            className="text-gray-400 hover:text-gray-600"
+            className="rounded-sm px-1.5 text-xs text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            Delete
+            {t('delete')}
           </button>
         )}
       </div>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
-        {(section.blocks || []).map((block, index) => (
-          <motion.div
+      <div>
+        {(section.blocks || []).map((block) => (
+          <BlockComponent
             key={block.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3, delay: index * 0.1 }}
-          >
-            <BlockComponent
-              block={block}
-              isSelected={selectedBlocks.includes(block.id)}
-              onTypeChange={(type) => onBlockTypeChange(block.id, type)}
-              onChange={(content) => onBlockChange(block.id, content)}
-              onMouseDown={(e) => onBlockMouseDown(block.id, e)}
-              onMouseEnter={() => onBlockMouseEnter(block.id)}
-              onMouseUp={(e) => onBlockMouseUp(block.id, e)}
-              onKeyDown={(e) => {
-                const newBlockContent = (e.currentTarget as HTMLTextAreaElement).dataset.newBlockContent;
-                onKeyDown(e, block.id, newBlockContent);
-              }}
-              onDelete={() => {
-                const textarea = document.querySelector(`[data-block-id="${block.id}"]`) as HTMLTextAreaElement;
-                const mergeContent = textarea?.dataset.mergeContent;
-                onBlockDelete(block.id, mergeContent);
-              }}
-              onContextMenu={onContextMenu}
-              onNavigate={onBlockNavigate ? 
-                (direction, cursorPosition) => onBlockNavigate(block.id, direction, cursorPosition)
-                : undefined}
-              onCreateNewBlock={onCreateNewBlock}
-            />
-          </motion.div>
+            block={block}
+            isSelected={selectedBlocks.includes(block.id)}
+            onTypeChange={(type) => onBlockTypeChange(block.id, type)}
+            onChange={(content) => onBlockChange(block.id, content)}
+            onMouseDown={(e) => onBlockMouseDown(block.id, e)}
+            onMouseEnter={() => onBlockMouseEnter(block.id)}
+            onMouseUp={(e) => onBlockMouseUp(block.id, e)}
+            onKeyDown={(e) => {
+              const newBlockContent = (e.currentTarget as HTMLTextAreaElement).dataset.newBlockContent;
+              onKeyDown(e, block.id, newBlockContent);
+            }}
+            onDelete={() => {
+              const textarea = document.querySelector(`[data-block-id="${block.id}"]`) as HTMLTextAreaElement;
+              const mergeContent = textarea?.dataset.mergeContent;
+              onBlockDelete(block.id, mergeContent);
+            }}
+            onContextMenu={onContextMenu}
+            onNavigate={onBlockNavigate ?
+              (direction, cursorPosition) => onBlockNavigate(block.id, direction, cursorPosition)
+              : undefined}
+            onCreateNewBlock={onCreateNewBlock}
+          />
         ))}
-      </motion.div>
-    </motion.div>
+      </div>
+    </section>
   );
 };

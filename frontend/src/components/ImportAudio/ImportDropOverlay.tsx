@@ -1,6 +1,7 @@
 import React from 'react';
 import { Upload } from 'lucide-react';
 import { getAudioFormatsDisplayList } from '@/constants/audioFormats';
+import { t } from '@/i18n/recording';
 
 interface ImportDropOverlayProps {
   visible: boolean;
@@ -10,17 +11,11 @@ export function ImportDropOverlay({ visible }: ImportDropOverlayProps) {
   if (!visible) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm
-                 flex items-center justify-center pointer-events-none
-                 transition-opacity duration-200"
-    >
-      <div className="border-2 border-dashed border-blue-400 rounded-2xl
-                      p-12 text-center bg-blue-950/50 shadow-2xl
-                      transform scale-100 transition-transform">
-        <Upload className="h-16 w-16 text-blue-400 mx-auto mb-4" />
-        <p className="text-xl font-medium text-white">Drop audio file to import</p>
-        <p className="text-sm text-blue-300 mt-2">{getAudioFormatsDisplayList()}</p>
+    <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-black/45">
+      <div className="rounded-md border border-dashed border-primary bg-popover px-10 py-8 text-center text-popover-foreground shadow-[var(--shadow-float)]">
+        <Upload className="mx-auto mb-3 h-4 w-4 text-primary" />
+        <p className="text-base font-semibold">{t('dropToImport')}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{getAudioFormatsDisplayList()}</p>
       </div>
     </div>
   );

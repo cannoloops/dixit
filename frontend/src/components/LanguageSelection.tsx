@@ -1,15 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { Globe } from 'lucide-react';
+import React, { useState } from 'react';
 import Analytics from '@/lib/analytics';
 import { toast } from 'sonner';
 import { useConfig } from '@/contexts/ConfigContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SettingRow } from '@/components/molecules/form-components/setting-row';
+import { languageName } from '@/lib/summary-languages';
+import { t } from '@/i18n/settings';
 
 export interface Language {
   code: string;
   name: string;
 }
 
-// ISO 639-1 language codes supported by Whisper
+// ISO 639-1 language codes supported by Whisper. `name` stays in English (analytics);
+// what the user sees comes from displayName().
 const LANGUAGES: Language[] = [
   { code: 'auto', name: 'Auto Detect (Original Language)' },
   { code: 'auto-translate', name: 'Auto Detect (Translate to English)' },
@@ -114,6 +118,12 @@ const LANGUAGES: Language[] = [
   { code: 'su', name: 'Sundanese' },
 ];
 
+function displayName(language: Language): string {
+  if (language.code === 'auto') return t('langAuto');
+  if (language.code === 'auto-translate') return t('langAutoTranslate');
+  return languageName(language.code, language.name);
+}
+
 interface LanguageSelectionProps {
   selectedLanguage: string;
   onLanguageChange: (language: string) => void;
@@ -154,13 +164,12 @@ export function LanguageSelection({
       });
 
       // Show success toast
-      const languageName = selectedLang?.name || languageCode;
-      toast.success("Language preference saved", {
-        description: `Transcription language set to ${languageName}`
+      toast.success(t('langSaved'), {
+        description: t('langSavedDesc', { lang: selectedLang ? displayName(selectedLang) : languageCode })
       });
     } catch (error) {
       console.error('Failed to save language preference:', error);
-      toast.error("Failed to save language preference", {
+      toast.error(t('langNotSaved'), {
         description: error instanceof Error ? error.message : String(error)
       });
     } finally {
@@ -169,65 +178,39 @@ export function LanguageSelection({
   };
 
   // Find the selected language name for display
-  const selectedLanguageName = LANGUAGES.find(
-    lang => lang.code === selectedLanguage
-  )?.name || 'Auto Detect (Original Language)';
+  const selectedLanguageName = displayName(LANGUAGES.find(lang => lang.code === selectedLanguage) ?? LANGUAGES[0]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Globe className="h-4 w-4 text-gray-600" />
-          <h4 className="text-sm font-medium text-gray-900">Transcription Language</h4>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <select
+    <div>
+      <SettingRow label={t('transcriptionLanguage')} htmlFor="transcription-language">
+        <Select
           value={selectedLanguage}
-          onChange={(e) => handleLanguageChange(e.target.value)}
+          onValueChange={handleLanguageChange}
           disabled={disabled || saving}
-          className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
         >
-          {availableLanguages.map((language) => (
-            <option key={language.code} value={language.code}>
-              {language.name}
-              {language.code !== 'auto' && language.code !== 'auto-translate' && ` (${language.code})`}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger id="transcription-language" className="w-72">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {availableLanguages.map((language) => (
+              <SelectItem key={language.code} value={language.code}>
+                {displayName(language)}
+                {language.code !== 'auto' && language.code !== 'auto-translate' && ` (${language.code})`}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </SettingRow>
 
-        {/* Parakeet language limitation warning */}
-        {isParakeet && (
-          <div className="p-2 bg-amber-50 border border-amber-200 rounded text-amber-800">
-            <p className="font-medium">ℹ️ Parakeet Language Support</p>
-            <p className="mt-1 text-xs">Parakeet currently only supports automatic language detection. Manual language selection is not available. Use Whisper if you need to specify a particular language.</p>
-          </div>
+      <div className="space-y-1 pb-2.5 text-xs text-muted-foreground">
+        {/* Parakeet language limitation */}
+        {isParakeet && <p>{t('parakeetNote')}</p>}
+
+        {selectedLanguage === 'auto' && <p>{t('autoWarning')}</p>}
+        {selectedLanguage === 'auto-translate' && <p>{t('translateNote')}</p>}
+        {selectedLanguage !== 'auto' && selectedLanguage !== 'auto-translate' && (
+          <p>{t('optimizedFor', { lang: selectedLanguageName })}</p>
         )}
-
-        {/* Info text */}
-        <div className="text-xs space-y-2 pt-2">
-          <p className="text-gray-600">
-            <strong>Current:</strong> {selectedLanguageName}
-          </p>
-          {selectedLanguage === 'auto' && (
-            <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800">
-              <p className="font-medium">⚠️ Auto Detect may produce incorrect results</p>
-              <p className="mt-1">For best accuracy, select your specific language (e.g., English, Spanish, etc.)</p>
-            </div>
-          )}
-          {selectedLanguage === 'auto-translate' && (
-            <div className="p-2 bg-blue-50 border border-blue-200 rounded text-blue-800">
-              <p className="font-medium">🌐 Translation Mode Active</p>
-              <p className="mt-1">All audio will be automatically translated to English. Best for multilingual meetings where you need English output.</p>
-            </div>
-          )}
-          {selectedLanguage !== 'auto' && selectedLanguage !== 'auto-translate' && (
-            <p className="text-gray-600">
-              Transcription will be optimized for <strong>{selectedLanguageName}</strong>
-            </p>
-          )}
-        </div>
       </div>
     </div>
   );

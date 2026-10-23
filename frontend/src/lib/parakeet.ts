@@ -1,4 +1,7 @@
 // Types for Parakeet (NVIDIA NeMo) integration
+import { locale } from '@/i18n';
+import { t } from '@/i18n/models';
+
 export interface ParakeetModelInfo {
   name: string;
   path: string;
@@ -45,7 +48,6 @@ export interface ParakeetEngineState {
 // User-friendly model display configuration
 export interface ModelDisplayInfo {
   friendlyName: string;
-  icon: string;
   tagline: string;
   recommended?: boolean;
   tier: 'fastest' | 'balanced' | 'precise';
@@ -53,22 +55,19 @@ export interface ModelDisplayInfo {
 
 export const MODEL_DISPLAY_CONFIG: Record<string, ModelDisplayInfo> = {
   'parakeet-tdt-0.6b-v3-int8': {
-    friendlyName: 'Lightning',
-    icon: '⚡',
-    tagline: 'Real time • Best for speed, great accuracy',
+    friendlyName: t('parakeetLightning'),
+    tagline: t('parakeetLightningTagline'),
     recommended: true,
     tier: 'fastest'
   },
   'parakeet-tdt-0.6b-v2-int8': {
-    friendlyName: 'Compact',
-    icon: '📦',
-    tagline: 'Real time • Smaller size',
+    friendlyName: t('parakeetCompact'),
+    tagline: t('parakeetCompactTagline'),
     tier: 'balanced'
   },
   'parakeet-tdt-0.6b-v3-fp32': {
-    friendlyName: 'Precise',
-    icon: '🎯',
-    tagline: '20x real-time • Higher accuracy',
+    friendlyName: t('parakeetPrecise'),
+    tagline: t('parakeetPreciseTagline'),
     tier: 'precise'
   }
 };
@@ -101,15 +100,6 @@ export const PARAKEET_MODEL_CONFIGS: Record<string, Partial<ParakeetModelInfo>> 
 };
 
 // Helper functions
-export function getModelIcon(accuracy: ModelAccuracy): string {
-  switch (accuracy) {
-    case 'High': return '🔥';
-    case 'Good': return '⚡';
-    case 'Decent': return '🚀';
-    default: return '📊';
-  }
-}
-
 // Get user-friendly display name for a model
 export function getModelDisplayName(modelName: string): string {
   const displayInfo = MODEL_DISPLAY_CONFIG[modelName];
@@ -131,9 +121,9 @@ export function getStatusColor(status: ModelStatus): string {
 
 export function formatFileSize(sizeMb: number): string {
   if (sizeMb >= 1000) {
-    return `${(sizeMb / 1000).toFixed(1)}GB`;
+    return `${(sizeMb / 1000).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} GB`;
   }
-  return `${sizeMb}MB`;
+  return `${Math.round(sizeMb)} MB`;
 }
 
 // Helper function to check if model is quantized
@@ -142,14 +132,14 @@ export function isQuantizedModel(modelName: string): boolean {
 }
 
 // Helper function to get model performance badge
-export function getModelPerformanceBadge(quantization: QuantizationType): { label: string; color: string } {
+export function getModelPerformanceBadge(quantization: QuantizationType): { label: string } {
   switch (quantization) {
     case 'FP32':
-      return { label: 'Full Precision', color: 'blue' };
+      return { label: t('perfFullPrecision') };
     case 'Int8':
-      return { label: 'Int8 Quantized', color: 'green' };
+      return { label: t('perfInt8') };
     default:
-      return { label: 'Standard', color: 'gray' };
+      return { label: t('perfStandard') };
   }
 }
 

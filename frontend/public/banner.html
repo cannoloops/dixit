@@ -4,47 +4,115 @@
 <meta charset="utf-8">
 <title>Dixit</title>
 <style>
+  /* Call-start banner (autopilot/banner.rs): 380×96, transparent window, top right.
+     Tokens copied from src/app/globals.css: marble ground in light, peperino in dark,
+     minium only for the recording light, porphyry for Annulla, bronze for OK. */
+  @font-face {
+    font-family: 'Cinzel';
+    font-weight: 600;
+    font-display: block;
+    src: url(fonts/cinzel-600-latin.woff2) format('woff2');
+  }
+  :root {
+    --background: 60 14% 96%;
+    --foreground: 80 5% 11%;
+    --muted-foreground: 75 4% 36%;
+    --border: 60 9% 84%;
+    --primary: 39 54% 31%;
+    --primary-foreground: 60 20% 98%;
+    --destructive: 346 50% 37%;
+    --ring: 40 42% 43%;
+    --live: 9 76% 45%;
+    --incised: 0 1px 0 hsl(0 0% 100% / 0.75), 0 -1px 0 hsl(80 5% 11% / 0.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: 90 4% 11%;
+      --foreground: 60 12% 90%;
+      --muted-foreground: 67 5% 63%;
+      --border: 70 6% 20%;
+      --primary: 39 51% 57%;
+      --primary-foreground: 90 4% 11%;
+      --destructive: 344 51% 63%;
+      --ring: 39 51% 57%;
+      --live: 9 77% 56%;
+      --incised: 0 1px 0 hsl(0 0% 0% / 0.6), 0 -1px 0 hsl(0 0% 100% / 0.05);
+    }
+  }
   html, body { margin: 0; height: 100%; background: transparent; }
   body {
-    font: 13px -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-    color: #111827;
+    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    color: hsl(var(--foreground));
+    -webkit-user-select: none; user-select: none; cursor: default;
+    -webkit-font-smoothing: antialiased;
   }
-  .card {
-    box-sizing: border-box; height: 100%; padding: 12px 14px;
-    background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px;
+  .banner {
+    box-sizing: border-box; height: 100%; padding: 14px 14px 13px;
     display: flex; flex-direction: column; justify-content: space-between;
+    background: hsl(var(--background));
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    overflow: hidden;
   }
-  .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .sub { color: #6b7280; margin-top: 2px; }
-  .actions { display: flex; gap: 8px; justify-content: flex-end; }
-  button { font: inherit; padding: 4px 12px; border-radius: 6px; border: 1px solid #d1d5db; background: #f9fafb; cursor: pointer; }
-  button.danger { background: #dc2626; border-color: #dc2626; color: #fff; }
-  @media (prefers-color-scheme: dark) {
-    body { color: #f3f4f6; }
-    .card { background: #1f2937; border-color: #374151; }
-    .sub { color: #9ca3af; }
-    button { background: #374151; border-color: #4b5563; color: #f3f4f6; }
+  .head { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .live { position: relative; flex: none; width: 8px; height: 8px; }
+  .live span { position: absolute; inset: 0; border-radius: 50%; background: hsl(var(--live)); }
+  .live span:first-child { animation: ping 1.4s cubic-bezier(0, 0, 0.2, 1) infinite; opacity: 0.6; }
+  @keyframes ping { 75%, 100% { transform: scale(2.2); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .live span:first-child { animation: none; opacity: 0; } }
+  .title {
+    min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+    font: 600 15px/20px 'Cinzel', serif;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    text-shadow: var(--incised);
   }
+  .foot { display: flex; align-items: center; gap: 8px; }
+  .sub { flex: 1; min-width: 0; font-size: 12px; color: hsl(var(--muted-foreground)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  button {
+    font: 500 13px/1 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    height: 28px; padding: 0 12px; border-radius: 4px; cursor: default;
+    border: 1px solid transparent;
+    transition: background-color 150ms, color 150ms, opacity 150ms;
+  }
+  button:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+  button:disabled { opacity: 0.6; }
+  .cancel { background: transparent; color: hsl(var(--destructive)); border-color: hsl(var(--destructive) / 0.55); }
+  .cancel:hover:not(:disabled) { background: hsl(var(--destructive) / 0.08); }
+  .ok { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); min-width: 48px; }
+  .ok:hover:not(:disabled) { background: hsl(var(--primary) / 0.9); }
 </style>
 </head>
 <body>
-<div class="card">
-  <div>
-    <div class="title" id="title">Trascrizione avviata</div>
-    <div class="sub">Dixit sta registrando questa call.</div>
+<div class="banner">
+  <div class="head">
+    <span class="live" role="img" id="live"><span></span><span></span></span>
+    <div class="title" id="title"></div>
   </div>
-  <div class="actions">
-    <button class="danger" id="cancel">Annulla</button>
-    <button id="ok">OK</button>
+  <div class="foot">
+    <div class="sub" id="sub"></div>
+    <button class="cancel" id="cancel"></button>
+    <button class="ok" id="ok">OK</button>
   </div>
 </div>
 <script>
-  const meeting = new URLSearchParams(location.search).get('title');
-  if (meeting) document.getElementById('title').textContent = 'Trascrizione avviata – ' + meeting;
+  const it = (navigator.language || '').toLowerCase().startsWith('it');
+  const s = it
+    ? { started: 'Registrazione avviata', sub: 'Dixit sta registrando questa call.', live: 'In registrazione', cancel: 'Annulla', cancelling: 'Annullo…' }
+    : { started: 'Recording started', sub: 'Dixit is recording this call.', live: 'Recording', cancel: 'Cancel', cancelling: 'Cancelling…' };
+  document.documentElement.lang = it ? 'it' : 'en';
+  const meeting = (new URLSearchParams(location.search).get('title') || '').trim() || s.started;
+  const title = document.getElementById('title');
+  title.textContent = meeting;
+  title.title = meeting;
+  document.getElementById('sub').textContent = s.sub;
+  document.getElementById('live').setAttribute('aria-label', s.live);
+  const cancel = document.getElementById('cancel');
+  cancel.textContent = s.cancel;
+
   const invoke = (cmd) => window.__TAURI__.core.invoke(cmd);
-  document.getElementById('cancel').onclick = async (e) => {
-    e.target.disabled = true;
-    e.target.textContent = 'Annullo…';
+  cancel.onclick = async () => {
+    cancel.disabled = true;
+    cancel.textContent = s.cancelling;
     try { await invoke('autopilot_cancel'); } finally { invoke('autopilot_banner_close'); }
   };
   document.getElementById('ok').onclick = () => invoke('autopilot_banner_close');

@@ -157,10 +157,14 @@ fn enable_captions_and_native<R: Runtime>(
         Ok(ax::NativeStart::Started) => {
             let offset = rec_start.elapsed().as_secs_f64();
             write_json(&folder.join(SESSION_FILE), &serde_json::json!({ "native_transcription_offset": offset }));
+            use crate::i18n::tr;
             crate::autopilot::notify(
                 app,
-                "Trascrizione Teams avviata (visibile a tutti)",
-                "Teams mostra ai partecipanti che la riunione viene trascritta.",
+                tr("Trascrizione Teams avviata (visibile a tutti)", "Teams transcription started (visible to everyone)"),
+                tr(
+                    "Teams mostra ai partecipanti che la riunione viene trascritta.",
+                    "Teams tells participants that the meeting is being transcribed.",
+                ),
             );
         }
         Ok(ax::NativeStart::AlreadyRunning) => {
@@ -170,7 +174,12 @@ fn enable_captions_and_native<R: Runtime>(
         Err(e) => {
             log::warn!("Teams native transcription not started: {e:#}");
             NATIVE.lock().unwrap().session_ended(session);
-            crate::autopilot::notify(app, "Trascrizione Teams non avviata", "Continuo con la trascrizione locale.");
+            use crate::i18n::tr;
+            crate::autopilot::notify(
+                app,
+                tr("Trascrizione Teams non avviata", "Teams transcription not started"),
+                tr("Continuo con la trascrizione locale.", "Continuing with local transcription."),
+            );
         }
     }
 }

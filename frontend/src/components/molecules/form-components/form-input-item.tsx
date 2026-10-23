@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Eye, EyeOff } from 'lucide-react';
 import { Control } from 'react-hook-form'; // Import Control type
 import { Textarea } from '@/components/ui/textarea';
+import { t } from '@/i18n/settings';
 
 type IInpuItemProps = {
   name: string;
@@ -91,19 +92,14 @@ export const FormInputItem = ({
                       accept={accept}
                       className={inputStyle}
                     />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 cursor-pointer">
-                      {showPassword ? (
-                        <EyeOff
-                          className="h-6 w-6"
-                          onClick={togglePasswordVisibility}
-                        />
-                      ) : (
-                        <Eye
-                          className="h-6 w-6"
-                          onClick={togglePasswordVisibility}
-                        />
-                      )}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={togglePasswordVisibility}
+                      aria-label={showPassword ? t('hidePassword') : t('showPassword')}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 ) : type === 'textarea' ? (
                   <Textarea

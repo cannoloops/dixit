@@ -1,42 +1,54 @@
 import React from "react";
 import { Info as InfoIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "./ui/dialog";
-import { VisuallyHidden } from "./ui/visually-hidden";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { About } from "./About";
+import { t } from "@/i18n/shell";
 
 interface InfoProps {
     isCollapsed: boolean;
 }
 
+// Same look as the other rail controls in Sidebar (peperino stone).
+const railFocus = "transition-colors duration-150 hover:bg-rail-active focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rail-accent";
+
 const Info = React.forwardRef<HTMLButtonElement, InfoProps>(({ isCollapsed }, ref) => {
+  const trigger = (
+    <DialogTrigger asChild>
+      <button
+        ref={ref}
+        type="button"
+        aria-label={isCollapsed ? t("info") : undefined}
+        className={
+          isCollapsed
+            ? `flex h-8 w-8 items-center justify-center rounded-sm text-rail-muted hover:text-rail-foreground ${railFocus}`
+            : `flex h-8 w-full items-center gap-2 rounded-sm px-2 text-sm text-rail-foreground ${railFocus}`
+        }
+      >
+        <InfoIcon className="h-4 w-4 shrink-0 text-rail-muted" />
+        {!isCollapsed && t("info")}
+      </button>
+    </DialogTrigger>
+  );
+
   return (
-    <Dialog aria-describedby={undefined}>
-      <DialogTrigger asChild>
-        <button 
-          ref={ref} 
-          className={`flex items-center justify-center mb-2 cursor-pointer border-none transition-colors ${
-            isCollapsed 
-              ? "bg-transparent p-2 hover:bg-gray-100 rounded-lg" 
-              : "w-full px-3 py-1.5 mt-1 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-200 rounded-lg shadow-sm"
-          }`}
-          title="About Dixit"
-        >
-          <InfoIcon className={`text-gray-600 ${isCollapsed ? "w-5 h-5" : "w-4 h-4"}`} />
-          {!isCollapsed && (
-            <span className="ml-2 text-sm text-gray-700">About</span>
-          )}
-        </button>
-      </DialogTrigger>
-      <DialogContent>
-        <VisuallyHidden>
-          <DialogTitle>About Dixit</DialogTitle>
-        </VisuallyHidden>
+    <Dialog>
+      {isCollapsed ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+          <TooltipContent side="right">{t("info")}</TooltipContent>
+        </Tooltip>
+      ) : (
+        trigger
+      )}
+      <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+        <DialogTitle className="sr-only">{t("aboutTitle")}</DialogTitle>
         <About />
       </DialogContent>
     </Dialog>
   );
 });
 
-Info.displayName = "About";
+Info.displayName = "Info";
 
-export default Info; 
+export default Info;

@@ -1,4 +1,6 @@
 // Types for Built-in AI (Summary Models) integration
+import { t } from '@/i18n/models';
+
 export interface BuiltInModelInfo {
   name: string;
   display_name: string;
@@ -51,12 +53,12 @@ export function getStatusColor(status: BuiltInModelStatus): string {
 
 export function getStatusLabel(status: BuiltInModelStatus): string {
   switch (status.type) {
-    case 'available': return 'Available';
-    case 'downloading': return `Downloading ${status.progress}%`;
-    case 'not_downloaded': return 'Not Downloaded';
-    case 'corrupted': return 'Corrupted';
-    case 'error': return 'Error';
-    default: return 'Unknown';
+    case 'available': return t('stateInstalled');
+    case 'downloading': return `${t('stateDownloading')} ${status.progress}%`;
+    case 'not_downloaded': return t('stateAvailable');
+    case 'corrupted': return t('stateCorrupted');
+    case 'error': return t('stateError');
+    default: return t('stateUnknown');
   }
 }
 

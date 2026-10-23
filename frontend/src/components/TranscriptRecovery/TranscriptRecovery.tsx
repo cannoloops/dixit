@@ -7,7 +7,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { AlertCircle, CheckCircle2, Clock, FileText, Trash2, XCircle } from 'lucide-react';
+import { it as itLocale } from 'date-fns/locale';
+import { Loader2, RotateCcw, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -18,9 +19,26 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { formatClock } from '@/components/RecordingStatusBar';
 import { MeetingMetadata, StoredTranscript } from '@/services/indexedDBService';
 import { cn } from '@/lib/utils';
+import { lang, locale } from '@/i18n';
+import { t } from '@/i18n/recording';
+import { t as tApp } from '@/i18n/app';
+
+const PREVIEW_LIMIT = 10;
+
+const segmentsLabel = (count: number) => (count === 1 ? t('segmentsOne') : t('segmentsMany', { count }));
+
+const relativeTime = (ms: number) =>
+  formatDistanceToNow(new Date(ms), { addSuffix: true, locale: lang === 'it' ? itLocale : undefined });
+
+// Recording offset when known, otherwise the wall-clock time the line was stored with.
+function previewTime(transcript: StoredTranscript): string {
+  if (transcript.audio_start_time !== undefined) return formatClock(transcript.audio_start_time);
+  const date = new Date(transcript.timestamp);
+  return isNaN(date.getTime()) ? '--:--' : date.toLocaleTimeString(locale);
+}
 
 interface TranscriptRecoveryProps {
   isOpen: boolean;
@@ -67,7 +85,7 @@ export function TranscriptRecovery({
     try {
       const transcripts = await onLoadPreview(meetingId);
       // Limit to first 10 for preview
-      setPreviewTranscripts(transcripts.slice(0, 10));
+      setPreviewTranscripts(transcripts.slice(0, PREVIEW_LIMIT));
     } catch (error) {
       console.error('Failed to load preview:', error);
       setPreviewTranscripts([]);
@@ -86,7 +104,7 @@ export function TranscriptRecovery({
       onClose();
     } catch (error) {
       console.error('Recovery failed:', error);
-      alert('Failed to recover meeting. Please try again.');
+      alert(t('recoverRetry'));
     } finally {
       setIsRecovering(false);
     }
@@ -95,7 +113,7 @@ export function TranscriptRecovery({
   const handleDelete = async () => {
     if (!selectedMeetingId) return;
 
-    if (!confirm('Are you sure you want to delete this meeting? This cannot be undone.')) {
+    if (!confirm(t('deleteConfirm'))) {
       return;
     }
 
@@ -106,204 +124,114 @@ export function TranscriptRecovery({
       setPreviewTranscripts([]);
     } catch (error) {
       console.error('Delete failed:', error);
-      alert('Failed to delete meeting. Please try again.');
+      alert(t('deleteRetry'));
     } finally {
       setIsDeleting(false);
     }
   };
 
   const selectedMeeting = recoverableMeetings.find(m => m.meetingId === selectedMeetingId);
+  const busy = isRecovering || isDeleting;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6">
-          <DialogTitle className="text-2xl">Recover Interrupted Meetings</DialogTitle>
+      <DialogContent className="flex h-[80vh] max-w-4xl flex-col gap-0 p-0">
+        <DialogHeader className="border-b border-border px-6 py-4">
+          <DialogTitle>{t('recoveryTitle')}</DialogTitle>
           <DialogDescription>
-            We found {recoverableMeetings.length} meeting{recoverableMeetings.length !== 1 ? 's' : ''} that {recoverableMeetings.length !== 1 ? 'were' : 'was'} interrupted. Select a meeting to preview and recover it.
+            {recoverableMeetings.length === 1
+              ? t('recoveryFoundOne')
+              : t('recoveryFoundMany', { count: recoverableMeetings.length })}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 flex gap-4 px-6 pb-6 overflow-hidden">
-          {/* Meeting List */}
-          <div className="w-1/3 flex flex-col">
-            <h3 className="text-sm font-medium mb-2">Interrupted Meetings</h3>
-            <ScrollArea className="flex-1 border rounded-lg">
-              <div className="p-2 space-y-2">
+        <div className="flex min-h-0 flex-1">
+          {/* Meeting list */}
+          <div className="flex w-1/3 min-w-0 flex-col border-r border-border">
+            <h3 className="px-4 pb-1 pt-3 text-xs font-medium text-muted-foreground">{t('interruptedMeetings')}</h3>
+            <ScrollArea className="flex-1">
+              <div className="px-2 pb-2">
                 {recoverableMeetings.map((meeting) => (
                   <button
                     key={meeting.meetingId}
                     onClick={() => handleMeetingSelect(meeting.meetingId)}
                     className={cn(
-                      'w-full text-left p-3 rounded-lg border transition-colors',
-                      selectedMeetingId === meeting.meetingId
-                        ? 'bg-primary/10 border-primary'
-                        : 'hover:bg-muted border-transparent'
+                      'w-full rounded-sm px-2 py-1.5 text-left transition-colors hover:bg-accent',
+                      selectedMeetingId === meeting.meetingId && 'bg-accent'
                     )}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{meeting.title}</p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                          <Clock className="w-3 h-3" />
-                          {formatDistanceToNow(new Date(meeting.lastUpdated), { addSuffix: true })}
-                        </p>
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                          <FileText className="w-3 h-3" />
-                          {meeting.transcriptCount} transcript{meeting.transcriptCount !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                      {meeting.folderPath ? (
-                        <span title="Audio available">
-                          <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-                        </span>
-                      ) : (
-                        <span title="No audio">
-                          <AlertCircle className="w-4 h-4 text-yellow-500 flex-shrink-0" />
-                        </span>
-                      )}
-                    </div>
+                    <span className="incisa block truncate text-[12px] leading-5">{meeting.title}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {relativeTime(meeting.lastUpdated)} · <span className="tabular-nums">{segmentsLabel(meeting.transcriptCount)}</span>
+                      {!meeting.folderPath && <> · {t('noAudio')}</>}
+                    </span>
                   </button>
                 ))}
               </div>
             </ScrollArea>
           </div>
 
-          {/* Preview Panel */}
-          <div className="flex-1 flex flex-col">
-            <h3 className="text-sm font-medium mb-2">Preview</h3>
-            <div className="flex-1 border rounded-lg overflow-hidden flex flex-col">
-              {selectedMeeting ? (
-                <>
-                  {/* Meeting Info */}
-                  <div className="p-4 border-b bg-muted/50">
-                    <h4 className="font-semibold">{selectedMeeting.title}</h4>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Started {new Date(selectedMeeting.startTime).toLocaleString()}
-                    </p>
-                    <div className="flex items-center gap-4 mt-2 text-sm">
-                      <span className="flex items-center gap-1">
-                        <FileText className="w-4 h-4" />
-                        {selectedMeeting.transcriptCount} transcripts
-                      </span>
-                      {selectedMeeting.folderPath ? (
-                        <span className="flex items-center gap-1 text-green-600">
-                          <CheckCircle2 className="w-4 h-4" />
-                          Audio available
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-yellow-600">
-                          <AlertCircle className="w-4 h-4" />
-                          No audio
-                        </span>
-                      )}
-                    </div>
-                  </div>
+          {/* Preview */}
+          <div className="flex min-w-0 flex-1 flex-col">
+            {selectedMeeting ? (
+              <>
+                <div className="border-b border-border px-6 py-3">
+                  <h4 className="incisa truncate text-sm">{selectedMeeting.title}</h4>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {t('startedAt', { date: new Date(selectedMeeting.startTime).toLocaleString(locale) })}
+                    {' · '}<span className="tabular-nums">{segmentsLabel(selectedMeeting.transcriptCount)}</span>
+                    {' · '}{selectedMeeting.folderPath ? t('audioAvailable') : t('noAudio')}
+                  </p>
+                </div>
 
-                  {/* Transcript Preview */}
-                  <ScrollArea className="flex-1 p-4">
+                <ScrollArea className="flex-1">
+                  <div className="px-6 py-3 text-sm">
                     {isLoadingPreview ? (
-                      <div className="flex items-center justify-center h-full text-muted-foreground">
-                        Loading preview...
-                      </div>
+                      <p className="text-muted-foreground">{t('loadingPreview')}</p>
                     ) : previewTranscripts.length > 0 ? (
-                      <div className="space-y-3">
-                        <Alert>
-                          <AlertDescription>
-                            Showing first {previewTranscripts.length} transcript segments (of {selectedMeeting.transcriptCount} total)
-                          </AlertDescription>
-                        </Alert>
-                        {previewTranscripts.map((transcript, index) => {
-                          // Handle different timestamp formats
-                          const getTimestamp = () => {
-                            if (!transcript.timestamp) return '--:--';
-                            try {
-                              const date = new Date(transcript.timestamp);
-                              if (isNaN(date.getTime())) {
-                                // If timestamp is invalid, try audio_start_time
-                                if (transcript.audio_start_time !== undefined) {
-                                  const totalSecs = Math.floor(transcript.audio_start_time);
-                                  const mins = Math.floor(totalSecs / 60);
-                                  const secs = totalSecs % 60;
-                                  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                                }
-                                return '--:--';
-                              }
-                              return date.toLocaleTimeString();
-                            } catch {
-                              return '--:--';
-                            }
-                          };
-
-                          return (
-                            <div key={index} className="text-sm">
-                              <span className="text-muted-foreground">[{getTimestamp()}]</span>{' '}
-                              <span>{transcript.text}</span>
-                            </div>
-                          );
-                        })}
-                        {selectedMeeting.transcriptCount > 10 && (
-                          <p className="text-sm text-muted-foreground italic">
-                            ... and {selectedMeeting.transcriptCount - 10} more transcript{selectedMeeting.transcriptCount - 10 !== 1 ? 's' : ''}
+                      <>
+                        <p className="mb-2 text-xs text-muted-foreground">
+                          {t('previewShowing', { shown: previewTranscripts.length, total: selectedMeeting.transcriptCount })}
+                        </p>
+                        <ul>
+                          {previewTranscripts.map((transcript, index) => (
+                            <li key={index} className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-baseline gap-x-3 py-1">
+                              <span className="text-right text-xs tabular-nums text-muted-foreground">{previewTime(transcript)}</span>
+                              <span className="leading-6">{transcript.text}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {selectedMeeting.transcriptCount > PREVIEW_LIMIT && (
+                          <p className="mt-2 text-xs text-muted-foreground">
+                            {t('previewMore', { count: selectedMeeting.transcriptCount - PREVIEW_LIMIT })}
                           </p>
                         )}
-                      </div>
+                      </>
                     ) : (
-                      <div className="flex items-center justify-center h-full text-muted-foreground">
-                        No transcripts to preview
-                      </div>
+                      <p className="text-muted-foreground">{t('noPreview')}</p>
                     )}
-                  </ScrollArea>
-                </>
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  Select a meeting to preview
-                </div>
-              )}
-            </div>
+                  </div>
+                </ScrollArea>
+              </>
+            ) : (
+              <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+                {t('selectToPreview')}
+              </div>
+            )}
           </div>
         </div>
 
-        <DialogFooter className="px-6 pb-6">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            disabled={isRecovering || isDeleting}
-          >
-            Cancel
+        <DialogFooter className="border-t border-border px-6 py-3">
+          <Button variant="outline" onClick={onClose} disabled={busy}>
+            {tApp('cancel')}
           </Button>
-          <Button
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={!selectedMeetingId || isRecovering || isDeleting}
-          >
-            {isDeleting ? (
-              <>
-                <XCircle className="w-4 h-4 mr-2 animate-spin" />
-                Deleting...
-              </>
-            ) : (
-              <>
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </>
-            )}
+          <Button variant="destructive" onClick={handleDelete} disabled={!selectedMeetingId || busy}>
+            {isDeleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+            {isDeleting ? t('deleting') : t('delete')}
           </Button>
-          <Button
-            onClick={handleRecover}
-            disabled={!selectedMeetingId || isRecovering || isDeleting}
-          >
-            {isRecovering ? (
-              <>
-                <CheckCircle2 className="w-4 h-4 mr-2 animate-spin" />
-                Recovering...
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-4 h-4 mr-2" />
-                Recover
-              </>
-            )}
+          <Button onClick={handleRecover} disabled={!selectedMeetingId || busy}>
+            {isRecovering ? <Loader2 className="animate-spin" /> : <RotateCcw />}
+            {isRecovering ? t('recovering') : t('recover')}
           </Button>
         </DialogFooter>
       </DialogContent>

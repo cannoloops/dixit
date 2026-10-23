@@ -1,14 +1,37 @@
+import { locale } from '@/i18n';
+
 export interface LanguageOption {
   code: string;
   label: string;
+}
+
+const displayNames =
+  typeof Intl !== 'undefined' && 'DisplayNames' in Intl
+    ? new Intl.DisplayNames([locale], { type: 'language' })
+    : null;
+
+/**
+ * Name of a language in the UI language (Italian or English), capitalised.
+ * Falls back to `fallback` when the system has no name for the code.
+ */
+export function languageName(code: string, fallback: string): string {
+  try {
+    // zh-tw means Traditional Chinese; Intl would name the region (Taiwan) instead.
+    const name = displayNames?.of(code === 'zh-tw' ? 'zh-Hant' : code);
+    if (!name || name === code) return fallback;
+    return name.charAt(0).toLocaleUpperCase(locale) + name.slice(1);
+  } catch {
+    return fallback;
+  }
 }
 
 /**
  * Language options offered in the summary language pickers.
  * Codes must stay in sync with `language_name_from_code` in
  * `frontend/src-tauri/src/summary/processor.rs`.
+ * Labels start as English names and are localised right below.
  */
-export const LANGUAGE_OPTIONS: LanguageOption[] = [
+const ENGLISH_LANGUAGE_OPTIONS: LanguageOption[] = [
   { code: 'en', label: 'English' },
   { code: 'zh', label: 'Chinese' },
   { code: 'zh-tw', label: 'Traditional Chinese' },
@@ -40,6 +63,11 @@ export const LANGUAGE_OPTIONS: LanguageOption[] = [
   { code: 'ro', label: 'Romanian' },
   { code: 'uk', label: 'Ukrainian' },
 ];
+
+export const LANGUAGE_OPTIONS: LanguageOption[] = ENGLISH_LANGUAGE_OPTIONS.map((o) => ({
+  code: o.code,
+  label: languageName(o.code, o.label),
+}));
 
 export const AUTO_VALUE = '__auto__' as const;
 

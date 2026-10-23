@@ -6,6 +6,16 @@ use uuid::Uuid;
 
 pub struct TranscriptsRepository;
 
+/// When the recording began, from the meeting folder's metadata.json (saved at recording start).
+/// Meetings are dated by their start, not by when the transcript was saved at the end of the call.
+fn started_at(folder_path: Option<&str>) -> Option<chrono::DateTime<Utc>> {
+    let text = std::fs::read_to_string(std::path::Path::new(folder_path?).join("metadata.json")).ok()?;
+    let metadata: serde_json::Value = serde_json::from_str(&text).ok()?;
+    chrono::DateTime::parse_from_rfc3339(metadata["created_at"].as_str()?)
+        .ok()
+        .map(|t| t.with_timezone(&Utc))
+}
+
 impl TranscriptsRepository {
     /// Saves a new meeting and its associated transcript segments.
     /// This function uses a transaction to ensure that either both the meeting
@@ -22,6 +32,7 @@ impl TranscriptsRepository {
         let mut transaction = conn.begin().await?;
 
         let now = Utc::now();
+        let created_at = started_at(folder_path.as_deref()).unwrap_or(now);
 
         // 1. Create the new meeting
         let result = sqlx::query(
@@ -29,7 +40,7 @@ impl TranscriptsRepository {
         )
         .bind(&meeting_id)
         .bind(meeting_title)
-        .bind(now)
+        .bind(created_at)
         .bind(now)
         .bind(&folder_path)
         .execute(&mut *transaction)
@@ -233,5 +244,22 @@ mod speaker_tests {
         assert_eq!(TranscriptsRepository::rename_speaker(&p, "m1", "A", "Rossi Mario").await.unwrap(), 2);
         assert_eq!(speakers(&p).await, vec![Some("Rossi Mario".into()); 2]);
         assert_eq!(TranscriptsRepository::folder_for_meeting(&p, "m1").await.unwrap().as_deref(), Some("/rec/sprint"));
+    }
+}
+
+#[cfg(test)]
+mod started_at_tests {
+    use super::started_at;
+
+    #[test]
+    fn reads_recording_start_from_metadata() {
+        let dir = std::env::temp_dir().join(format!("dixit-started-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("metadata.json"), r#"{"created_at":"2026-10-23T13:18:05+00:00"}"#).unwrap();
+        let t = started_at(dir.to_str()).unwrap();
+        assert_eq!(t.to_rfc3339(), "2026-10-23T13:18:05+00:00");
+        assert!(started_at(Some("/nonexistent/dixit")).is_none());
+        assert!(started_at(None).is_none());
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }

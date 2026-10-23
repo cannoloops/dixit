@@ -108,6 +108,7 @@
     --rail-border: 84 4% 23%;
     --rail-active: 80 5% 22%;
     --rail-accent: 39 51% 57%;       /* lettere di bronzo */
+    --rail-live: 9 77% 56%;          /* minio leggibile sulla pietra */
 
     --live: 9 76% 45%;               /* minio: only while recording */
     --live-foreground: 0 0% 100%;
@@ -202,6 +203,17 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: hsl(var(--foreground) / 0.18); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
   ::-webkit-scrollbar-thumb:hover { background: hsl(var(--foreground) / 0.32); background-clip: content-box; }
+
+  /* Sonner toasts on the Dixit surfaces */
+  [data-sonner-toaster] {
+    --normal-bg: hsl(var(--popover));
+    --normal-text: hsl(var(--popover-foreground));
+    --normal-border: hsl(var(--border));
+    --border-radius: var(--radius);
+    font-family: inherit;
+  }
+  [data-sonner-toast] { box-shadow: var(--shadow-float); }
+  [data-sonner-toast][data-type='error'] [data-icon] { color: hsl(var(--destructive)); }
 
   /* Inscriptional capitals: speaker names and meeting titles only (never buttons or labels). */
   .incisa {

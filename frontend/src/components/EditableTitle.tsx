@@ -1,6 +1,9 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { t } from '@/i18n/meeting';
 
 interface EditableTitleProps {
   title: string;
@@ -9,6 +12,8 @@ interface EditableTitleProps {
   onFinishEditing: () => void;
   onChange: (value: string) => void;
   onDelete?: () => void;
+  /** Type of the title in both states, e.g. "incisa text-2xl" for a meeting title. */
+  className?: string;
 }
 
 export const EditableTitle: React.FC<EditableTitleProps> = ({
@@ -18,14 +23,10 @@ export const EditableTitle: React.FC<EditableTitleProps> = ({
   onFinishEditing,
   onChange,
   onDelete,
+  className,
 }) => {
   const titleInputRef = useRef<HTMLTextAreaElement>(null);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      onFinishEditing();
-    }
-  };
+  const type = cn('text-base font-semibold', className);
 
   // Auto-resize textarea height based on content
   useEffect(() => {
@@ -36,10 +37,11 @@ export const EditableTitle: React.FC<EditableTitleProps> = ({
   }, [title, isEditing]);
 
   return isEditing ? (
-    <div className="flex-1">
+    <div className="min-w-0 flex-1">
       <textarea
         ref={titleInputRef}
         value={title}
+        aria-label={t('editTitle')}
         onChange={(e) => onChange(e.target.value)}
         onBlur={onFinishEditing}
         onKeyDown={(e) => {
@@ -49,64 +51,43 @@ export const EditableTitle: React.FC<EditableTitleProps> = ({
             onFinishEditing();
           }
         }}
-        className="text-2xl font-bold bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-3 py-1 w-full resize-none overflow-hidden"
-        style={{ minWidth: '300px', minHeight: '40px' }}
+        className={cn(
+          type,
+          'w-full resize-none overflow-hidden rounded-sm border border-input bg-background px-1 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+        )}
+        style={{ minWidth: '300px' }}
         autoFocus
         rows={1}
       />
     </div>
   ) : (
-    <div className="group flex items-center space-x-2 flex-1">
+    <div className="group flex min-w-0 flex-1 items-center gap-1">
       <h1
-        className="text-2xl font-bold cursor-pointer hover:bg-gray-50 rounded px-1 flex-1 whitespace-pre-wrap"
+        className={cn(type, 'min-w-0 cursor-text whitespace-pre-wrap rounded-sm px-1 transition-colors duration-150 hover:bg-accent')}
         onClick={onStartEditing}
       >
         {title}
       </h1>
-      <div className="flex space-x-1">
-        <button 
-          onClick={onStartEditing}
-          className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-gray-100 rounded"
-          title="Edit section title"
+      <button
+        type="button"
+        onClick={onStartEditing}
+        className="shrink-0 rounded-sm p-1 text-muted-foreground opacity-0 transition-opacity duration-150 hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
+        title={t('editTitle')}
+        aria-label={t('editTitle')}
+      >
+        <Pencil className="h-4 w-4" />
+      </button>
+      {onDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          className="shrink-0 rounded-sm p-1 text-destructive opacity-0 transition-opacity duration-150 hover:bg-accent focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
+          title={t('deleteSection')}
+          aria-label={t('deleteSection')}
         >
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            width="16" 
-            height="16" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-          >
-            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-          </svg>
+          <Trash2 className="h-4 w-4" />
         </button>
-        {onDelete && (
-          <button 
-            onClick={onDelete}
-            className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-gray-100 rounded text-red-600"
-            title="Delete section"
-          >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-            >
-              <path d="M3 6h18" />
-              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-            </svg>
-          </button>
-        )}
-      </div>
+      )}
     </div>
   );
 };

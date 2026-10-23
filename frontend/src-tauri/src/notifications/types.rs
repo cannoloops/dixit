@@ -1,3 +1,4 @@
+use crate::i18n::{it, tr};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -115,8 +116,11 @@ impl Default for NotificationTimeout {
 impl Notification {
     pub fn recording_started(meeting_name: Option<String>) -> Self {
         let body = match meeting_name {
-            Some(name) => format!("Recording started for meeting: {}", name),
-            None => "Recording has started. Please inform others in the meeting that you are recording.".to_string(),
+            Some(name) => if it() { format!("Registrazione avviata: {}", name) } else { format!("Recording started for meeting: {}", name) },
+            None => tr(
+                "Registrazione avviata. Avvisa i partecipanti che stai registrando.",
+                "Recording has started. Please inform others in the meeting that you are recording.",
+            ).to_string(),
         };
 
         Notification::new("Dixit", body, NotificationType::RecordingStarted)
@@ -127,7 +131,7 @@ impl Notification {
     pub fn recording_stopped() -> Self {
         Notification::new(
             "Dixit",
-            "Recording has been stopped and saved",
+            tr("Registrazione interrotta e salvata", "Recording has been stopped and saved"),
             NotificationType::RecordingStopped
         )
         .with_priority(NotificationPriority::Normal)
@@ -137,7 +141,7 @@ impl Notification {
     pub fn recording_paused() -> Self {
         Notification::new(
             "Dixit",
-            "Recording has been paused",
+            tr("Registrazione in pausa", "Recording has been paused"),
             NotificationType::RecordingPaused
         )
         .with_priority(NotificationPriority::Normal)
@@ -147,7 +151,7 @@ impl Notification {
     pub fn recording_resumed() -> Self {
         Notification::new(
             "Dixit",
-            "Recording has been resumed",
+            tr("Registrazione ripresa", "Recording has been resumed"),
             NotificationType::RecordingResumed
         )
         .with_priority(NotificationPriority::Normal)
@@ -156,8 +160,8 @@ impl Notification {
 
     pub fn transcription_complete(file_path: Option<String>) -> Self {
         let body = match file_path {
-            Some(path) => format!("Transcription completed and saved to: {}", path),
-            None => "Transcription has been completed".to_string(),
+            Some(path) => if it() { format!("Trascrizione completata e salvata in: {}", path) } else { format!("Transcription completed and saved to: {}", path) },
+            None => tr("Trascrizione completata", "Transcription has been completed").to_string(),
         };
 
         Notification::new("Dixit", body, NotificationType::TranscriptionComplete)
@@ -167,7 +171,9 @@ impl Notification {
 
     pub fn meeting_reminder(minutes_until: u64, meeting_title: Option<String>) -> Self {
         let body = match meeting_title {
+            Some(title) if it() => format!("La riunione «{}» inizia tra {} minuti", title, minutes_until),
             Some(title) => format!("Meeting '{}' starts in {} minutes", title, minutes_until),
+            None if it() => format!("La riunione inizia tra {} minuti", minutes_until),
             None => format!("Meeting starts in {} minutes", minutes_until),
         };
 
@@ -179,7 +185,7 @@ impl Notification {
     pub fn system_error(error: impl Into<String>) -> Self {
         let error_string = error.into();
         Notification::new(
-            "Dixit Error",
+            tr("Errore di Dixit", "Dixit Error"),
             error_string.clone(),
             NotificationType::SystemError(error_string)
         )
@@ -190,7 +196,10 @@ impl Notification {
     pub fn test_notification() -> Self {
         Notification::new(
             "Dixit",
-            "This is a test notification to verify the system is working correctly",
+            tr(
+                "Notifica di prova: le notifiche funzionano.",
+                "This is a test notification to verify the system is working correctly",
+            ),
             NotificationType::Test
         )
         .with_priority(NotificationPriority::Normal)

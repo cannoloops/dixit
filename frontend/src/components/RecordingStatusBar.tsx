@@ -1,47 +1,47 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { useRecordingState } from '@/contexts/RecordingStateContext';
 import { useEffect, useState } from 'react';
+import { useRecordingState } from '@/contexts/RecordingStateContext';
+import { LiveIndicator } from '@/components/dixit';
+import { cn } from '@/lib/utils';
+import { t } from '@/i18n/recording';
+
+/** Recording-relative clock: MM:SS, or H:MM:SS past the hour. */
+export function formatClock(seconds: number | undefined): string {
+  if (seconds === undefined || !Number.isFinite(seconds)) return '--:--';
+  const total = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(total / 3600);
+  const mm = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+  const ss = String(total % 60).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
 
 interface RecordingStatusBarProps {
   isPaused?: boolean;
+  className?: string;
 }
 
-export const RecordingStatusBar: React.FC<RecordingStatusBarProps> = ({ isPaused = false }) => {
-  // Get recording duration from backend-synced context (in seconds)
-  // Backend polls every 500ms, providing smooth updates
-  const { activeDuration, isRecording } = useRecordingState();
-
-  // Display state synced from backend
+/** The recording light (minium only while live) and the elapsed time. */
+export const RecordingStatusBar: React.FC<RecordingStatusBarProps> = ({ isPaused = false, className }) => {
+  // Backend-synced duration (polled every 500ms); keep the last value if it goes null.
+  const { activeDuration } = useRecordingState();
   const [displaySeconds, setDisplaySeconds] = useState(0);
 
-  // Sync with backend duration when it changes (handles refresh/navigation)
   useEffect(() => {
-    if (activeDuration !== null) {
-      // Round to nearest second to avoid decimal issues
-      setDisplaySeconds(Math.floor(activeDuration));
-    }
+    if (activeDuration !== null) setDisplaySeconds(Math.floor(activeDuration));
   }, [activeDuration]);
 
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.2 }}
-      className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg mb-2"
-    >
-      <div className={`w-2 h-2 rounded-full ${isPaused ? 'bg-orange-500' : 'bg-red-500 animate-pulse'}`} />
-      <span className={`text-sm ${isPaused ? 'text-orange-700' : 'text-gray-700'}`}>
-        {isPaused ? 'Paused' : 'Recording'} • {formatDuration(displaySeconds)}
-      </span>
-    </motion.div>
+    <span className={cn('inline-flex items-center gap-2', className)}>
+      {isPaused ? (
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground" role="status">
+          <span className="h-2 w-2 rounded-full bg-muted-foreground" />
+          {t('paused')}
+        </span>
+      ) : (
+        <LiveIndicator />
+      )}
+      <span className="text-sm tabular-nums text-foreground">{formatClock(displaySeconds)}</span>
+    </span>
   );
 };

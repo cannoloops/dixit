@@ -16,136 +16,116 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Sparkles, Settings, Loader2, FileText, Check, Square } from 'lucide-react';
+import { Sparkles, Settings, Loader2, FileText, Check } from 'lucide-react';
 import Analytics from '@/lib/analytics';
 import { useState, useEffect, ReactNode } from 'react';
+import { t } from '@/i18n/meeting';
+
+type SummaryStatus = 'idle' | 'processing' | 'summarizing' | 'regenerating' | 'completed' | 'error';
+
+interface GenerateSummaryButtonProps {
+  summaryStatus: SummaryStatus;
+  hasSummary: boolean;
+  hasTranscripts: boolean;
+  isModelConfigLoading: boolean;
+  onGenerate: () => void;
+  onStop: () => void;
+}
+
+/** The meeting's primary action (top right): generate the summary, or stop it while it runs. */
+export function GenerateSummaryButton({
+  summaryStatus,
+  hasSummary,
+  hasTranscripts,
+  isModelConfigLoading,
+  onGenerate,
+  onStop,
+}: GenerateSummaryButtonProps) {
+  const isGenerating = summaryStatus === 'processing' || summaryStatus === 'summarizing' || summaryStatus === 'regenerating';
+
+  if (isGenerating) {
+    return (
+      <Button
+        variant="outline"
+        title={t('stopTitle')}
+        onClick={() => {
+          Analytics.trackButtonClick('stop_summary_generation', 'meeting_details');
+          onStop();
+        }}
+      >
+        <Loader2 className="animate-spin" />
+        {t('stop')}
+      </Button>
+    );
+  }
+
+  return (
+    <Button
+      variant={hasSummary ? 'outline' : 'default'}
+      disabled={isModelConfigLoading || !hasTranscripts}
+      title={
+        isModelConfigLoading ? t('loadingModel') : !hasTranscripts ? t('noTranscriptToSummarize') : undefined
+      }
+      onClick={() => {
+        Analytics.trackButtonClick('generate_summary', 'meeting_details');
+        onGenerate();
+      }}
+    >
+      {isModelConfigLoading ? <Loader2 className="animate-spin" /> : <Sparkles />}
+      {hasSummary ? t('regenerate') : t('generate')}
+    </Button>
+  );
+}
 
 interface SummaryGeneratorButtonGroupProps {
   languageSlot?: ReactNode;
   modelConfig: ModelConfig;
   setModelConfig: (config: ModelConfig | ((prev: ModelConfig) => ModelConfig)) => void;
   onSaveModelConfig: (config?: ModelConfig) => Promise<void>;
-  onGenerateSummary: (customPrompt: string) => Promise<void>;
-  onStopGeneration: () => void;
-  customPrompt: string;
-  summaryStatus: 'idle' | 'processing' | 'summarizing' | 'regenerating' | 'completed' | 'error';
   availableTemplates: Array<{ id: string, name: string, description: string }>;
   selectedTemplate: string;
   onTemplateSelect: (templateId: string, templateName: string) => void;
   hasTranscripts?: boolean;
-  hasSummary?: boolean;
-  isModelConfigLoading?: boolean;
   onOpenModelSettings?: (openFn: () => void) => void;
 }
 
+/** Summary options next to the editor: language, model and template. */
 export function SummaryGeneratorButtonGroup({
   modelConfig,
   setModelConfig,
   onSaveModelConfig,
-  onGenerateSummary,
-  onStopGeneration,
-  customPrompt,
-  summaryStatus,
   availableTemplates,
   selectedTemplate,
   onTemplateSelect,
   hasTranscripts = true,
-  hasSummary = false,
-  isModelConfigLoading = false,
   onOpenModelSettings,
   languageSlot
 }: SummaryGeneratorButtonGroupProps) {
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
 
-  // Expose the function to open the modal via callback registration
+  // Let the parent open the model dialog (e.g. from an error that needs a model).
   useEffect(() => {
-    if (onOpenModelSettings) {
-      // Register our open dialog function with the parent by calling the callback
-      // This allows the parent to store a reference to this function
-      const openDialog = () => {
-        console.log('📱 Opening model settings dialog via callback');
-        setSettingsDialogOpen(true);
-      };
-
-      // Call the parent's callback with our open function
-      // Note: This assumes onOpenModelSettings accepts a function parameter
-      // We'll need to adjust the signature
-      onOpenModelSettings(openDialog);
-    }
+    onOpenModelSettings?.(() => setSettingsDialogOpen(true));
   }, [onOpenModelSettings]);
 
   if (!hasTranscripts) {
     return null;
   }
 
-  const isGenerating = summaryStatus === 'processing' || summaryStatus === 'summarizing' || summaryStatus === 'regenerating';
-
   return (
     <ButtonGroup>
-      {/* Generate Summary or Stop button */}
-      {isGenerating ? (
-        <Button
-          variant="outline"
-          size="sm"
-          className="bg-gradient-to-r from-red-50 to-orange-50 hover:from-red-100 hover:to-orange-100 border-red-200 px-3 gap-2"
-          onClick={() => {
-            Analytics.trackButtonClick('stop_summary_generation', 'meeting_details');
-            onStopGeneration();
-          }}
-          title="Stop summary generation"
-        >
-          <Square size={18} fill="currentColor" />
-          <span className="hidden @[24rem]:inline">Stop</span>
-        </Button>
-      ) : (
-        <Button
-          variant="outline"
-          size="sm"
-          className="bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 border-blue-200 px-3 gap-2"
-          onClick={() => {
-            Analytics.trackButtonClick('generate_summary', 'meeting_details');
-            void onGenerateSummary(customPrompt);
-          }}
-          disabled={isModelConfigLoading}
-          title={
-            isModelConfigLoading
-              ? 'Loading model configuration...'
-              : hasSummary ? 'Regenerate AI Summary' : 'Generate AI Summary'
-          }
-        >
-          {isModelConfigLoading ? (
-            <>
-              <Loader2 className="animate-spin" size={18} />
-              <span className="hidden @[24rem]:inline">Processing...</span>
-            </>
-          ) : (
-            <>
-              <Sparkles size={18} />
-              <span className="hidden @[24rem]:inline">{hasSummary ? 'Regenerate Summary' : 'Generate Summary'}</span>
-            </>
-          )}
-        </Button>
-      )}
-
       {languageSlot}
 
-      {/* Settings button */}
       <Dialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen}>
         <DialogTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            title="Summary Settings"
-          >
+          <Button variant="outline" size="sm" title={t('summaryModel')}>
             <Settings />
-            <span className="hidden @[40rem]:inline">AI Model</span>
+            <span className="hidden @[40rem]:inline">{t('model')}</span>
           </Button>
         </DialogTrigger>
-        <DialogContent
-          aria-describedby={undefined}
-        >
+        <DialogContent aria-describedby={undefined}>
           <VisuallyHidden>
-            <DialogTitle>Model Settings</DialogTitle>
+            <DialogTitle>{t('modelSettings')}</DialogTitle>
           </VisuallyHidden>
           <ModelSettingsModal
             onSave={async (config) => {
@@ -160,17 +140,12 @@ export function SummaryGeneratorButtonGroup({
         </DialogContent>
       </Dialog>
 
-      {/* Template selector dropdown */}
       {availableTemplates.length > 0 && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              title="Select summary template"
-            >
+            <Button variant="outline" size="sm" title={t('chooseTemplate')}>
               <FileText />
-              <span className="hidden @[40rem]:inline">Template</span>
+              <span className="hidden @[40rem]:inline">{t('template')}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -183,11 +158,10 @@ export function SummaryGeneratorButtonGroup({
               >
                 <span>{template.name}</span>
                 {selectedTemplate === template.id && (
-                  <Check className="h-4 w-4 text-green-600" />
+                  <Check className="h-4 w-4 text-primary" />
                 )}
               </DropdownMenuItem>
             ))}
-
           </DropdownMenuContent>
         </DropdownMenu>
       )}

@@ -1,0 +1,69 @@
+/* Dixit: the summary editor (BlockNote, shadcn flavour) wears the app tokens and the system sans.
+   Light/dark come from macOS through the app tokens; BlockNote follows the same media query.
+   Doubled classes outrank BlockNote's own rules whatever order the stylesheets load in. */
+
+/* BlockNote's shadcn flavour redefines the shadcn tokens on its root: take the app's instead. */
+.bn-shadcn.bn-shadcn,
+.bn-shadcn.bn-shadcn.dark {
+  --background: inherit;
+  --foreground: inherit;
+  --card: inherit;
+  --card-foreground: inherit;
+  --popover: inherit;
+  --popover-foreground: inherit;
+  --primary: inherit;
+  --primary-foreground: inherit;
+  --secondary: inherit;
+  --secondary-foreground: inherit;
+  --muted: inherit;
+  --muted-foreground: inherit;
+  --accent: inherit;
+  --accent-foreground: inherit;
+  --destructive: inherit;
+  --destructive-foreground: inherit;
+  --border: inherit;
+  --input: inherit;
+  --ring: inherit;
+  --radius: inherit;
+}
+
+.bn-container.bn-container,
+.bn-container.bn-container[data-color-scheme] {
+  --bn-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  --bn-colors-editor-text: hsl(var(--foreground));
+  --bn-colors-editor-background: transparent;
+  --bn-colors-menu-text: hsl(var(--popover-foreground));
+  --bn-colors-menu-background: hsl(var(--popover));
+  --bn-colors-tooltip-text: hsl(var(--popover-foreground));
+  --bn-colors-tooltip-background: hsl(var(--popover));
+  --bn-colors-hovered-text: hsl(var(--accent-foreground));
+  --bn-colors-hovered-background: hsl(var(--accent));
+  --bn-colors-selected-text: hsl(var(--primary-foreground));
+  --bn-colors-selected-background: hsl(var(--primary));
+  --bn-colors-disabled-text: hsl(var(--muted-foreground));
+  --bn-colors-disabled-background: hsl(var(--muted));
+  --bn-colors-shadow: hsl(var(--foreground) / 0.15);
+  --bn-colors-border: hsl(var(--border));
+  --bn-colors-side-menu: hsl(var(--muted-foreground));
+  --bn-border-radius: 4px;
+}
+
+/* BlockNote hard-codes Inter and 16px here; the app reads at 14px in the system sans. */
+.bn-container .bn-default-styles {
+  font-family: var(--bn-font-family);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.bn-container.bn-container .bn-editor {
+  background-color: transparent;
+  color: hsl(var(--foreground));
+}
+
+/* Headings by scale and weight only, sized for a side panel (BlockNote starts at 3em). */
+.bn-container [data-content-type="heading"] { --level: 1.25em; }
+.bn-container [data-content-type="heading"][data-level="2"] { --level: 1.125em; }
+.bn-container [data-content-type="heading"][data-level="3"] { --level: 1em; }
+.bn-container [data-prev-level="1"] { --prev-level: 1.25em; }
+.bn-container [data-prev-level="2"] { --prev-level: 1.125em; }
+.bn-container [data-prev-level="3"] { --prev-level: 1em; }

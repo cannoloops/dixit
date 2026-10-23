@@ -33,6 +33,7 @@ pub fn show<R: Runtime>(app: &AppHandle<R>, title: &str) {
         .always_on_top(true)
         .focused(false)
         .skip_taskbar(true)
+        .transparent(true)
         .visible_on_all_workspaces(true)
         .build();
     match built {

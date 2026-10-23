@@ -9,7 +9,7 @@ import { SummaryUpdaterButtonGroup } from './SummaryUpdaterButtonGroup';
 import Analytics from '@/lib/analytics';
 import { useEffect, useRef, useState, RefObject } from 'react';
 import { toast } from 'sonner';
-import { Languages, ChevronDown } from 'lucide-react';
+import { Languages, ChevronDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { LanguagePickerPopover } from '@/components/LanguagePickerPopover';
@@ -21,6 +21,7 @@ import {
   SummaryLanguageStorage,
 } from '@/lib/summary-language-preferences';
 import { hasVisibleSummaryContent } from '@/lib/summary-content';
+import { t } from '@/i18n/meeting';
 
 interface SummaryPanelProps {
   meeting: {
@@ -40,9 +41,6 @@ interface SummaryPanelProps {
   modelConfig: ModelConfig;
   setModelConfig: (config: ModelConfig | ((prev: ModelConfig) => ModelConfig)) => void;
   onSaveModelConfig: (config?: ModelConfig) => Promise<void>;
-  onGenerateSummary: (customPrompt: string) => Promise<void>;
-  onStopGeneration: () => void;
-  customPrompt: string;
   onSaveSummary: (summary: MeetingSummary) => Promise<void>;
   onSummaryChange: (summary: Summary) => void;
   onDirtyChange: (isDirty: boolean) => void;
@@ -54,6 +52,8 @@ interface SummaryPanelProps {
   onTemplateSelect: (templateId: string, templateName: string) => void;
   isModelConfigLoading?: boolean;
   onOpenModelSettings?: (openFn: () => void) => void;
+  /** Opens the summary model dialog (from the empty state or an error). */
+  onChooseModel?: () => void;
 }
 
 export function SummaryPanel({
@@ -70,9 +70,6 @@ export function SummaryPanel({
   modelConfig,
   setModelConfig,
   onSaveModelConfig,
-  onGenerateSummary,
-  onStopGeneration,
-  customPrompt,
   onSaveSummary,
   onSummaryChange,
   onDirtyChange,
@@ -84,6 +81,7 @@ export function SummaryPanel({
   onTemplateSelect,
   isModelConfigLoading = false,
   onOpenModelSettings,
+  onChooseModel,
 }: SummaryPanelProps) {
   const [summaryLang, setSummaryLang] = useState<string | null>(null);
   const [summaryLangStorage, setSummaryLangStorage] = useState<SummaryLanguageStorage>('metadata');
@@ -106,9 +104,7 @@ export function SummaryPanel({
 
   const effectiveLangLabel = summaryLang ? labelForCode(summaryLang) : 'Auto';
   const isLocalFallbackLanguage = summaryLangStorage === 'local_fallback';
-  const autoSubtitle = isLocalFallbackLanguage
-    ? 'Saved on this device for folderless meetings'
-    : 'Uses dominant transcript language';
+  const autoSubtitle = isLocalFallbackLanguage ? t('autoSavedOnDevice') : t('autoDominant');
 
   useEffect(() => {
     let cancelled = false;
@@ -124,8 +120,8 @@ export function SummaryPanel({
         }
       } catch (err) {
         console.error('Failed to load summary language:', err);
-        toast.warning('Could not load saved summary language', {
-          description: 'Using Auto until meeting metadata can be read.',
+        toast.warning(t('languageLoadFailed'), {
+          description: t('languageLoadFailedDesc'),
         });
         if (!cancelled && languageLoadVersionRef.current === loadVersion) setSummaryLang(null);
       }
@@ -157,8 +153,8 @@ export function SummaryPanel({
             setSummaryLang(saved.language);
             setSummaryLangStorage(saved.storage);
             if (saved.storage === 'local_fallback') {
-              toast.info('Summary language saved on this device', {
-                description: 'This meeting has no recording folder, so the preference cannot be written to meeting metadata.',
+              toast.info(t('languageSavedOnDevice'), {
+                description: t('languageSavedOnDeviceDesc'),
               });
             }
             if (request.language) {
@@ -175,7 +171,7 @@ export function SummaryPanel({
             activeMeetingIdRef.current === request.meetingId
           ) {
             console.error('Failed to persist summary language:', err);
-            toast.error('Failed to save summary language');
+            toast.error(t('languageSaveFailed'));
             setSummaryLang(request.rollback.language);
             setSummaryLangStorage(request.rollback.storage);
             return;
@@ -212,6 +208,7 @@ export function SummaryPanel({
 
   const isSummaryLoading = summaryStatus === 'processing' || summaryStatus === 'summarizing' || summaryStatus === 'regenerating';
   const hasSummary = hasVisibleSummaryContent(aiSummary);
+  const hasModel = isModelConfigLoading || (!!modelConfig.provider && !!modelConfig.model);
 
   const languageSlot = (
     <Popover open={langPickerOpen} onOpenChange={setLangPickerOpen}>
@@ -219,17 +216,17 @@ export function SummaryPanel({
         <Button
           variant="outline"
           size="sm"
-          title={`Summary language: ${effectiveLangLabel}${isLocalFallbackLanguage ? ' (saved on this device)' : ''}`}
-          aria-label="Set summary language"
+          title={t('summaryLanguage', { lang: effectiveLangLabel }) + (isLocalFallbackLanguage ? t('savedOnDevice') : '')}
+          aria-label={t('chooseSummaryLanguage')}
         >
-          <Languages size={18} />
+          <Languages />
           <span className="hidden @[40rem]:inline">{effectiveLangLabel}</span>
-          <ChevronDown size={14} className="text-gray-400" />
+          <ChevronDown className="text-muted-foreground" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-auto p-0 border-0 shadow-none bg-transparent"
+        className="w-auto border-0 bg-transparent p-0 shadow-none"
       >
         <LanguagePickerPopover
           value={summaryLang}
@@ -242,60 +239,53 @@ export function SummaryPanel({
   );
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col bg-white overflow-hidden h-full w-full @container">
-      {/* Top-level actions — always visible, same pattern as TranscriptPanel */}
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-center w-full min-w-0 gap-2 flex-wrap">
-          <div className="flex-shrink-0 min-w-0">
-            <SummaryGeneratorButtonGroup
-              modelConfig={modelConfig}
-              setModelConfig={setModelConfig}
-              onSaveModelConfig={onSaveModelConfig}
-              onGenerateSummary={onGenerateSummary}
-              onStopGeneration={onStopGeneration}
-              customPrompt={customPrompt}
-              summaryStatus={summaryStatus}
-              availableTemplates={availableTemplates}
-              selectedTemplate={selectedTemplate}
-              onTemplateSelect={onTemplateSelect}
-              hasTranscripts={transcripts.length > 0}
-              hasSummary={hasSummary}
-              isModelConfigLoading={isModelConfigLoading}
-              onOpenModelSettings={onOpenModelSettings}
-              languageSlot={transcripts.length > 0 || hasSummary ? languageSlot : undefined}
-            />
-          </div>
-
+    <div className="@container flex h-full w-full min-w-0 flex-1 flex-col overflow-hidden bg-card">
+      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-4">
+        <h2 className="text-sm font-semibold">{t('summary')}</h2>
+        <div className="ml-auto flex min-w-0 items-center gap-2">
+          <SummaryGeneratorButtonGroup
+            modelConfig={modelConfig}
+            setModelConfig={setModelConfig}
+            onSaveModelConfig={onSaveModelConfig}
+            availableTemplates={availableTemplates}
+            selectedTemplate={selectedTemplate}
+            onTemplateSelect={onTemplateSelect}
+            hasTranscripts={transcripts.length > 0}
+            onOpenModelSettings={onOpenModelSettings}
+            languageSlot={transcripts.length > 0 || hasSummary ? languageSlot : undefined}
+          />
           {hasSummary && !isSummaryLoading && (
-            <div className="flex-shrink-0">
-              <SummaryUpdaterButtonGroup
-                isSaving={isSaving}
-                isDirty={isSummaryDirty}
-                onSave={onSaveAll}
-                onCopy={onCopySummary}
-              />
-            </div>
+            <SummaryUpdaterButtonGroup
+              isSaving={isSaving}
+              isDirty={isSummaryDirty}
+              onSave={onSaveAll}
+              onCopy={onCopySummary}
+            />
           )}
         </div>
       </div>
 
       {isSummaryLoading ? (
-        <div className="flex items-center justify-center flex-1">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-            <p className="text-gray-600">Generating AI Summary...</p>
-          </div>
+        <div role="status" className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <p className="text-sm font-medium">{getSummaryStatusMessage(summaryStatus)}</p>
+          <p className="max-w-sm text-xs text-muted-foreground">{t('generatingHint')}</p>
         </div>
       ) : !hasSummary ? (
         <EmptyStateSummary
-          onGenerate={() => onGenerateSummary(customPrompt)}
-          hasModel={modelConfig.provider !== null && modelConfig.model !== null}
-          isGenerating={isSummaryLoading}
+          hasModel={hasModel}
+          hasTranscripts={transcripts.length > 0}
           error={summaryError}
+          onChooseModel={onChooseModel}
         />
       ) : (
-        <div className="flex-1 overflow-y-auto overflow-x-auto min-h-0">
-          <div className="p-6 w-full">
+        <div className="min-h-0 flex-1 overflow-auto">
+          {summaryStatus === 'error' && summaryError && (
+            <p role="alert" className="border-b border-border px-4 py-2 text-xs text-destructive">
+              {summaryError} {t('summaryErrorFix')}
+            </p>
+          )}
+          <div className="w-full px-4 py-4">
             <BlockNoteSummaryView
               ref={summaryRef}
               summaryData={aiSummary}
@@ -315,14 +305,6 @@ export function SummaryPanel({
               }}
             />
           </div>
-          {summaryStatus !== 'idle' && (
-            <div className={`mt-4 p-4 rounded-lg ${summaryStatus === 'error' ? 'bg-red-100 text-red-700' :
-              summaryStatus === 'completed' ? 'bg-green-100 text-green-700' :
-                'bg-blue-100 text-blue-700'
-              }`}>
-              <p className="text-sm font-medium">{getSummaryStatusMessage(summaryStatus)}</p>
-            </div>
-          )}
         </div>
       )}
     </div>

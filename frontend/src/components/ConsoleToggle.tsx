@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { t } from '@/i18n/shell';
 
 export function ConsoleToggle() {
   const [isLoading, setIsLoading] = useState(false);
@@ -59,7 +60,7 @@ export function ConsoleToggle() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Label htmlFor="console-toggle">
-          Developer Console
+          {t('devConsole')}
         </Label>
         <Switch
           id="console-toggle"
@@ -81,11 +82,11 @@ export function ConsoleToggle() {
           onClick={handleToggleConsole}
           disabled={isLoading}
         >
-          Toggle Console
+          {t('toggleConsole')}
         </Button>
       </div>
       <p className="text-sm text-muted-foreground">
-        Show or hide the developer console window. On Windows, this controls the console window. On macOS, this opens Terminal with app logs.
+        {t('devConsoleDesc')}
       </p>
     </div>
   );

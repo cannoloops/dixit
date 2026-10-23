@@ -1,54 +1,38 @@
 import React from "react";
-import Image from "next/image";
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "./ui/dialog";
-import { VisuallyHidden } from "./ui/visually-hidden";
-import { About } from "./About";
+import { useRouter } from "next/navigation";
+import { DixitMark } from "@/components/dixit/DixitMark";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
+import { t } from "@/i18n/shell";
 
 interface LogoProps {
   isCollapsed: boolean;
 }
 
+/** Dixit mark (and name when the rail is expanded): goes to the home page. */
 const Logo = React.forwardRef<HTMLButtonElement, LogoProps>(
   ({ isCollapsed }, ref) => {
-    return (
-      <Dialog aria-describedby={undefined}>
-        {isCollapsed ? (
-          <DialogTrigger asChild>
-            <button
-              ref={ref}
-              type="button"
-              className="flex items-center justify-center mb-2 cursor-pointer bg-transparent border-none p-0 hover:opacity-80 transition-opacity"
-              aria-label="Informazioni su Dixit"
-            >
-              <Image
-                src="/logo-collapsed.png"
-                alt="Dixit"
-                width={40}
-                height={40}
-                className="object-contain"
-                priority
-              />
-            </button>
-          </DialogTrigger>
-        ) : (
-          <DialogTrigger asChild>
-            <button
-              ref={ref}
-              type="button"
-              className="w-full text-lg text-center border rounded-full bg-blue-50 border-white font-semibold text-gray-700 mb-2 block items-center cursor-pointer hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              aria-label="Informazioni su Dixit"
-            >
-              <span>Dixit</span>
-            </button>
-          </DialogTrigger>
+    const router = useRouter();
+    const button = (
+      <button
+        ref={ref}
+        type="button"
+        onClick={() => router.push("/")}
+        aria-label={t("home")}
+        className="flex h-8 items-center gap-2 rounded-sm px-1 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rail-accent"
+      >
+        <DixitMark className="h-6 w-6 text-base text-rail-accent" />
+        {!isCollapsed && (
+          <span className="text-sm font-semibold text-rail-foreground">Dixit</span>
         )}
-        <DialogContent>
-          <VisuallyHidden>
-            <DialogTitle>Informazioni su Dixit</DialogTitle>
-          </VisuallyHidden>
-          <About />
-        </DialogContent>
-      </Dialog>
+      </button>
+    );
+
+    if (!isCollapsed) return button;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{button}</TooltipTrigger>
+        <TooltipContent side="right">{t("home")}</TooltipContent>
+      </Tooltip>
     );
   },
 );

@@ -1,17 +1,20 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Mic, Volume2, Accessibility } from 'lucide-react';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import type { PermissionStatus } from '@/types/onboarding';
 import type { AutopilotSettingsValue } from '@/components/AutopilotSettings';
 import { Button } from '@/components/ui/button';
 import { OnboardingContainer } from '../OnboardingContainer';
 import { PermissionRow } from '../shared';
 import { useOnboarding } from '@/contexts/OnboardingContext';
+import { t } from '@/i18n/onboarding';
 
 export function PermissionsStep() {
   const { setPermissionStatus, setPermissionsSkipped, permissions, completeOnboarding } = useOnboarding();
-  const [isPending, setIsPending] = useState(false);
+  const [pending, setPending] = useState<'microphone' | 'systemAudio' | null>(null);
   // Trascrivi: Accessibility (Teams window reading) and the user's speaker name
   const [accessibility, setAccessibility] = useState<PermissionStatus>('not_determined');
   const [displayName, setDisplayName] = useState('');
@@ -60,17 +63,18 @@ export function PermissionsStep() {
 
   // Request microphone permission
   const handleMicrophoneAction = async () => {
+    if (pending) return;
     if (permissions.microphone === 'denied') {
       // Try to open system settings
       try {
-        await invoke('open_system_settings');
+        await invoke('open_system_settings', { preferencePane: 'Privacy_Microphone' });
       } catch {
-        alert('Please enable microphone access in System Preferences > Security & Privacy > Microphone');
+        toast.error(t('openSettingsFailed'), { description: t('micDenied') });
       }
       return;
     }
 
-    setIsPending(true);
+    setPending('microphone');
     try {
       console.log('[PermissionsStep] Triggering microphone permission...');
       const granted = await invoke<boolean>('trigger_microphone_permission');
@@ -86,23 +90,24 @@ export function PermissionsStep() {
       console.error('[PermissionsStep] Failed to request microphone permission:', err);
       setPermissionStatus('microphone', 'denied');
     } finally {
-      setIsPending(false);
+      setPending(null);
     }
   };
 
   // Request system audio permission
   const handleSystemAudioAction = async () => {
+    if (pending) return;
     if (permissions.systemAudio === 'denied') {
       // Try to open system settings
       try {
-        await invoke('open_system_settings');
+        await invoke('open_system_settings', { preferencePane: 'Privacy_ScreenCapture' });
       } catch {
-        alert('Please enable Audio Capture in System Settings → Privacy & Security → Audio Capture');
+        toast.error(t('openSettingsFailed'), { description: t('systemDenied') });
       }
       return;
     }
 
-    setIsPending(true);
+    setPending('systemAudio');
     try {
       console.log('[PermissionsStep] Triggering Audio Capture permission...');
       // Backend creates Core Audio tap, captures audio, and verifies it's not silence
@@ -122,7 +127,7 @@ export function PermissionsStep() {
       console.error('[PermissionsStep] Failed to request system audio permission:', err);
       setPermissionStatus('systemAudio', 'denied');
     } finally {
-      setIsPending(false);
+      setPending(null);
     }
   };
 
@@ -149,81 +154,66 @@ export function PermissionsStep() {
 
   return (
     <OnboardingContainer
-      title="Grant Permissions"
-      description="Dixit needs access to your microphone and system audio to record meetings"
+      title={t('permissionsTitle')}
+      description={t('permissionsDescription')}
       step={4}
       hideProgress={true}
       showNavigation={allPermissionsGranted}
       canGoNext={allPermissionsGranted}
     >
-      <div className="max-w-lg mx-auto space-y-6">
-        {/* Permission Rows */}
-        <div className="space-y-4">
-          {/* Microphone */}
-          <PermissionRow
-            icon={<Mic className="w-5 h-5" />}
-            title="Microphone"
-            description="Required to capture your voice during meetings"
-            status={permissions.microphone}
-            isPending={isPending}
-            onAction={handleMicrophoneAction}
-          />
+      <div className="divide-y divide-border border-y border-border">
+        <PermissionRow
+          icon={<Mic />}
+          title={t('micName')}
+          description={t('micPurpose')}
+          deniedHint={t('micDenied')}
+          status={permissions.microphone}
+          isPending={pending === 'microphone'}
+          onAction={handleMicrophoneAction}
+        />
 
-          {/* System Audio */}
-          <PermissionRow
-            icon={<Volume2 className="w-5 h-5" />}
-            title="System Audio"
-            description="Click Enable to grant Audio Capture permission"
-            status={permissions.systemAudio}
-            isPending={isPending}
-            onAction={handleSystemAudioAction}
-          />
+        <PermissionRow
+          icon={<Volume2 />}
+          title={t('systemName')}
+          description={t('systemPurpose')}
+          deniedHint={t('systemDenied')}
+          status={permissions.systemAudio}
+          isPending={pending === 'systemAudio'}
+          onAction={handleSystemAudioAction}
+        />
 
-          {/* Accessibility (Trascrivi) */}
-          <PermissionRow
-            icon={<Accessibility className="w-5 h-5" />}
-            title="Accessibilità"
-            description="Per riconoscere le call e leggere i nomi da Teams"
-            status={accessibility}
-            isPending={false}
-            onAction={handleAccessibilityAction}
-          />
-        </div>
+        {/* Accessibility (Trascrivi) */}
+        <PermissionRow
+          icon={<Accessibility />}
+          title={t('accessibilityName')}
+          description={t('accessibilityPurpose')}
+          deniedHint={t('accessibilityDenied')}
+          status={accessibility}
+          onAction={handleAccessibilityAction}
+        />
+      </div>
 
-        <div className="space-y-2">
-          <label htmlFor="onboarding-display-name" className="text-sm font-medium block">
-            Il tuo nome (come appare in Teams, es. Rossi Mario)
-          </label>
-          <Input
-            id="onboarding-display-name"
-            value={displayName}
-            placeholder="Cognome Nome"
-            onChange={(e) => setDisplayName(e.target.value)}
-            onBlur={saveDisplayName}
-          />
-          <p className="text-xs text-muted-foreground">
-            In Teams imposta la lingua parlata su italiano, così sottotitoli e trascrizione riportano bene i nomi.
-          </p>
-        </div>
+      <div className="mt-6 space-y-1.5">
+        <Label htmlFor="onboarding-display-name">{t('displayNameLabel')}</Label>
+        <Input
+          id="onboarding-display-name"
+          value={displayName}
+          placeholder={t('displayNamePlaceholder')}
+          onChange={(e) => setDisplayName(e.target.value)}
+          onBlur={saveDisplayName}
+        />
+        <p className="text-xs text-muted-foreground">{t('displayNameHint')}</p>
+      </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col gap-3 pt-4">
-          <Button onClick={handleFinish} disabled={!allPermissionsGranted} className="w-full h-11">
-            Finish Setup
+      <div className="mt-8 space-y-3">
+        {!allPermissionsGranted && <p className="text-xs text-muted-foreground">{t('permissionsNote')}</p>}
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" onClick={handleSkip}>
+            {t('doLater')}
           </Button>
-
-          <button
-            onClick={handleSkip}
-            className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
-          >
-            I'll do this later
-          </button>
-
-          {!allPermissionsGranted && (
-            <p className="text-xs text-center text-muted-foreground">
-              Recording won't work without permissions. You can grant them later in settings.
-            </p>
-          )}
+          <Button size="lg" onClick={handleFinish} disabled={!allPermissionsGranted}>
+            {t('finishSetup')}
+          </Button>
         </div>
       </div>
     </OnboardingContainer>

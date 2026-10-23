@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Download, AlertCircle, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,10 +9,14 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import { Button } from './ui/button';
+import { Progress } from './ui/progress';
 import { updateService, UpdateInfo, UpdateProgress } from '@/services/updateService';
 import { check, Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { toast } from 'sonner';
+import { locale } from '@/i18n';
+import { t } from '@/i18n/shell';
+import { t as tApp } from '@/i18n/app';
 
 interface UpdateDialogProps {
   open: boolean;
@@ -38,11 +42,11 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
         if (updateResult?.available) {
           setUpdate(updateResult);
         } else {
-          setError('Update no longer available');
+          setError(t('updateGone'));
         }
       }).catch((err) => {
         console.error('Failed to get update object:', err);
-        setError('Failed to prepare update: ' + (err.message || 'Unknown error'));
+        setError(t('updatePrepareFailed', { error: err?.message || t('unknownError') }));
       });
     } else {
       // Reset state when dialog closes
@@ -63,11 +67,11 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
           updateToUse = updateResult;
           setUpdate(updateResult);
         } else {
-          setError('Update not available');
+          setError(t('updateGone'));
           return;
         }
       } catch (err: any) {
-        setError('Failed to get update: ' + (err.message || 'Unknown error'));
+        setError(t('updatePrepareFailed', { error: err?.message || t('unknownError') }));
         return;
       }
     }
@@ -123,7 +127,7 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
       });
 
       console.log('[UpdateDialog] Update installed successfully');
-      toast.success('Update installed successfully. The app will restart...');
+      toast.success(t('updateInstalled'));
 
       // Mark download as complete before closing
       setIsDownloading(false);
@@ -135,16 +139,16 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
       await relaunch();
     } catch (err: any) {
       console.error('Update failed:', err);
-      setError(err.message || 'Failed to download or install update');
+      setError(err?.message || t('updateInstallFailed'));
       setIsDownloading(false);
-      toast.error('Update failed: ' + (err.message || 'Unknown error'));
+      toast.error(t('updateFailedToast', { error: err?.message || t('unknownError') }));
     }
   };
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
     try {
-      return new Date(dateString).toLocaleDateString();
+      return new Date(dateString).toLocaleDateString(locale);
     } catch {
       return dateString;
     }
@@ -189,71 +193,64 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
           <DialogTitle className="flex items-center gap-2">
             {isDownloading ? (
               <>
-                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                Downloading Update
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                {t('downloadingUpdate')}
               </>
             ) : error ? (
               <>
-                <AlertCircle className="h-5 w-5 text-red-600" />
-                Update Error
+                <AlertCircle className="h-4 w-4 text-destructive" />
+                {t('updateFailed')}
               </>
             ) : (
               <>
-                <Download className="h-5 w-5 text-blue-600" />
-                Update Available
+                <Download className="h-4 w-4 text-primary" />
+                {t('updateAvailable')}
               </>
             )}
           </DialogTitle>
           <DialogDescription>
             {isDownloading
-              ? 'Downloading the latest version...'
+              ? t('downloadingDesc')
               : error
-              ? 'An error occurred while updating'
-              : `A new version (${updateInfo.version}) is available`}
+              ? t('updateFailedDesc')
+              : t('versionAvailable', { version: updateInfo.version ?? '' })}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4">
           {!isDownloading && !error && (
             <>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Current Version:</span>
-                  <span className="font-medium">{updateInfo.currentVersion}</span>
+              <dl className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">{t('currentVersion')}</dt>
+                  <dd className="font-medium tabular-nums">{updateInfo.currentVersion}</dd>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">New Version:</span>
-                  <span className="font-medium text-blue-600">{updateInfo.version}</span>
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">{t('newVersion')}</dt>
+                  <dd className="font-medium tabular-nums text-primary">{updateInfo.version}</dd>
                 </div>
                 {updateInfo.date && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Release Date:</span>
-                    <span className="font-medium">{formatDate(updateInfo.date)}</span>
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">{t('releaseDate')}</dt>
+                    <dd className="font-medium tabular-nums">{formatDate(updateInfo.date)}</dd>
                   </div>
                 )}
-              </div>
+              </dl>
 
               {updateInfo.body && (
-                <div className="bg-gray-50 rounded-lg p-3 max-h-40 overflow-y-auto">
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {updateInfo.body}
-                  </p>
-                </div>
+                <p className="max-h-40 overflow-y-auto whitespace-pre-wrap border-t border-border pt-3 text-sm text-muted-foreground">
+                  {updateInfo.body}
+                </p>
               )}
             </>
           )}
 
           {isDownloading && progress && (
             <div className="space-y-2">
-              <div className="relative">
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className="bg-blue-600 h-3 rounded-full transition-all duration-300 ease-out"
-                    style={{ width: `${Math.min(progress.percentage, 100)}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-xs text-gray-600 mt-1">
-                  <span>{Math.round(progress.percentage)}% complete</span>
+              <div>
+                <Progress value={Math.min(progress.percentage, 100)} />
+                <div className="mt-1 flex justify-between text-xs tabular-nums text-muted-foreground">
+                  <span>{t('percentComplete', { percent: Math.round(progress.percentage) })}</span>
                   {progress.total > 0 && (
                     <span>
                       {formatBytes(progress.downloaded)} / {formatBytes(progress.total)}
@@ -261,16 +258,14 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
                   )}
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground text-center">
-                The app will restart automatically after installation
+              <p className="text-xs text-muted-foreground">
+                {t('restartNote')}
               </p>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-800">{error}</p>
-            </div>
+            <p className="text-sm text-destructive">{error}</p>
           )}
         </div>
 
@@ -278,17 +273,17 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
           {!isDownloading && !error && (
             <>
               <Button variant="outline" onClick={() => handleOpenChange(false)}>
-                Later
+                {t('later')}
               </Button>
-              <Button onClick={handleDownloadAndInstall} className="bg-blue-600 hover:bg-blue-700">
-                <Download className="h-4 w-4 mr-2" />
-                Download & Install
+              <Button onClick={handleDownloadAndInstall}>
+                <Download />
+                {t('downloadInstall')}
               </Button>
             </>
           )}
           {error && (
             <Button variant="outline" onClick={() => handleOpenChange(false)}>
-              Close
+              {tApp('close')}
             </Button>
           )}
         </DialogFooter>
@@ -298,9 +293,9 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
 }
 
 function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) return '0 B';
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  return (bytes / Math.pow(k, i)).toLocaleString(locale, { maximumFractionDigits: 2 }) + ' ' + sizes[i];
 }

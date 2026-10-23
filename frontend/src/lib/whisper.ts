@@ -1,4 +1,7 @@
 // Types for whisper-rs integration
+import { locale } from '@/i18n';
+import { t } from '@/i18n/models';
+
 export interface ModelInfo {
   name: string;
   path: string;
@@ -132,15 +135,6 @@ export const MODEL_CONFIGS: Record<string, Partial<ModelInfo>> = {
 };
 
 // Helper functions
-export function getModelIcon(accuracy: ModelAccuracy): string {
-  switch (accuracy) {
-    case 'High': return '🔥';
-    case 'Good': return '⚡';
-    case 'Decent': return '🚀';
-    default: return '📊';
-  }
-}
-
 export function getStatusColor(status: ModelStatus): string {
   if (status === 'Available') return 'green';
   if (status === 'Missing') return 'gray';
@@ -151,9 +145,9 @@ export function getStatusColor(status: ModelStatus): string {
 
 export function formatFileSize(sizeMb: number): string {
   if (sizeMb >= 1000) {
-    return `${(sizeMb / 1000).toFixed(1)}GB`;
+    return `${(sizeMb / 1000).toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} GB`;
   }
-  return `${sizeMb}MB`;
+  return `${Math.round(sizeMb)} MB`;
 }
 
 // Helper function to get model type (f16, q5_1, q5_0, q4_0)
@@ -175,19 +169,19 @@ export function isQuantizedModel(modelName: string): boolean {
 }
 
 // Helper function to get model performance badge
-export function getModelPerformanceBadge(modelName: string): { label: string; color: string } {
+export function getModelPerformanceBadge(modelName: string): { label: string } {
   const type = getModelType(modelName);
   switch (type) {
     case 'f16':
-      return { label: 'Full Precision', color: 'blue' };
+      return { label: t('perfFullPrecision') };
     case 'q5_1':
-      return { label: 'Balanced+', color: 'green' };
+      return { label: t('perfBalancedPlus') };
     case 'q5_0':
-      return { label: 'Balanced', color: 'green' };
+      return { label: t('perfBalanced') };
     case 'q4_0':
-      return { label: 'Fast', color: 'orange' };
+      return { label: t('perfFast') };
     default:
-      return { label: 'Standard', color: 'gray' };
+      return { label: t('perfStandard') };
   }
 }
 
@@ -200,42 +194,42 @@ export function getModelTagline(modelName: string, speed: ProcessingSpeed, accur
   let speedText = '';
   switch (speed) {
     case 'Very Fast':
-      speedText = 'Real time';
+      speedText = t('speedRealTime');
       break;
     case 'Fast':
-      speedText = 'Fast processing';
+      speedText = t('speedFast');
       break;
     case 'Medium':
-      speedText = 'Moderate speed';
+      speedText = t('speedModerate');
       break;
     case 'Slow':
-      speedText = 'Slower processing';
+      speedText = t('speedSlow');
       break;
   }
 
   // Key feature based on model and accuracy
   let featureText = '';
   if (baseName === 'large-v3') {
-    featureText = 'Most accurate';
+    featureText = t('featureMostAccurate');
   } else if (baseName === 'large-v3-turbo') {
-    featureText = 'Best accuracy with speed';
+    featureText = t('featureAccurateFast');
   } else if (baseName === 'medium') {
-    featureText = accuracy === 'High' ? 'Professional quality' : 'Balanced quality';
+    featureText = accuracy === 'High' ? t('featureProfessional') : t('featureBalanced');
   } else if (baseName === 'small') {
-    featureText = 'Good accuracy';
+    featureText = t('featureGood');
   } else if (baseName === 'base') {
-    featureText = 'Balanced quality';
+    featureText = t('featureBalanced');
   } else if (baseName === 'tiny') {
-    featureText = 'Fastest option';
+    featureText = t('featureFastest');
   }
 
   // Add quantization note if applicable
   if (isQuantized) {
     const quantType = getModelType(modelName);
     if (quantType === 'q5_0') {
-      featureText += ', optimized';
+      featureText += t('suffixOptimized');
     } else if (quantType === 'q4_0') {
-      featureText += ', ultra fast';
+      featureText += t('suffixUltraFast');
     }
   }
 

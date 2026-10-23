@@ -334,8 +334,12 @@ pub async fn show_recording_started_notification<R: Runtime>(
                 // Fallback: Use Tauri's notification API directly
                 let title = "Dixit";
                 let body = match meeting_name {
+                    Some(name) if crate::i18n::it() => format!("Registrazione avviata: {}", name),
                     Some(name) => format!("Recording started for meeting: {}", name),
-                    None => "Recording has started. Please inform others in the meeting that you are recording.".to_string(),
+                    None => crate::i18n::tr(
+                        "Registrazione avviata. Avvisa i partecipanti che stai registrando.",
+                        "Recording has started. Please inform others in the meeting that you are recording.",
+                    ).to_string(),
                 };
 
                 log_info!("Using direct Tauri notification fallback: {} - {}", title, body);
@@ -383,7 +387,7 @@ pub async fn show_recording_stopped_notification<R: Runtime>(
 
         // Use direct Tauri notification as fallback for stop notification
         let title = "Dixit";
-        let body = "Recording has stopped";
+        let body = crate::i18n::tr("Registrazione interrotta", "Recording has stopped");
 
         log_info!("Using direct Tauri notification fallback: {} - {}", title, body);
 

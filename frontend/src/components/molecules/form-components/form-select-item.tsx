@@ -68,11 +68,7 @@ export const FormSelectItem = ({
                     <SelectGroup>
                       <SelectLabel>{selectLabel}</SelectLabel>
                       {options.map((item, i) => (
-                        <SelectItem
-                          key={`${item}+${i}`}
-                          value={item.value}
-                          className="hover:bg-slate-100 cursor-pointer"
-                        >
+                        <SelectItem key={`${item}+${i}`} value={item.value}>
                           {item.label}
                         </SelectItem>
                       ))}

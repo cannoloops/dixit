@@ -1,15 +1,20 @@
 "use client";
-import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { MeetingSummary, SummaryProcessResponse } from '@/types';
-import { useSidebar } from '@/components/Sidebar/SidebarProvider';
 import Analytics from '@/lib/analytics';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { toast } from 'sonner';
 import { TranscriptPanel } from '@/components/MeetingDetails/TranscriptPanel';
 import { SummaryPanel } from '@/components/MeetingDetails/SummaryPanel';
 import { MeetingDetailsSplitView, type MeetingDetailsTab } from '@/components/MeetingDetails/MeetingDetailsSplitView';
+import { SpeakerBand } from '@/components/MeetingDetails/SpeakerBand';
+import { GenerateSummaryButton } from '@/components/MeetingDetails/SummaryGeneratorButtonGroup';
+import { EditableTitle } from '@/components/EditableTitle';
 import { ModelConfig } from '@/components/ModelSettingsModal';
+import { hasVisibleSummaryContent } from '@/lib/summary-content';
+import { locale } from '@/i18n';
+import { t } from '@/i18n/meeting';
 
 // Custom hooks
 import { useMeetingData } from '@/hooks/meeting-details/useMeetingData';
@@ -17,7 +22,28 @@ import { useSummaryGeneration } from '@/hooks/meeting-details/useSummaryGenerati
 import { useTemplates } from '@/hooks/meeting-details/useTemplates';
 import { useCopyOperations } from '@/hooks/meeting-details/useCopyOperations';
 import { useMeetingOperations } from '@/hooks/meeting-details/useMeetingOperations';
+import { useMeetingTimeline, rosterOf } from '@/hooks/meeting-details/useMeetingTimeline';
 import { useConfig } from '@/contexts/ConfigContext';
+
+/** "23 ottobre 2026 · 14:30 · 1 h 05 min" (duration only when the transcript carries times). */
+function meetingDateLine(createdAt: string, durationSeconds: number): string {
+  const date = new Date(createdAt);
+  const parts = Number.isNaN(date.getTime())
+    ? []
+    : [
+        date.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' }),
+        date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
+      ];
+  if (durationSeconds > 0) {
+    const minutes = Math.max(1, Math.round(durationSeconds / 60));
+    parts.push(
+      minutes >= 60
+        ? t('durationHours', { h: Math.floor(minutes / 60), m: String(minutes % 60).padStart(2, '0') })
+        : t('durationMinutes', { m: minutes })
+    );
+  }
+  return parts.join(' · ');
+}
 
 export default function PageContent({
   meeting,
@@ -60,15 +86,15 @@ export default function PageContent({
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const isRecording = false;
   const [activeTab, setActiveTab] = useState<MeetingDetailsTab>('transcript');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const titleBeforeEdit = useRef<string | null>(null);
+  const [jumpTo, setJumpTo] = useState<{ id: string; nonce: number } | null>(null);
 
   // Ref to store the modal open function from SummaryGeneratorButtonGroup
   const openModelSettingsRef = useRef<(() => void) | null>(null);
   const autoSwitchedSummaryMeetingIdsRef = useRef(new Set<string>());
   const manuallySelectedTabMeetingIdsRef = useRef(new Set<string>());
   const autoGenerationStartedMeetingIdRef = useRef<string | null>(null);
-
-  // Sidebar context
-  const { serverAddress } = useSidebar();
 
   // Get model config from ConfigContext
   const { modelConfig, setModelConfig, isModelConfigLoading } = useConfig();
@@ -109,10 +135,10 @@ export default function PageContent({
       const { emit } = await import('@tauri-apps/api/event');
       await emit('model-config-updated', config);
 
-      toast.success('Model settings saved successfully');
+      toast.success(t('modelSaved'));
     } catch (error) {
       console.error('Failed to save model config:', error);
-      toast.error('Failed to save model settings');
+      toast.error(t('modelSaveFailed'), { description: String(error) });
     }
   };
 
@@ -140,6 +166,62 @@ export default function PageContent({
   const meetingOperations = useMeetingOperations({
     meeting,
   });
+
+  // All lines of the meeting (the transcript list is paginated): speaker band, roster, duration.
+  const timeline = useMeetingTimeline(meeting.id);
+  const roster = useMemo(
+    () => rosterOf(timeline.lines?.length ? timeline.lines : segments ?? []),
+    [timeline.lines, segments]
+  );
+  const refreshTimeline = timeline.refresh;
+
+  // Renames, retranscription and late speaker attribution reload both the list and the band.
+  const refreshTranscripts = useCallback(async () => {
+    refreshTimeline();
+    await onRefetchTranscripts?.();
+  }, [refreshTimeline, onRefetchTranscripts]);
+
+  // Attribution finishes after the meeting is saved, and Teams transcripts can arrive later.
+  useEffect(() => {
+    const unlisten = listen('speakers-updated', () => void refreshTranscripts());
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [refreshTranscripts]);
+
+  const handleSelectTurn = useCallback((lineId: string) => {
+    manuallySelectedTabMeetingIdsRef.current.add(meeting.id);
+    setActiveTab('transcript');
+    setJumpTo({ id: lineId, nonce: Date.now() });
+  }, [meeting.id]);
+
+  const handleStartEditingTitle = () => {
+    titleBeforeEdit.current = meetingData.meetingTitle;
+    setIsEditingTitle(true);
+  };
+
+  // Enter and blur both end editing: only the first call saves.
+  const handleFinishEditingTitle = async () => {
+    const previous = titleBeforeEdit.current;
+    if (previous === null) return;
+    titleBeforeEdit.current = null;
+    setIsEditingTitle(false);
+    const next = meetingData.meetingTitle.trim();
+    if (!next || next === previous) {
+      meetingData.setMeetingTitle(previous);
+      return;
+    }
+    try {
+      await invoke('api_save_meeting_title', { meetingId: meeting.id, title: next });
+      meetingData.updateMeetingTitle(next);
+      Analytics.trackButtonClick('edit_meeting_title', 'meeting_details');
+      await onMeetingUpdated?.();
+    } catch (error) {
+      console.error('Failed to save meeting title:', error);
+      meetingData.setMeetingTitle(previous);
+      toast.error(t('titleSaveFailed'), { description: String(error) });
+    }
+  };
 
   // Track page view
   useEffect(() => {
@@ -186,13 +268,45 @@ export default function PageContent({
   ]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="flex flex-col h-screen min-w-0 bg-gray-50"
-    >
-      <div className="flex flex-1 min-w-0 overflow-hidden">
+    <div className="flex h-screen min-w-0 flex-col bg-background">
+      <header className="shrink-0 px-3 pb-3 pt-4">
+        <div className="flex items-start gap-4">
+          <div className="min-w-0 flex-1">
+            <EditableTitle
+              title={meetingData.meetingTitle}
+              isEditing={isEditingTitle}
+              onStartEditing={handleStartEditingTitle}
+              onFinishEditing={handleFinishEditingTitle}
+              onChange={meetingData.setMeetingTitle}
+              className="incisa text-2xl leading-tight"
+            />
+            <p className="mt-1 px-1 text-xs tabular-nums text-muted-foreground">
+              {meetingDateLine(meeting.created_at, timeline.duration)}
+            </p>
+          </div>
+          <div className="shrink-0 pt-0.5">
+            <GenerateSummaryButton
+              summaryStatus={summaryGeneration.summaryStatus}
+              hasSummary={hasVisibleSummaryContent(meetingData.aiSummary)}
+              hasTranscripts={meetingData.transcripts.length > 0}
+              isModelConfigLoading={isModelConfigLoading}
+              onGenerate={() => void summaryGeneration.handleGenerateSummary(customPrompt)}
+              onStop={summaryGeneration.handleStopGeneration}
+            />
+          </div>
+        </div>
+        <SpeakerBand
+          className="mt-4 px-1"
+          meetingId={meeting.id}
+          lines={timeline.lines}
+          duration={timeline.duration}
+          roster={roster}
+          onChanged={refreshTranscripts}
+          onSelectTurn={handleSelectTurn}
+        />
+      </header>
+
+      <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden border-t border-border">
         <MeetingDetailsSplitView
           activeTab={activeTab}
           onTabChange={(tab) => {
@@ -217,7 +331,9 @@ export default function PageContent({
               onLoadMore={onLoadMore}
               meetingId={meeting.id}
               meetingFolderPath={meeting.folder_path}
-              onRefetchTranscripts={onRefetchTranscripts}
+              onRefetchTranscripts={refreshTranscripts}
+              roster={roster}
+              jumpTo={jumpTo}
             />
           }
           summary={
@@ -235,9 +351,6 @@ export default function PageContent({
               modelConfig={modelConfig}
               setModelConfig={setModelConfig}
               onSaveModelConfig={handleSaveModelConfig}
-              onGenerateSummary={summaryGeneration.handleGenerateSummary}
-              onStopGeneration={summaryGeneration.handleStopGeneration}
-              customPrompt={customPrompt}
               onSaveSummary={meetingData.handleSaveSummary}
               onSummaryChange={meetingData.handleSummaryChange}
               onDirtyChange={meetingData.setIsSummaryDirty}
@@ -249,10 +362,11 @@ export default function PageContent({
               onTemplateSelect={templates.handleTemplateSelection}
               isModelConfigLoading={isModelConfigLoading}
               onOpenModelSettings={handleRegisterModalOpen}
+              onChooseModel={handleOpenModelSettings}
             />
           }
         />
       </div>
-    </motion.div>
+    </div>
   );
 }
