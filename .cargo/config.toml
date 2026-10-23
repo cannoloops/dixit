@@ -1,0 +1,7 @@
+# ponytail: the Command Line Tools SDK on this Mac ships a libSystem.tbd its clang can't link;
+# force Xcode's SDK for build scripts (whisper.cpp/cmake). Drop when CLT is fixed.
+[env]
+SDKROOT = { value = "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk", force = false }
+# ponytail: llama.cpp's vendored httplib doesn't build against Homebrew OpenSSL 3.6; llama-helper never uses HTTPS.
+# llama-cpp-sys only forwards CMAKE_* env vars, so hide OpenSSL from find_package instead of setting LLAMA_OPENSSL.
+CMAKE_DISABLE_FIND_PACKAGE_OpenSSL = "ON"
