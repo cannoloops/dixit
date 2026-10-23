@@ -41,9 +41,6 @@ pub struct MeetingMetadata {
     /// Trascrivi: "teams" | "zoom" | "meet" for auto-started recordings, None for manual ones.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub platform: Option<String>,
-    /// Trascrivi: seconds from recording start at which the native Teams transcription was started.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub native_transcription_offset: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -261,7 +258,6 @@ impl RecordingSaver {
             status: "recording".to_string(),
             platform: crate::autopilot::current_session()
                 .map(|s| s.platform.label().to_lowercase()),
-            native_transcription_offset: None,
         };
 
         // Write initial metadata.json

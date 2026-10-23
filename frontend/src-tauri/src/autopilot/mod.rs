@@ -68,6 +68,7 @@ pub fn spawn<R: Runtime>(app: AppHandle<R>) {
                     seen_recording = true;
                 } else if seen_recording {
                     log::info!("Autopilot: recording stopped by the user, suppressing until the call ends");
+                    crate::teams::stop_native_in_background();
                     tracker.manual_stop();
                     end_session();
                     seen_recording = false;
@@ -131,6 +132,9 @@ async fn start<R: Runtime>(app: &AppHandle<R>, platform: Platform) {
         }
     }
     banner::show(app, &title);
+    if platform == Platform::Teams {
+        crate::teams::on_session_start(app);
+    }
     notify(app, &format!("Trascrizione avviata – {title}"), "Puoi annullarla dal banner o dal menu Trascrivi.");
     let _ = app.emit("autopilot-session", serde_json::json!({ "platform": platform, "title": title }));
 }
@@ -151,6 +155,7 @@ async fn cancel<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
     *CANCELLED_FOLDER.lock().unwrap() = folder.clone();
     log::info!("Cancelling recording, folder {:?}", folder);
     banner::close(app);
+    crate::teams::stop_native_in_background();
     rc::stop_recording(app.clone(), rc::RecordingArgs { save_path: String::new() }).await?;
     end_session();
     if let Some(folder) = folder {

@@ -844,6 +844,7 @@ pub fn run() {
             autopilot::autopilot_probe,
             autopilot::autopilot_cancel,
             autopilot::banner::autopilot_banner_close,
+            teams::teams_dump_ax_tree,
             autopilot::autopilot_request_accessibility,
         ])
         .build(tauri::generate_context!())
