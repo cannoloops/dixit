@@ -10,25 +10,28 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow hover:bg-primary/90",
+          "bg-primary text-primary-foreground hover:bg-primary/90",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
-          "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        green: "bg-green-600 text-white hover:bg-green-600",
-        blue: "bg-blue-500 text-white hover:bg-blue-600",
-        red: "bg-red-500 text-white hover:bg-red-600",
-        gray: "border bg-gray-100 border-input shadow-sm hover:bg-gray-200 hover:text-accent-foreground",
+        // Legacy Meetily variants, mapped onto the Dixit palette (prefer the semantic ones above).
+        green: "bg-primary text-primary-foreground hover:bg-primary/90",
+        blue: "bg-primary text-primary-foreground hover:bg-primary/90",
+        red: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        gray: "border border-input bg-secondary text-secondary-foreground hover:bg-accent",
+        // Only for starting/stopping a recording: minium is reserved for "Dixit is recording".
+        live: "bg-live text-live-foreground hover:bg-live/90",
       },
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-8",
-        icon: "h-9 w-9",
+        default: "h-8 px-3",
+        sm: "h-7 rounded-sm px-2.5 text-xs",
+        lg: "h-9 rounded-md px-5",
+        icon: "h-8 w-8",
       },
     },
     defaultVariants: {

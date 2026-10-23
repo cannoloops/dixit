@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-    darkMode: ['class'],
+    darkMode: 'media',
     content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -9,9 +9,9 @@ module.exports = {
   theme: {
   	extend: {
   		fontFamily: {
-  			sans: [
-  				'var(--font-source-sans-3)'
-  			]
+  			// Dixit: system UI sans for everything; inscriptional capitals only for names and titles.
+  			sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"Helvetica Neue"', 'sans-serif'],
+  			incisa: ['var(--font-cinzel)', 'serif']
   		},
   		colors: {
   			background: 'hsl(var(--background))',
@@ -27,7 +27,27 @@ module.exports = {
   				DEFAULT: 'hsl(var(--secondary))',
   				foreground: 'hsl(var(--secondary-foreground))'
   			},
-  			tertiary: '#64748b',
+  			rail: {
+  				DEFAULT: 'hsl(var(--rail))',
+  				foreground: 'hsl(var(--rail-foreground))',
+  				muted: 'hsl(var(--rail-muted))',
+  				border: 'hsl(var(--rail-border))',
+  				active: 'hsl(var(--rail-active))',
+  				accent: 'hsl(var(--rail-accent))'
+  			},
+  			live: {
+  				DEFAULT: 'hsl(var(--live))',
+  				foreground: 'hsl(var(--live-foreground))'
+  			},
+  			speaker: {
+  				me: 'hsl(var(--speaker-me))',
+  				'1': 'hsl(var(--speaker-1))',
+  				'2': 'hsl(var(--speaker-2))',
+  				'3': 'hsl(var(--speaker-3))',
+  				'4': 'hsl(var(--speaker-4))',
+  				'5': 'hsl(var(--speaker-5))',
+  				other: 'hsl(var(--speaker-other))'
+  			},
   			card: {
   				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'
@@ -48,13 +68,6 @@ module.exports = {
   				DEFAULT: 'hsl(var(--destructive))',
   				foreground: 'hsl(var(--destructive-foreground))'
   			},
-  			chart: {
-  				'1': 'hsl(var(--chart-1))',
-  				'2': 'hsl(var(--chart-2))',
-  				'3': 'hsl(var(--chart-3))',
-  				'4': 'hsl(var(--chart-4))',
-  				'5': 'hsl(var(--chart-5))'
-  			}
   		},
   		borderRadius: {
   			lg: 'var(--radius)',

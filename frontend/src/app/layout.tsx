@@ -1,7 +1,8 @@
 'use client'
 
 import './globals.css'
-import { Source_Sans_3 } from 'next/font/google'
+import { Cinzel } from 'next/font/google'
+import { lang } from '@/i18n'
 import Sidebar from '@/components/Sidebar'
 import { SidebarProvider } from '@/components/Sidebar/SidebarProvider'
 import MainContent from '@/components/MainContent'
@@ -27,10 +28,11 @@ import { ImportDialogProvider } from '@/contexts/ImportDialogContext'
 import { isAudioExtension, getAudioFormatsDisplayList } from '@/constants/audioFormats'
 
 
-const sourceSans3 = Source_Sans_3({
+// Inscriptional capitals for speaker names and titles (self-hosted by next/font at build).
+const cinzel = Cinzel({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-source-sans-3',
+  weight: ['500', '600', '700'],
+  variable: '--font-cinzel',
 })
 
 // Module-level component — stable reference across RootLayout re-renders.
@@ -69,6 +71,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   const [showOnboarding, setShowOnboarding] = useState(false)
+  // Render only on the client: language and appearance come from the system at runtime,
+  // so the statically exported HTML must not carry text that would mismatch on hydration.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
   const [onboardingCompleted, setOnboardingCompleted] = useState(false)
 
   // Import audio state
@@ -231,8 +237,9 @@ export default function RootLayout({
   }
 
   return (
-    <html lang="en">
-      <body className={`${sourceSans3.variable} font-sans antialiased`}>
+    <html lang={lang} suppressHydrationWarning>
+      <body className={`${cinzel.variable} font-sans antialiased`}>
+        {mounted && (<>
         <AnalyticsProvider>
           <RecordingStateProvider>
             <TranscriptProvider>
@@ -276,7 +283,8 @@ export default function RootLayout({
           </RecordingStateProvider>
         </AnalyticsProvider>
 
-        <Toaster position="bottom-center" richColors closeButton />
+        <Toaster position="bottom-center" theme="system" closeButton />
+        </>)}
       </body>
     </html>
   )
