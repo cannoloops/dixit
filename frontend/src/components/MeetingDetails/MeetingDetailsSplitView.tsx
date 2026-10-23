@@ -1,18 +1,18 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { FileText, Sparkles } from 'lucide-react';
+import { FileText, ScrollText } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { t } from '@/i18n/meeting';
 const STORAGE_KEY = 'meetily.meetingDetails.transcriptPaneRatio';
 // The transcript is the main column; the summary is the panel on the right.
-const DEFAULT_RATIO = 0.55;
+const DEFAULT_RATIO = 0.65;
 const MIN_RATIO = 0.35;
-const MAX_RATIO = 0.7;
+const MAX_RATIO = 0.75;
 
 const TABS = [
   { value: 'transcript' as const, label: t('transcript'), icon: FileText },
-  { value: 'summary' as const, label: t('summary'), icon: Sparkles },
+  { value: 'summary' as const, label: t('summary'), icon: ScrollText },
 ];
 
 function readStoredRatio(): number {

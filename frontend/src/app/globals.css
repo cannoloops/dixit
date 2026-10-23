@@ -81,24 +81,24 @@
    Light/dark follow macOS (tailwind darkMode: media). Values are HSL triplets. */
 @layer base {
   :root {
-    --background: 60 14% 96%;        /* marmo */
+    --background: 210 16% 96%;       /* marmo di Carrara, freddo */
     --foreground: 80 5% 11%;         /* inchiostro */
-    --card: 60 20% 98%;
+    --card: 210 20% 98%;
     --card-foreground: 80 5% 11%;
-    --popover: 60 20% 98%;
+    --popover: 210 20% 98%;
     --popover-foreground: 80 5% 11%;
     --primary: 39 54% 31%;           /* bronzo */
-    --primary-foreground: 60 20% 98%;
-    --secondary: 60 12% 90%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 210 14% 91%;
     --secondary-foreground: 80 5% 11%;
-    --muted: 60 12% 92%;
-    --muted-foreground: 75 4% 36%;
-    --accent: 60 13% 89%;
+    --muted: 210 14% 92%;
+    --muted-foreground: 210 7% 36%;
+    --accent: 210 14% 89%;
     --accent-foreground: 80 5% 11%;
-    --destructive: 346 50% 37%;      /* porfido */
-    --destructive-foreground: 60 20% 98%;
-    --border: 60 9% 84%;
-    --input: 60 8% 80%;
+    --destructive: 356 55% 38%;      /* rosso mattone */
+    --destructive-foreground: 210 20% 98%;
+    --border: 210 11% 84%;
+    --input: 210 9% 79%;
     --ring: 40 42% 43%;
     --radius: 0.25rem;
 
@@ -113,16 +113,15 @@
     --live: 9 76% 45%;               /* minio: only while recording */
     --live-foreground: 0 0% 100%;
 
-    --speaker-me: 39 54% 31%;        /* bronzo */
+    --speaker-me: 151 40% 30%;       /* verde antico: l'utente */
     --speaker-1: 218 53% 39%;        /* lapislazzuli */
-    --speaker-2: 151 40% 30%;        /* verde antico */
-    --speaker-3: 255 30% 42%;        /* pavonazzetto */
+    --speaker-2: 42 72% 30%;         /* giallo antico */
+    --speaker-3: 330 40% 36%;        /* porfido */
     --speaker-4: 21 53% 35%;         /* terra di Siena */
-    --speaker-5: 196 20% 36%;        /* bardiglio */
-    --speaker-other: 75 4% 42%;
+    --speaker-5: 255 30% 42%;        /* pavonazzetto */
+    --speaker-other: 210 6% 42%;
 
     --shadow-float: 0 12px 32px -12px hsl(80 5% 11% / 0.35), 0 2px 6px -2px hsl(80 5% 11% / 0.12);
-    --incised: 0 1px 0 hsl(0 0% 100% / 0.75), 0 -1px 0 hsl(80 5% 11% / 0.10);
   }
 
   @media (prefers-color-scheme: dark) {
@@ -141,7 +140,7 @@
       --muted-foreground: 67 5% 63%;
       --accent: 72 6% 17%;
       --accent-foreground: 60 12% 90%;
-      --destructive: 344 51% 63%;
+      --destructive: 356 60% 66%;
       --destructive-foreground: 90 4% 11%;
       --border: 70 6% 20%;
       --input: 80 5% 24%;
@@ -157,16 +156,15 @@
       --live: 9 77% 56%;
       --live-foreground: 90 4% 11%;
 
-      --speaker-me: 39 51% 57%;
+      --speaker-me: 148 36% 60%;
       --speaker-1: 221 64% 73%;
-      --speaker-2: 148 36% 60%;
-      --speaker-3: 254 51% 75%;
+      --speaker-2: 42 65% 60%;
+      --speaker-3: 330 45% 70%;
       --speaker-4: 21 58% 65%;
-      --speaker-5: 196 22% 67%;
+      --speaker-5: 254 51% 75%;
       --speaker-other: 73 4% 59%;
 
       --shadow-float: 0 12px 32px -12px hsl(0 0% 0% / 0.6), 0 2px 6px -2px hsl(0 0% 0% / 0.4);
-      --incised: 0 1px 0 hsl(0 0% 0% / 0.6), 0 -1px 0 hsl(0 0% 100% / 0.05);
     }
   }
 }
@@ -221,7 +219,6 @@
     text-transform: uppercase;
     letter-spacing: 0.06em;
     font-weight: 600;
-    text-shadow: var(--incised);
   }
 
   /* Signature move: a resolved name is chiselled in once, left to right. */

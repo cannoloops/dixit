@@ -3,6 +3,7 @@ import { makeT } from '.';
 // Settings area: page, tabs, automation, recordings, devices, transcription, summary, beta, language pickers.
 export const t = makeT({
   it: {
+    localOnly: 'Dixit non invia dati: riunioni, trascrizioni e registrazioni restano sul tuo Mac.',
     // Pagina e schede
     title: 'Impostazioni',
     back: 'Indietro',
@@ -171,6 +172,7 @@ export const t = makeT({
     hidePassword: 'Nascondi password',
   },
   en: {
+    localOnly: 'Dixit sends no data: meetings, transcripts and recordings stay on your Mac.',
     // Page and tabs
     title: 'Settings',
     back: 'Back',

@@ -21,6 +21,8 @@ export interface CurrentMeeting {
   id: string;
   title: string;
   created_at?: string;
+  duration_secs?: number | null;
+  unnamed_speakers?: boolean;
 }
 
 // Search result type for transcript search
@@ -103,7 +105,9 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
         const transformedMeetings = meetings.map((meeting) => ({
           id: meeting.id,
           title: meeting.title,
-          created_at: meeting.created_at
+          created_at: meeting.created_at,
+          duration_secs: meeting.duration_secs,
+          unnamed_speakers: meeting.unnamed_speakers
         }));
         setMeetings(transformedMeetings);
         Analytics.trackBackendConnection(true);

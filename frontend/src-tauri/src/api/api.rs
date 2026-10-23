@@ -32,6 +32,10 @@ pub struct Meeting {
     pub title: String,
     /// RFC 3339; the sidebar groups the archive by day with it.
     pub created_at: String,
+    /// End of the last transcript segment, in seconds.
+    pub duration_secs: Option<f64>,
+    /// Some lines still carry a placeholder speaker ("Parlante A"): names to check.
+    pub unnamed_speakers: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -340,12 +344,29 @@ pub async fn api_get_meetings<R: Runtime>(
         Ok(meeting_models) => {
             log_info!("Successfully got {} meetings", meeting_models.len());
 
+            // One pass over the transcripts for the archive's duration and "names to check" state.
+            let stats: std::collections::HashMap<String, (Option<f64>, i64)> = sqlx::query_as::<_, (String, Option<f64>, i64)>(
+                "SELECT meeting_id, MAX(audio_end_time), SUM(CASE WHEN speaker LIKE 'Parlante %' THEN 1 ELSE 0 END)
+                 FROM transcripts GROUP BY meeting_id",
+            )
+            .fetch_all(pool)
+            .await
+            .unwrap_or_default()
+            .into_iter()
+            .map(|(id, duration, unnamed)| (id, (duration, unnamed)))
+            .collect();
+
             let result: Vec<Meeting> = meeting_models
                 .into_iter()
-                .map(|m| Meeting {
-                    id: m.id,
-                    title: m.title,
-                    created_at: m.created_at.0.to_rfc3339(),
+                .map(|m| {
+                    let (duration_secs, unnamed) = stats.get(&m.id).copied().unwrap_or((None, 0));
+                    Meeting {
+                        id: m.id,
+                        title: m.title,
+                        created_at: m.created_at.0.to_rfc3339(),
+                        duration_secs,
+                        unnamed_speakers: unnamed > 0,
+                    }
                 })
                 .collect();
             Ok(result)

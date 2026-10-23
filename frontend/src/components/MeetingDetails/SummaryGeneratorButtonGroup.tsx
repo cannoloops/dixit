@@ -16,7 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Sparkles, Settings, Loader2, FileText, Check } from 'lucide-react';
+import { Settings, Loader2, FileText, Check } from 'lucide-react';
 import Analytics from '@/lib/analytics';
 import { useState, useEffect, ReactNode } from 'react';
 import { t } from '@/i18n/meeting';
@@ -71,7 +71,7 @@ export function GenerateSummaryButton({
         onGenerate();
       }}
     >
-      {isModelConfigLoading ? <Loader2 className="animate-spin" /> : <Sparkles />}
+      {isModelConfigLoading && <Loader2 className="animate-spin" />}
       {hasSummary ? t('regenerate') : t('generate')}
     </Button>
   );

@@ -17,7 +17,7 @@ import { useRecordingState } from '@/contexts/RecordingStateContext';
 import { useTranscripts } from '@/contexts/TranscriptContext';
 import { useImportDialog } from '@/contexts/ImportDialogContext';
 import { useConfig } from '@/contexts/ConfigContext';
-import { LiveIndicator, StateStamp } from '@/components/dixit';
+import { LiveIndicator, StateStamp, inscribe } from '@/components/dixit';
 import { cn } from '@/lib/utils';
 import { locale } from '@/i18n';
 import { t } from '@/i18n/shell';
@@ -36,6 +36,12 @@ import { Label } from '@/components/ui/label';
 
 import Logo from '../Logo';
 import Info from '../Info';
+
+/** Compact meeting length for the archive: "14 min", "1h19". */
+function formatDuration(seconds: number): string {
+  const minutes = Math.max(1, Math.round(seconds / 60));
+  return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, '0')}`;
+}
 
 // Rail controls (peperino stone, dark in both themes).
 const railItem =
@@ -488,8 +494,18 @@ const Sidebar: React.FC = () => {
           )}
         >
           <span className="w-10 shrink-0 text-xs tabular-nums text-rail-muted">{time}</span>
-          <span className="min-w-0 flex-1 truncate">{meeting.title}</span>
+          <span className="incisa min-w-0 flex-1 truncate text-[11px]">{inscribe(meeting.title)}</span>
+          {meeting.duration_secs ? (
+            <span className="shrink-0 text-xs tabular-nums text-rail-muted group-hover:hidden group-has-[:focus-visible]:hidden">
+              {formatDuration(meeting.duration_secs)}
+            </span>
+          ) : null}
         </button>
+        {meeting.unnamed_speakers && (
+          <div className="pb-1 pl-14">
+            <StateStamp state="verify" className="border-rail-accent/50 text-rail-accent" />
+          </div>
+        )}
         {snippet && (
           <p className="line-clamp-2 pb-1 pl-14 pr-2 text-xs text-rail-muted">{snippet}</p>
         )}

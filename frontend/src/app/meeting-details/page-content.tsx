@@ -278,7 +278,8 @@ export default function PageContent({
               onStartEditing={handleStartEditingTitle}
               onFinishEditing={handleFinishEditingTitle}
               onChange={meetingData.setMeetingTitle}
-              className="incisa text-2xl leading-tight"
+              className="incisa text-3xl leading-tight"
+              inscribed
             />
             <p className="mt-1 px-1 text-xs tabular-nums text-muted-foreground">
               {meetingDateLine(meeting.created_at, timeline.duration)}

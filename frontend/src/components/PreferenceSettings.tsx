@@ -6,7 +6,6 @@ import { Button } from "./ui/button"
 import { FolderOpen } from "lucide-react"
 import { invoke } from "@tauri-apps/api/core"
 import Analytics from "@/lib/analytics"
-import AnalyticsConsentSwitch from "./AnalyticsConsentSwitch"
 import { useConfig, NotificationSettings } from "@/contexts/ConfigContext"
 import { SettingsSection, SettingRow } from "@/components/molecules/form-components/setting-row"
 import { t } from "@/i18n/settings"
@@ -169,7 +168,8 @@ export function PreferenceSettings() {
         </SettingRow>
       </SettingsSection>
 
-      <AnalyticsConsentSwitch />
+      {/* Analytics stay disabled in Dixit (no PostHog key), so there is nothing to opt into. */}
+      <p className="text-xs text-muted-foreground">{t('localOnly')}</p>
     </div>
   )
 }

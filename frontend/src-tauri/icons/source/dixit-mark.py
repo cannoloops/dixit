@@ -335,7 +335,7 @@ def build():
     main, small, tray = HERE / 'dixit.svg', HERE / 'dixit-small.svg', HERE / 'tray-template.svg'
     master = HERE / 'dixit-1024.png'
     svg_png(main, 1024, master)
-    svg_png(tray, 44, ICONS / 'tray-template.png')
+    svg_png(tray, 36, ICONS / 'tray-template.png')  # tray-icon draws it at 18pt: 36px @2x stays pixel-sharp
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         # Tauri's own set (Windows/Linux/Store sizes, .ico); only the files this repo already ships.
@@ -356,16 +356,16 @@ def build():
         shutil.copy2(ICONS / 'icon.icns', ICONS / 'app_icon.icns')
         shutil.copy2(ICONS / 'icon.ico', ICONS / 'app_icon.ico')
         # Web copies
-        svg_png(main, 512, FRONTEND / 'public' / 'logo-collapsed.png')
         for s, src in [(16, small), (32, small), (48, main), (64, main)]:
             svg_png(src, s, tmp / f'fav{s}.png')
         write_ico([(s, tmp / f'fav{s}.png') for s in (16, 32, 48, 64)], FRONTEND / 'src' / 'app' / 'favicon.ico')
 
 
 def main():
-    bronze, minium = ('#6f4f1f', '#e2bf7e'), ('#8e2412', '#ef6a45')
-    (HERE / 'dixit.svg').write_text(icon_svg(440, 16, bronze, minium, ('#4a4c45', '#2b2d29'), 520, True, {}))
-    (HERE / 'dixit-small.svg').write_text(icon_svg(530, 10, ('#a17b3b', '#ecc987'), minium, ('#4f5149', '#2c2e2a'),
+    # The interpunct is bronze like the letter: minium is reserved for "Dixit is recording".
+    bronze, small_bronze = ('#6f4f1f', '#e2bf7e'), ('#a17b3b', '#ecc987')
+    (HERE / 'dixit.svg').write_text(icon_svg(440, 16, bronze, bronze, ('#4a4c45', '#2b2d29'), 520, True, {}))
+    (HERE / 'dixit-small.svg').write_text(icon_svg(530, 10, small_bronze, small_bronze, ('#4f5149', '#2c2e2a'),
                                                     0, False, dict(side=0.2, gap=0.11)))
     (HERE / 'tray-template.svg').write_text(tray_svg())
     (w, h), sil, mid, lit = ui_mark()

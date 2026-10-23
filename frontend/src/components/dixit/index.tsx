@@ -35,6 +35,11 @@ export function speakerColor(name: string | undefined, roster: string[], me: str
   return `hsl(var(--speaker-${(i % 5) + 1}))`;
 }
 
+/** Words of an inscription joined by interpuncts (ROSSI·MARIO); display only, never stored. */
+export function inscribe(text: string): string {
+  return text.trim().split(/\s+/).join('·');
+}
+
 /** Display label: translates the backend's placeholders ("Parlante A", "Altri", "Io"). */
 export function speakerLabel(name: string | undefined, me: string): string {
   if (!name || name === 'Altri') return t('others');
@@ -72,7 +77,7 @@ export function SpeakerName({
       className={cn('incisa inline-block truncate align-baseline text-[12px] leading-5', chisel && 'chisel', className)}
       style={{ color: speakerColor(name, roster, me) }}
     >
-      {label.trim().split(/\s+/).join('·')}
+      {inscribe(label)}
     </span>
   );
 }
@@ -94,7 +99,6 @@ export function LiveIndicator({
       role="status"
     >
       <span className="relative flex h-2 w-2">
-        <span className={cn('absolute inline-flex h-full w-full animate-ping rounded-full opacity-60 motion-reduce:animate-none', dot)} />
         <span className={cn('relative inline-flex h-2 w-2 rounded-full', dot)} />
       </span>
       {label}
