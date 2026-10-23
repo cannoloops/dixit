@@ -3,6 +3,7 @@ pub mod cluster;
 pub mod embedder;
 pub mod fbank;
 pub mod tracks;
+pub mod transcript_io;
 pub mod wav;
 
 /// File-name-safe meeting title: no path/shell-hostile characters, single spaces, max 120 chars.
