@@ -119,6 +119,12 @@ fn reveal_and_press(pid: i32, openers: &[&Regex], target: &Regex, done: Option<&
     anyhow::bail!("Teams menu item {:?} not found", target.as_str())
 }
 
+/// The full meeting window has a More/Altro menu; the compact meeting view (seen live) does not,
+/// so captions and transcription can only be switched on once the user expands the window.
+pub fn has_menu(pid: i32) -> bool {
+    call_window(pid).is_some_and(|w| find_pressable(&w, &MORE).is_some())
+}
+
 pub fn enable_live_captions(pid: i32) -> anyhow::Result<()> {
     reveal_and_press(pid, &[&MORE, &LANGUAGE_SPEECH], &CAPTIONS_ON, Some(&CAPTIONS_ALREADY_ON)).map(|_| ())
 }
@@ -232,6 +238,7 @@ mod tests {
         let pid = super::teams_pid().expect("Teams not running");
         std::fs::write(&out, serde_json::to_string_pretty(&super::dump_tree(pid, 60)).unwrap()).unwrap();
         println!("call window: {}", super::call_window(pid).is_some());
+        println!("menu available: {}", super::has_menu(pid));
         println!("captions: {:?}", super::CaptionReader::default().read(pid));
     }
 }

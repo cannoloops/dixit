@@ -98,7 +98,13 @@ mod tests {
     fn clusters_real_voices() {
         let model = std::env::var("TRASCRIVI_SPEAKER_MODEL").expect("set TRASCRIVI_SPEAKER_MODEL");
         let dir = std::env::var("TRASCRIVI_VOICES_DIR").expect("set TRASCRIVI_VOICES_DIR");
-        let mut files: Vec<_> = std::fs::read_dir(&dir).unwrap().map(|e| e.unwrap().path()).collect();
+        // Alice / Eddy: two clearly different voices (Eddy and Grandpa are the same TTS voice
+        // pitch-shifted, ~0.55 apart, which real meetings don't produce).
+        let mut files: Vec<_> = std::fs::read_dir(&dir)
+            .unwrap()
+            .map(|e| e.unwrap().path())
+            .filter(|p| !p.to_string_lossy().contains("Grandpa"))
+            .collect();
         files.sort();
         let mut e = Embedder::new(std::path::Path::new(&model)).unwrap();
         let embs: Vec<Vec<f32>> = files

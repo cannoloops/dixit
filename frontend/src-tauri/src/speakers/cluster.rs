@@ -1,8 +1,14 @@
 //! Agglomerative (average-linkage) clustering of speaker embeddings by cosine similarity.
 
-// ponytail: calibration knob. Measured on Italian TTS voices: same speaker ≈ 0.9, distinct but similar
-// male voices average ≈ 0.55 (max 0.61); 0.6 keeps those apart. Retune on real meetings.
-pub const SAME_SPEAKER_THRESHOLD: f32 = 0.6;
+// ponytail: calibration knobs, measured on a real 80-minute Teams meeting (348 remote segments):
+// 0.6 gave 167 clusters, 0.35 gives 9 substantial ones covering 87% of the speech. Synthetic TTS
+// voices are cleaner (same voice ≈ 0.9) and are not the reference.
+pub const SAME_SPEAKER_THRESHOLD: f32 = 0.35;
+/// Clusters smaller than this are usually one speaker's badly embedded segments…
+const MIN_CLUSTER_SIZE: usize = 3;
+/// …and join the most similar substantial cluster when at least this similar (a genuinely
+/// different voice that spoke once or twice stays on its own).
+const MIN_REASSIGN_SIMILARITY: f32 = 0.2;
 
 fn normalized(v: &[f32]) -> Vec<f32> {
     let n = v.iter().map(|x| x * x).sum::<f32>().sqrt().max(1e-9);
@@ -69,6 +75,33 @@ pub fn cluster(embs: &[Vec<f32>], threshold: f32) -> Vec<u32> {
         }
     }
 
+    // Fold tiny clusters into the nearest substantial one (by centroid similarity).
+    let centroid = |members: &[usize]| {
+        let mut c = vec![0f32; unit[0].len()];
+        for &m in members {
+            c.iter_mut().zip(&unit[m]).for_each(|(a, b)| *a += b);
+        }
+        normalized(&c)
+    };
+    let big: Vec<(usize, Vec<f32>)> = (0..n)
+        .filter(|&i| active[i] && members[i].len() >= MIN_CLUSTER_SIZE)
+        .map(|i| (i, centroid(&members[i])))
+        .collect();
+    if !big.is_empty() {
+        for small in (0..n).filter(|&i| active[i] && members[i].len() < MIN_CLUSTER_SIZE).collect::<Vec<_>>() {
+            let c = centroid(&members[small]);
+            let best = big
+                .iter()
+                .map(|(root, bc)| (*root, c.iter().zip(bc).map(|(a, b)| a * b).sum::<f32>()))
+                .max_by(|a, b| a.1.total_cmp(&b.1));
+            if let Some((root, _)) = best.filter(|(_, sim)| *sim >= MIN_REASSIGN_SIMILARITY) {
+                let moved = std::mem::take(&mut members[small]);
+                members[root].extend(moved);
+                active[small] = false;
+            }
+        }
+    }
+
     let mut roots: Vec<usize> = (0..n).filter(|&i| active[i]).collect();
     roots.sort_by_key(|&r| members[r].iter().min().copied().unwrap_or(r));
     let mut labels = vec![0u32; n];
@@ -99,5 +132,15 @@ mod tests {
         let embs = vec![v(0.0, 1.0, 0.0), v(1.0, 0.0, 0.0), v(0.0, 0.95, 0.1)];
         assert_eq!(cluster(&embs, SAME_SPEAKER_THRESHOLD), vec![0, 1, 0]);
         assert!(cluster(&[], SAME_SPEAKER_THRESHOLD).is_empty());
+    }
+
+    #[test]
+    fn tiny_clusters_join_the_nearest_big_one() {
+        // Two real speakers (4 segments each) and one stray segment closer to the first.
+        let mut embs = vec![v(1.0, 0.0, 0.0); 4];
+        embs.extend(vec![v(0.0, 1.0, 0.0); 4]);
+        embs.push(v(0.3, 0.1, 0.95)); // cosine ≈ 0.30 / 0.10: below the threshold, nearer to the first
+        let labels = cluster(&embs, SAME_SPEAKER_THRESHOLD);
+        assert_eq!(labels, vec![0, 0, 0, 0, 1, 1, 1, 1, 0]);
     }
 }

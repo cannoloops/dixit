@@ -80,7 +80,13 @@ pub fn mic_platform(users: &[AppKind], meet_window: bool, session: Option<Platfo
 pub fn meeting_title(platform: Platform, window_title: &str) -> Option<String> {
     let title = match platform {
         Platform::Teams => {
-            let first = window_title.split(" | ").next()?.trim();
+            // The compact meeting view prefixes its own name: the meeting comes next.
+            const VIEWS: &[&str] = &["Visualizzazione compatta delle riunioni", "Compact meeting view"];
+            let mut parts = window_title.split(" | ").map(str::trim);
+            let mut first = parts.next()?;
+            if VIEWS.iter().any(|v| first.eq_ignore_ascii_case(v)) {
+                first = parts.next()?;
+            }
             const GENERIC: &[&str] = &[
                 "Microsoft Teams", "Chat", "Calendario", "Calendar", "Attività", "Activity",
                 "Teams", "Team", "Chiamate", "Calls", "OneDrive", "App", "Apps",
@@ -122,6 +128,19 @@ mod tests {
         assert_eq!(meeting_title(Platform::Teams, "Chat | Microsoft Teams"), None);
         assert_eq!(meeting_title(Platform::Teams, "Calendario | Microsoft Teams"), None);
         assert_eq!(meeting_title(Platform::Teams, "Microsoft Teams"), None);
+        // New Teams compact meeting view (seen live): view name first, then the meeting.
+        assert_eq!(
+            meeting_title(
+                Platform::Teams,
+                "Visualizzazione compatta delle riunioni | Formazione Beta | Acme S.p.A. | mario@example.com"
+            )
+            .as_deref(),
+            Some("Formazione Beta")
+        );
+        assert_eq!(
+            meeting_title(Platform::Teams, "Compact meeting view | Daily | Contoso | a@b.c").as_deref(),
+            Some("Daily")
+        );
     }
 
     #[test]

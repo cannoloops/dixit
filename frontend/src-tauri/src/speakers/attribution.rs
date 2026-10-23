@@ -389,4 +389,39 @@ mod tests {
         let out = attribute_folder(dir.path(), "Io", None).unwrap();
         assert_eq!(out.speakers[1].1, "Rossi Mario");
     }
+
+    /// Calibrates SAME_SPEAKER_THRESHOLD on a real meeting (aggregate numbers only):
+    /// `TRASCRIVI_SPEAKER_MODEL=… TRASCRIVI_CAL_WAV=<16k mono wav> TRASCRIVI_CAL_DIAR=<diarization.json>
+    ///  cargo test --lib calibrate_threshold -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn calibrate_threshold() {
+        let model = std::env::var("TRASCRIVI_SPEAKER_MODEL").unwrap();
+        let mut wav = WavReader::open(Path::new(&std::env::var("TRASCRIVI_CAL_WAV").unwrap())).unwrap();
+        let diar: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(std::env::var("TRASCRIVI_CAL_DIAR").unwrap()).unwrap()).unwrap();
+        let infos: Vec<SegmentInfo> = serde_json::from_value(diar["segments"].clone()).unwrap();
+        let mut e = crate::speakers::embedder::Embedder::new(Path::new(&model)).unwrap();
+        let embs: Vec<Vec<f32>> = infos
+            .iter()
+            .filter(|i| i.source == Source::Others && i.end - i.start >= MIN_EMBED_SECS)
+            .filter_map(|i| e.embed(&read_secs(&mut wav, i.start, i.end.min(i.start + 6.0))).ok())
+            .collect();
+        println!("embedded others segments: {}", embs.len());
+        for t in [0.3f32, 0.35, 0.4, 0.45] {
+            let labels = crate::speakers::cluster::cluster(&embs, t);
+            let mut sizes: HashMap<u32, usize> = HashMap::new();
+            for l in &labels {
+                *sizes.entry(*l).or_default() += 1;
+            }
+            let mut v: Vec<usize> = sizes.values().copied().collect();
+            v.sort_unstable_by(|a, b| b.cmp(a));
+            let big = v.iter().filter(|n| **n >= 5).count();
+            let top8: usize = v.iter().take(8).sum();
+            println!(
+                "threshold {t:.2}: clusters {:3}, with ≥5 segs {:2}, top-8 cover {:3.0}%, sizes {:?}",
+                v.len(), big, 100.0 * top8 as f32 / labels.len() as f32, &v[..v.len().min(10)]
+            );
+        }
+    }
 }
