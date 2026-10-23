@@ -1,13 +1,13 @@
-//! Teams transcript files: import of downloaded `.docx`/`.vtt`, export of a Teams-style `.docx`
-//! (the format `minuta-call/scripts/parse_teams.py` reads: one paragraph per turn,
-//! "Cognome Nome   M:SS", line break, text).
+//! Teams transcript files: import of downloaded `.docx`/`.vtt`, export of a Teams-style `.md`
+//! (the format `minuta-call/scripts/parse_teams.py` reads: header of three lines, then blocks
+//! separated by a blank line: "Cognome Nome   M:SS", line break, text).
 
 use crate::teams::captions::Turn;
 use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Datelike, Local, Timelike};
 use once_cell::sync::Lazy;
 use regex::Regex;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::path::Path;
 
 /// "Name   M:SS" or "Name   H:MM:SS".
@@ -51,74 +51,57 @@ pub fn merge_lines(lines: &[(String, f64, String)]) -> Vec<(String, f64, String)
     out
 }
 
-fn xml_escape(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
-}
-
 fn xml_unescape(s: &str) -> String {
     s.replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&apos;", "'").replace("&amp;", "&")
 }
 
-/// Minimal valid .docx: one paragraph per entry, lines separated by soft breaks.
-pub fn write_docx_paragraphs(path: &Path, paragraphs: &[Vec<String>]) -> Result<()> {
-    let body: String = paragraphs
-        .iter()
-        .map(|lines| {
-            let runs: Vec<String> = lines
-                .iter()
-                .map(|l| format!(r#"<w:r><w:t xml:space="preserve">{}</w:t></w:r>"#, xml_escape(l)))
-                .collect();
-            format!("<w:p>{}</w:p>", runs.join("<w:r><w:br/></w:r>"))
-        })
-        .collect();
-    let document = format!(
-        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>{body}</w:body></w:document>"#
-    );
-    let content_types = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>"#;
-    let rels = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#;
-
-    let tmp = path.with_extension("docx.part");
-    let mut zip = zip::ZipWriter::new(std::fs::File::create(&tmp)?);
-    let opts = zip::write::SimpleFileOptions::default();
-    for (name, data) in [("[Content_Types].xml", content_types), ("_rels/.rels", rels), ("word/document.xml", document.as_str())] {
-        zip.start_file(name, opts)?;
-        zip.write_all(data.as_bytes())?;
-    }
-    zip.finish()?;
-    std::fs::rename(&tmp, path)?;
-    Ok(())
+/// Collapses any whitespace (newlines included) into single spaces: a turn is exactly two lines.
+fn one_line(s: &str) -> String {
+    s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// Teams-style transcript: header (title line, date, duration) then one paragraph per turn.
-pub fn write_teams_docx(
-    path: &Path,
-    title: &str,
-    started: DateTime<Local>,
-    duration_secs: f64,
-    lines: &[(String, f64, String)],
-) -> Result<()> {
+/// Teams-style transcript in Markdown: header (title, date, duration), then one block per turn.
+/// Speaker lines stay plain (parse_teams.py's `SPEAKER_RE` takes no markup) and end with two
+/// spaces, a Markdown hard line break before the text.
+pub fn teams_md(title: &str, started: DateTime<Local>, duration_secs: f64, lines: &[(String, f64, String)]) -> String {
     let d = duration_secs.max(0.0) as u64;
     let duration = if d >= 3600 {
         format!("{}h {}m {}s", d / 3600, (d % 3600) / 60, d % 60)
     } else {
         format!("{}m {}s", d / 60, d % 60)
     };
-    let mut paragraphs = vec![
-        vec![format!("{title}-{}-Trascrizione della riunione", started.format("%Y%m%d_%H%M%S"))],
-        vec![format!(
-            "{} {} {}, {:02}:{:02}",
-            started.day(),
-            MONTHS[started.month0() as usize],
-            started.year(),
-            started.hour(),
-            started.minute()
-        )],
-        vec![duration],
-    ];
+    let mut md = format!(
+        "# {}-{}-Trascrizione della riunione\n\n{} {} {}, {:02}:{:02}\n\n{duration}\n\n",
+        one_line(title),
+        started.format("%Y%m%d_%H%M%S"),
+        started.day(),
+        MONTHS[started.month0() as usize],
+        started.year(),
+        started.hour(),
+        started.minute()
+    );
     for (name, start, text) in merge_lines(lines) {
-        paragraphs.push(vec![format!("{name}   {}", format_offset(start)), text]);
+        let mut text = one_line(&text);
+        // A text line ending with a time ("alle 10:30") would read as a speaker line.
+        if SPEAKER_LINE.is_match(&text) {
+            text.push('.');
+        }
+        md.push_str(&format!("{}   {}  \n{text}\n\n", one_line(&name), format_offset(start)));
     }
-    write_docx_paragraphs(path, &paragraphs)
+    md
+}
+
+pub fn write_teams_md(
+    path: &Path,
+    title: &str,
+    started: DateTime<Local>,
+    duration_secs: f64,
+    lines: &[(String, f64, String)],
+) -> Result<()> {
+    let tmp = path.with_extension("md.part");
+    std::fs::write(&tmp, teams_md(title, started, duration_secs, lines))?;
+    std::fs::rename(&tmp, path)?;
+    Ok(())
 }
 
 fn docx_paragraphs(path: &Path) -> Result<Vec<String>> {
@@ -193,6 +176,7 @@ pub fn parse_vtt(text: &str) -> Vec<Turn> {
 mod tests {
     use super::*;
     use chrono::TimeZone;
+    use std::io::Write;
 
     #[test]
     fn formats_offsets_like_teams() {
@@ -216,24 +200,45 @@ mod tests {
         assert_eq!(merged[0], ("Rossi Mario".to_string(), 5.0, "ciao a tutti come va".to_string()));
     }
 
+    /// Minimal valid Teams-style .docx (what Teams exports): one paragraph per entry, soft breaks inside.
+    fn write_docx_paragraphs(path: &Path, paragraphs: &[Vec<String>]) {
+        let esc = |s: &str| s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
+        let body: String = paragraphs
+            .iter()
+            .map(|lines| {
+                let runs: Vec<String> =
+                    lines.iter().map(|l| format!(r#"<w:r><w:t xml:space="preserve">{}</w:t></w:r>"#, esc(l))).collect();
+                format!("<w:p>{}</w:p>", runs.join("<w:r><w:br/></w:r>"))
+            })
+            .collect();
+        let document = format!(
+            r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>{body}</w:body></w:document>"#
+        );
+        let mut zip = zip::ZipWriter::new(std::fs::File::create(path).unwrap());
+        zip.start_file("word/document.xml", zip::write::SimpleFileOptions::default()).unwrap();
+        zip.write_all(document.as_bytes()).unwrap();
+        zip.finish().unwrap();
+    }
+
     #[test]
-    fn docx_roundtrip() {
+    fn parses_teams_docx() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("t.docx");
-        let started = chrono::Local.with_ymd_and_hms(2026, 10, 23, 10, 2, 15).unwrap();
-        let lines = vec![
-            ("Rossi Mario".to_string(), 5.0, "ciao a tutti & benvenuti".to_string()),
-            ("Rossi Mario".to_string(), 8.0, "come va <bene>".to_string()),
-            ("Bianchi Anna".to_string(), 65.0, "bene".to_string()),
-        ];
-        write_teams_docx(&path, "Sprint review", started, 125.0, &lines).unwrap();
+        let p = |lines: &[&str]| lines.iter().map(|l| l.to_string()).collect::<Vec<_>>();
+        write_docx_paragraphs(
+            &path,
+            &[
+                p(&["Sprint review-20261023_100215-Trascrizione della riunione"]),
+                p(&["23 ottobre 2026, 10:02"]),
+                p(&["2m 5s"]),
+                p(&["Rossi Mario   0:05", "ciao a tutti & benvenuti"]),
+                p(&["Bianchi Anna   1:05", "bene <grazie>"]),
+            ],
+        );
         let (title, turns) = parse_teams_docx(&path).unwrap();
         assert_eq!(title, "Sprint review-20261023_100215-Trascrizione della riunione");
         let got: Vec<_> = turns.iter().map(|t| (t.name.as_str(), t.start, t.text.as_str())).collect();
-        assert_eq!(
-            got,
-            vec![("Rossi Mario", 5.0, "ciao a tutti & benvenuti come va <bene>"), ("Bianchi Anna", 65.0, "bene")]
-        );
+        assert_eq!(got, vec![("Rossi Mario", 5.0, "ciao a tutti & benvenuti"), ("Bianchi Anna", 65.0, "bene <grazie>")]);
         assert_eq!(turns[0].end, 65.0);
     }
 
@@ -241,7 +246,7 @@ mod tests {
     fn rejects_non_teams_docx() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("plain.docx");
-        write_docx_paragraphs(&path, &[vec!["Verbale".into()], vec!["Solo testo libero.".into()]]).unwrap();
+        write_docx_paragraphs(&path, &[vec!["Verbale".into()], vec!["Solo testo libero.".into()]]);
         assert!(parse_teams_docx(&path).is_err());
         std::fs::write(dir.path().join("junk.docx"), b"not a zip").unwrap();
         assert!(parse_teams_docx(&dir.path().join("junk.docx")).is_err());
@@ -256,20 +261,74 @@ mod tests {
         assert_eq!((turns[1].name.as_str(), turns[1].start), ("Bianchi Anna", 62.0));
     }
 
+    /// The consumer's `SPEAKER_RE` (minuta-call/scripts/parse_teams.py), to check which lines it takes for turns.
+    static PY_SPEAKER_RE: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(r"^([A-Za-zÀ-ÿ'\.\-]+(?:\s+[A-Za-zÀ-ÿ'\.\-()]+)*)\s+(\d{1,2}:\d{2}(?::\d{2})?)\s*$").unwrap()
+    });
+
+    fn started() -> DateTime<Local> {
+        chrono::Local.with_ymd_and_hms(2026, 10, 23, 10, 2, 15).unwrap()
+    }
+
+    #[test]
+    fn md_layout_matches_parse_teams() {
+        let lines = vec![
+            ("Rossi Mario".to_string(), 5.0, "ciao a tutti".to_string()),
+            ("Rossi Mario".to_string(), 8.0, "come va".to_string()),
+            ("Bianchi Anna".to_string(), 4512.0, "bene".to_string()),
+        ];
+        let md = teams_md("Sprint review", started(), 4600.0, &lines);
+        assert_eq!(
+            md,
+            "# Sprint review-20261023_100215-Trascrizione della riunione\n\n\
+             23 ottobre 2026, 10:02\n\n\
+             1h 16m 40s\n\n\
+             Rossi Mario   0:05  \nciao a tutti come va\n\n\
+             Bianchi Anna   75:12  \nbene\n\n"
+        );
+        // Only the speaker lines look like turns to the consumer.
+        let turn_lines: Vec<_> = md.lines().filter(|l| PY_SPEAKER_RE.is_match(l.trim())).collect();
+        assert_eq!(turn_lines, vec!["Rossi Mario   0:05  ", "Bianchi Anna   75:12  "]);
+    }
+
+    #[test]
+    fn md_text_is_one_line_and_never_a_speaker_line() {
+        let lines = vec![
+            ("Rossi Mario".to_string(), 5.0, "ci vediamo alle 10:30".to_string()),
+            ("Bianchi Anna".to_string(), 65.0, "ok\n\n  fine\r\ncosì".to_string()),
+            ("Verdi Luca".to_string(), 3700.0, "".to_string()),
+        ];
+        let md = teams_md("Daily", started(), 3725.0, &lines);
+        assert!(md.contains("Rossi Mario   0:05  \nci vediamo alle 10:30.\n\n"));
+        assert!(md.contains("Bianchi Anna   1:05  \nok fine così\n\n"));
+        assert_eq!(md.lines().filter(|l| PY_SPEAKER_RE.is_match(l.trim())).count(), 3);
+    }
+
+    #[test]
+    fn writes_md_atomically() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("Daily-Trascrizione della riunione.md");
+        let lines = vec![("Rossi Mario".to_string(), 5.0, "ciao".to_string())];
+        write_teams_md(&path, "Daily", started(), 125.0, &lines).unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), teams_md("Daily", started(), 125.0, &lines));
+        let names: Vec<_> = std::fs::read_dir(dir.path()).unwrap().map(|e| e.unwrap().file_name()).collect();
+        assert_eq!(names.len(), 1, "no leftover temp file: {names:?}");
+    }
+
     /// Writes a sample for checking with the real consumer:
-    /// `TRASCRIVI_DOCX_OUT=/tmp/x.docx cargo test --lib write_sample_docx -- --ignored`, then
-    /// `uv run --with python-docx python -I <minuta-call>/scripts/parse_teams.py /tmp/x.docx`.
+    /// `TRASCRIVI_MD_OUT=/tmp/x.md cargo test --lib write_sample_md -- --ignored`, then
+    /// `python3 -I <minuta-call>/scripts/parse_teams.py /tmp/x.md`.
     #[test]
     #[ignore]
-    fn write_sample_docx() {
-        let out = std::env::var("TRASCRIVI_DOCX_OUT").expect("set TRASCRIVI_DOCX_OUT");
-        let started = chrono::Local.with_ymd_and_hms(2026, 10, 23, 10, 2, 15).unwrap();
+    fn write_sample_md() {
+        let out = std::env::var("TRASCRIVI_MD_OUT").expect("set TRASCRIVI_MD_OUT");
         let lines = vec![
             ("Manuguerra Vito".to_string(), 3.0, "Buongiorno, partiamo dal rilascio.".to_string()),
             ("Rossi Mario".to_string(), 12.0, "Il deploy è pronto per venerdì.".to_string()),
-            ("Rossi Mario".to_string(), 15.0, "Manca solo il collaudo.".to_string()),
-            ("Parlante B".to_string(), 3700.0, "Confermo.".to_string()),
+            ("Rossi Mario".to_string(), 15.0, "Manca solo il collaudo, ci vediamo alle 10:30".to_string()),
+            ("Bianchi Anna".to_string(), 4512.0, "Confermo.".to_string()),
+            ("Parlante B".to_string(), 6100.0, "Anch'io.".to_string()),
         ];
-        write_teams_docx(std::path::Path::new(&out), "Sprint review", started, 3725.0, &lines).unwrap();
+        write_teams_md(std::path::Path::new(&out), "Sprint review", started(), 6200.0, &lines).unwrap();
     }
 }

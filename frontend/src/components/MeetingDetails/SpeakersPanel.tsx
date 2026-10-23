@@ -14,7 +14,7 @@ interface SpeakersPanelProps {
   onChanged: () => unknown;
 }
 
-/** Trascrivi: speakers of a meeting, each renamable (updates DB, transcripts.json and .docx). */
+/** Trascrivi: speakers of a meeting, each renamable (updates DB, transcripts.json and .md). */
 export function SpeakersPanel({ meetingId, speakers, onChanged }: SpeakersPanelProps) {
   const [open, setOpen] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string>>({});

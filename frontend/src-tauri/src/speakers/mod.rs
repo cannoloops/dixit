@@ -30,7 +30,7 @@ fn pool<R: Runtime>(app: &AppHandle<R>) -> sqlx::SqlitePool {
     app.state::<crate::state::AppState>().db_manager.pool().clone()
 }
 
-/// Attributes speakers for a finished meeting and updates transcripts.json, the DB and the .docx.
+/// Attributes speakers for a finished meeting and updates transcripts.json, the DB and the .md.
 /// Safe to rerun (renames, imported Teams transcript).
 pub async fn process_meeting<R: Runtime>(app: AppHandle<R>, folder: PathBuf, notify: bool) -> anyhow::Result<()> {
     let f = folder.clone();
@@ -67,7 +67,7 @@ pub async fn process_meeting<R: Runtime>(app: AppHandle<R>, folder: PathBuf, not
         crate::autopilot::notify(
             &app,
             &format!("Trascrizione salvata – {}", outcome.title),
-            "Parlanti riconosciuti; il file Word è nella cartella della riunione.",
+            "Parlanti riconosciuti; la trascrizione .md è nella cartella della riunione.",
         );
     }
     let _ = app.emit("speakers-updated", serde_json::json!({ "folder": folder }));
@@ -112,7 +112,7 @@ pub fn listen_for_stops<R: Runtime>(app: &AppHandle<R>) {
     });
 }
 
-/// Renames a speaker label of a meeting (DB right away; files and .docx via a rerun).
+/// Renames a speaker label of a meeting (DB right away; files and .md via a rerun).
 #[tauri::command]
 pub async fn speakers_rename<R: Runtime>(app: AppHandle<R>, meeting_id: String, from: String, to: String) -> Result<(), String> {
     let to = to.trim().to_string();

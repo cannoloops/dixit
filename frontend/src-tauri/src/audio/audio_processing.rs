@@ -1,12 +1,12 @@
 use anyhow::Result;
-use chrono::Utc;
+use chrono::{DateTime, Local, Utc};
 use log::{debug, info, warn};
 use realfft::num_complex::{Complex32, ComplexFloat};
 use realfft::RealFftPlanner;
 use rubato::{
     Resampler, SincFixedIn, SincInterpolationParameters, SincInterpolationType, WindowFunction,
 };
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use nnnoiseless::DenoiseState;
 
 use super::encode::encode_single_audio; // Correct path to encode module
@@ -24,8 +24,28 @@ pub fn sanitize_filename(name: &str) -> String {
         .to_string()
 }
 
-/// Create a meeting folder with timestamp and return the path
-/// Creates structure: base_path/MeetingName_YYYY-MM-DD_HH-MM/
+/// Folder name of a meeting: "YYYY-MM-DD HH.MM <title>" in local time (like Zoom).
+pub fn meeting_folder_name(started: DateTime<Local>, title: &str) -> String {
+    let name = format!("{} {}", started.format("%Y-%m-%d %H.%M"), crate::speakers::sanitize_title_for_file(title));
+    name.trim_end().to_string()
+}
+
+/// Creates `base/name`, or `base/name (2)`, `(3)`... when it already exists.
+/// `create_dir` is atomic, so two meetings starting together never share a folder.
+fn create_unique_dir(base: &Path, name: &str) -> Result<PathBuf> {
+    for n in 1u32.. {
+        let candidate = if n == 1 { base.join(name) } else { base.join(format!("{name} ({n})")) };
+        match std::fs::create_dir(&candidate) {
+            Ok(()) => return Ok(candidate),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e.into()),
+        }
+    }
+    unreachable!()
+}
+
+/// Create a meeting folder and return the path
+/// Creates structure: base_path/YYYY-MM-DD HH.MM MeetingName/   (local time; " (2)", " (3)"... if taken)
 ///                    ├── .checkpoints/  (for incremental saves, optional)
 ///
 /// # Arguments
@@ -37,13 +57,8 @@ pub fn create_meeting_folder(
     meeting_name: &str,
     create_checkpoints_dir: bool,
 ) -> Result<PathBuf> {
-    let timestamp = Utc::now().format("%Y-%m-%d_%H-%M").to_string();
-    let sanitized_name = sanitize_filename(meeting_name);
-    let folder_name = format!("{}_{}", sanitized_name, timestamp);
-    let meeting_folder = base_path.join(folder_name);
-
-    // Create main meeting folder
-    std::fs::create_dir_all(&meeting_folder)?;
+    std::fs::create_dir_all(base_path)?;
+    let meeting_folder = create_unique_dir(base_path, &meeting_folder_name(Local::now(), meeting_name))?;
 
     // Only create .checkpoints subdirectory if requested (when auto_save is true)
     if create_checkpoints_dir {
@@ -736,4 +751,51 @@ pub fn write_transcript_json_to_file(
     std::fs::write(&file_path, json_string)?;
 
     Ok(file_path.to_string_lossy().to_string())
+}
+
+#[cfg(test)]
+mod folder_name_tests {
+    use super::*;
+    use chrono::TimeZone;
+
+    fn at(h: u32, m: u32) -> chrono::DateTime<chrono::Local> {
+        chrono::Local.with_ymd_and_hms(2026, 10, 23, h, m, 40).unwrap()
+    }
+
+    #[test]
+    fn folder_name_is_local_time_then_title() {
+        assert_eq!(meeting_folder_name(at(15, 18), "Formazione Beta"), "2026-10-23 15.18 Formazione Beta");
+        assert_eq!(meeting_folder_name(at(9, 5), "Daily"), "2026-10-23 09.05 Daily");
+    }
+
+    #[test]
+    fn folder_name_sanitizes_title() {
+        assert_eq!(meeting_folder_name(at(15, 18), "Sprint: review/2 | ok"), "2026-10-23 15.18 Sprint- review-2 - ok");
+        assert_eq!(meeting_folder_name(at(15, 18), "  "), "2026-10-23 15.18");
+    }
+
+    #[test]
+    fn unique_dir_appends_counter_on_collision() {
+        let base = tempfile::tempdir().unwrap();
+        let first = create_unique_dir(base.path(), "2026-10-23 15.18 Daily").unwrap();
+        let second = create_unique_dir(base.path(), "2026-10-23 15.18 Daily").unwrap();
+        let third = create_unique_dir(base.path(), "2026-10-23 15.18 Daily").unwrap();
+        let names: Vec<_> = [&first, &second, &third].iter().map(|p| p.file_name().unwrap().to_string_lossy().to_string()).collect();
+        assert_eq!(names, ["2026-10-23 15.18 Daily", "2026-10-23 15.18 Daily (2)", "2026-10-23 15.18 Daily (3)"]);
+        assert!(first.is_dir() && second.is_dir() && third.is_dir());
+    }
+
+    #[test]
+    fn create_meeting_folder_makes_distinct_dirs_under_missing_base() {
+        let root = tempfile::tempdir().unwrap();
+        let base = root.path().join("Dixit");
+        let a = create_meeting_folder(&base, "Daily", true).unwrap();
+        let b = create_meeting_folder(&base, "Daily", false).unwrap();
+        assert_ne!(a, b);
+        assert!(a.join(".checkpoints").is_dir());
+        assert!(!b.join(".checkpoints").exists());
+        assert_eq!(a.parent(), Some(base.as_path()));
+        // "YYYY-MM-DD HH.MM <title>", title last
+        assert!(a.file_name().unwrap().to_string_lossy().ends_with(" Daily"));
+    }
 }

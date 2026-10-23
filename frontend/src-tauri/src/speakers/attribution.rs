@@ -1,11 +1,11 @@
 //! Post-call attribution: who said each transcript segment, persisted to transcripts.json,
-//! the database and a Teams-style .docx.
+//! the database and a Teams-style .md.
 
 use super::cluster::{cluster, SAME_SPEAKER_THRESHOLD};
 use super::embedder::Embedder;
 use super::naming::{assign_names, classify_source, SegmentInfo, Source, Turn};
 pub use super::tracks::{MIC_TRACK, SYS_TRACK};
-use super::transcript_io::{parse_teams_docx, parse_vtt, write_teams_docx};
+use super::transcript_io::{parse_teams_docx, parse_vtt, write_teams_md};
 use super::wav::WavReader;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Local};
@@ -24,7 +24,7 @@ pub struct Outcome {
     pub title: String,
     /// (audio_start_time, speaker) per segment, in transcript order.
     pub speakers: Vec<(f64, String)>,
-    pub docx: PathBuf,
+    pub md: PathBuf,
 }
 
 struct Segment {
@@ -231,13 +231,13 @@ pub fn attribute_folder(folder: &Path, me: &str, embedder: Option<&mut Embedder>
     let duration = metadata["duration_seconds"].as_f64().unwrap_or_else(|| segs.last().map_or(0.0, |s| s.end));
     let lines: Vec<(String, f64, String)> =
         segs.iter().zip(&names).map(|(s, n)| (n.clone(), s.start, s.text.clone())).collect();
-    let docx = folder.join(format!("{}-Trascrizione della riunione.docx", super::sanitize_title_for_file(&title)));
-    write_teams_docx(&docx, &title, started, duration, &lines)?;
+    let md = folder.join(format!("{}-Trascrizione della riunione.md", super::sanitize_title_for_file(&title)));
+    write_teams_md(&md, &title, started, duration, &lines)?;
 
     Ok(Outcome {
         title,
         speakers: segs.iter().zip(names).map(|(s, n)| (s.start, n)).collect(),
-        docx,
+        md,
     })
 }
 
@@ -299,10 +299,13 @@ mod tests {
         // No embedder: voices not clustered yet, so the tracks stay for a later rerun.
         assert!(!dir.path().join(DIARIZATION_FILE).exists());
         assert!(dir.path().join(MIC_TRACK).exists() && dir.path().join(SYS_TRACK).exists());
-        assert_eq!(out.docx.file_name().unwrap(), "Sprint- review-Trascrizione della riunione.docx");
-        let (_, turns) = crate::speakers::transcript_io::parse_teams_docx(&out.docx).unwrap();
-        let names: Vec<_> = turns.iter().map(|t| t.name.as_str()).collect();
-        assert_eq!(names, vec!["Manuguerra Vito", "Rossi Mario", "Bianchi Anna"]);
+        assert_eq!(out.md.file_name().unwrap(), "Sprint- review-Trascrizione della riunione.md");
+        let md = std::fs::read_to_string(&out.md).unwrap();
+        assert!(md.starts_with("# Sprint: review-2026"), "{md}");
+        let turns: Vec<_> = md.lines().filter(|l| l.ends_with("  ") && l.contains("   ")).collect();
+        assert_eq!(turns, vec!["Manuguerra Vito   0:00  ", "Rossi Mario   0:03  ", "Bianchi Anna   0:06  "]);
+        assert!(md.contains("Rossi Mario   0:03  \nil deploy è pronto\n\n"));
+        assert!(!out.md.with_extension("docx").exists());
     }
 
     #[test]

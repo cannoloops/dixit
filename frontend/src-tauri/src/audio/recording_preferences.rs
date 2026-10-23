@@ -56,15 +56,10 @@ pub fn get_default_recordings_folder() -> PathBuf {
 
     #[cfg(target_os = "macos")]
     {
-        // macOS: ~/Movies/trascrivi-recordings (kept apart from Meetily's folder)
-        if let Some(movies_dir) = dirs::video_dir() {
-            movies_dir.join("trascrivi-recordings")
-        } else {
-            // Fallback to Documents if Movies folder is not available
-            dirs::document_dir()
-                .unwrap_or_else(|| PathBuf::from("."))
-                .join("trascrivi-recordings")
-        }
+        // macOS: ~/Documents/Dixit
+        dirs::document_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("Dixit")
     }
 
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
@@ -385,3 +380,15 @@ pub async fn get_audio_backend_info() -> Result<Vec<BackendInfo>, String> {
     }
 }
 
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn default_recordings_folder_is_documents_dixit() {
+        let expected = dirs::document_dir().expect("document dir").join("Dixit");
+        assert_eq!(get_default_recordings_folder(), expected);
+    }
+}
