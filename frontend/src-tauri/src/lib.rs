@@ -842,6 +842,7 @@ pub fn run() {
             autopilot::settings::autopilot_save_settings,
             autopilot::autopilot_probe,
             autopilot::autopilot_cancel,
+            autopilot::banner::autopilot_banner_close,
             autopilot::autopilot_request_accessibility,
         ])
         .build(tauri::generate_context!())

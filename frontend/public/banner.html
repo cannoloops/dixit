@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Trascrivi</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; }
+  body {
+    font: 13px -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    color: #111827;
+  }
+  .card {
+    box-sizing: border-box; height: 100%; padding: 12px 14px;
+    background: #ffffff; border: 1px solid #e5e7eb; border-radius: 10px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sub { color: #6b7280; margin-top: 2px; }
+  .actions { display: flex; gap: 8px; justify-content: flex-end; }
+  button { font: inherit; padding: 4px 12px; border-radius: 6px; border: 1px solid #d1d5db; background: #f9fafb; cursor: pointer; }
+  button.danger { background: #dc2626; border-color: #dc2626; color: #fff; }
+  @media (prefers-color-scheme: dark) {
+    body { color: #f3f4f6; }
+    .card { background: #1f2937; border-color: #374151; }
+    .sub { color: #9ca3af; }
+    button { background: #374151; border-color: #4b5563; color: #f3f4f6; }
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div>
+    <div class="title" id="title">Trascrizione avviata</div>
+    <div class="sub">Trascrivi sta registrando questa call.</div>
+  </div>
+  <div class="actions">
+    <button class="danger" id="cancel">Annulla</button>
+    <button id="ok">OK</button>
+  </div>
+</div>
+<script>
+  const meeting = new URLSearchParams(location.search).get('title');
+  if (meeting) document.getElementById('title').textContent = 'Trascrizione avviata – ' + meeting;
+  const invoke = (cmd) => window.__TAURI__.core.invoke(cmd);
+  document.getElementById('cancel').onclick = async (e) => {
+    e.target.disabled = true;
+    e.target.textContent = 'Annullo…';
+    try { await invoke('autopilot_cancel'); } finally { invoke('autopilot_banner_close'); }
+  };
+  document.getElementById('ok').onclick = () => invoke('autopilot_banner_close');
+</script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 // Trascrivi autopilot: detects Teams/Zoom/Meet calls and starts/stops recording on its own.
+pub mod banner;
 pub mod settings;
 pub mod tracker;
 pub mod platform;
@@ -129,6 +130,7 @@ async fn start<R: Runtime>(app: &AppHandle<R>, platform: Platform) {
             log::error!("Autopilot: failed to trigger recording start: {e}");
         }
     }
+    banner::show(app, &title);
     notify(app, &format!("Trascrizione avviata – {title}"), "Puoi annullarla dal banner o dal menu Trascrivi.");
     let _ = app.emit("autopilot-session", serde_json::json!({ "platform": platform, "title": title }));
 }
@@ -148,6 +150,7 @@ async fn cancel<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
     let folder = rc::get_meeting_folder_path().await?.map(PathBuf::from);
     *CANCELLED_FOLDER.lock().unwrap() = folder.clone();
     log::info!("Cancelling recording, folder {:?}", folder);
+    banner::close(app);
     rc::stop_recording(app.clone(), rc::RecordingArgs { save_path: String::new() }).await?;
     end_session();
     if let Some(folder) = folder {

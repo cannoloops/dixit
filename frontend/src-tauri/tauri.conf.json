@@ -76,7 +76,8 @@
                     ]
                 }
             ]
-        }
+        },
+        "withGlobalTauri": true
     },
     "bundle": {
         "active": true,
