@@ -2,7 +2,7 @@
 
 use anyhow::{bail, Context, Result};
 use std::fs::File;
-use std::io::{BufWriter, Seek, SeekFrom, Write};
+use std::io::{BufWriter, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
 pub struct WavWriter {
@@ -46,33 +46,67 @@ impl WavWriter {
     }
 }
 
-/// Reads a 16-bit PCM mono WAV (as written by `WavWriter`) into [-1, 1] floats.
-pub fn read_wav_mono_16k(path: &Path) -> Result<Vec<f32>> {
-    let bytes = std::fs::read(path).with_context(|| format!("read {}", path.display()))?;
-    if bytes.len() < 12 || &bytes[0..4] != b"RIFF" || &bytes[8..12] != b"WAVE" {
-        bail!("{} is not a WAV file", path.display());
-    }
-    let mut pos = 12;
-    while pos + 8 <= bytes.len() {
-        let id = &bytes[pos..pos + 4];
-        let len = u32::from_le_bytes(bytes[pos + 4..pos + 8].try_into()?) as usize;
-        let body = pos + 8;
-        if id == b"fmt " {
-            let channels = u16::from_le_bytes(bytes[body + 2..body + 4].try_into()?);
-            let bits = u16::from_le_bytes(bytes[body + 14..body + 16].try_into()?);
-            if channels != 1 || bits != 16 {
-                bail!("unsupported WAV format: {channels} ch, {bits} bit");
-            }
-        } else if id == b"data" {
-            let end = (body + len).min(bytes.len());
-            return Ok(bytes[body..end]
-                .chunks_exact(2)
-                .map(|b| i16::from_le_bytes([b[0], b[1]]) as f32 / 32767.0)
-                .collect());
+/// Random access to a 16-bit PCM mono WAV: a 3-hour track is ~350 MB, never load it whole.
+pub struct WavReader {
+    file: File,
+    data_start: u64,
+    samples: usize,
+}
+
+impl WavReader {
+    pub fn open(path: &Path) -> Result<Self> {
+        let mut file = File::open(path).with_context(|| format!("open {}", path.display()))?;
+        let mut riff = [0u8; 12];
+        file.read_exact(&mut riff)?;
+        if &riff[0..4] != b"RIFF" || &riff[8..12] != b"WAVE" {
+            bail!("{} is not a WAV file", path.display());
         }
-        pos = body + len + (len & 1);
+        let mut pos = 12u64;
+        loop {
+            let mut header = [0u8; 8];
+            file.seek(SeekFrom::Start(pos))?;
+            if file.read_exact(&mut header).is_err() {
+                bail!("{} has no data chunk", path.display());
+            }
+            let len = u32::from_le_bytes(header[4..8].try_into()?) as u64;
+            if &header[0..4] == b"fmt " {
+                let mut fmt = [0u8; 16];
+                file.read_exact(&mut fmt)?;
+                let channels = u16::from_le_bytes(fmt[2..4].try_into()?);
+                let bits = u16::from_le_bytes(fmt[14..16].try_into()?);
+                if channels != 1 || bits != 16 {
+                    bail!("unsupported WAV format: {channels} ch, {bits} bit");
+                }
+            } else if &header[0..4] == b"data" {
+                let available = file.metadata()?.len().saturating_sub(pos + 8);
+                return Ok(Self { file, data_start: pos + 8, samples: (len.min(available) / 2) as usize });
+            }
+            pos += 8 + len + (len & 1);
+        }
     }
-    bail!("{} has no data chunk", path.display())
+
+    pub fn len(&self) -> usize {
+        self.samples
+    }
+
+    /// Samples [start, end) clamped to the file, as [-1, 1] floats.
+    pub fn read_range(&mut self, start: usize, end: usize) -> Result<Vec<f32>> {
+        let (start, end) = (start.min(self.samples), end.min(self.samples));
+        if start >= end {
+            return Ok(Vec::new());
+        }
+        let mut bytes = vec![0u8; (end - start) * 2];
+        self.file.seek(SeekFrom::Start(self.data_start + start as u64 * 2))?;
+        self.file.read_exact(&mut bytes)?;
+        Ok(bytes.chunks_exact(2).map(|b| i16::from_le_bytes([b[0], b[1]]) as f32 / 32767.0).collect())
+    }
+}
+
+/// Reads a whole 16-bit PCM mono WAV into [-1, 1] floats (short files only).
+pub fn read_wav_mono_16k(path: &Path) -> Result<Vec<f32>> {
+    let mut r = WavReader::open(path)?;
+    let n = r.len();
+    r.read_range(0, n)
 }
 
 #[cfg(test)]
@@ -91,5 +125,22 @@ mod tests {
         let back = read_wav_mono_16k(&path).unwrap();
         assert_eq!(back.len(), samples.len());
         assert!(back.iter().zip(&samples).all(|(a, b)| (a - b).abs() <= 1.0 / 32768.0 + 1e-6));
+    }
+
+    #[test]
+    fn reader_reads_ranges_without_loading_everything() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("r.wav");
+        let samples: Vec<f32> = (0..16000).map(|i| (i as f32 / 16000.0) - 0.5).collect();
+        let mut w = WavWriter::create(&path, 16000).unwrap();
+        w.write(&samples).unwrap();
+        w.finish().unwrap();
+        let mut r = WavReader::open(&path).unwrap();
+        assert_eq!(r.len(), 16000);
+        let mid = r.read_range(100, 200).unwrap();
+        assert_eq!(mid.len(), 100);
+        assert!(mid.iter().zip(&samples[100..200]).all(|(a, b)| (a - b).abs() < 1e-4));
+        assert_eq!(r.read_range(15990, 99999).unwrap().len(), 10);
+        assert!(r.read_range(20000, 30000).unwrap().is_empty());
     }
 }

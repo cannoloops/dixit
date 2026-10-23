@@ -6,7 +6,7 @@ use super::embedder::Embedder;
 use super::naming::{assign_names, classify_source, SegmentInfo, Source, Turn};
 pub use super::tracks::{MIC_TRACK, SYS_TRACK};
 use super::transcript_io::{parse_teams_docx, parse_vtt, write_teams_docx};
-use super::wav::read_wav_mono_16k;
+use super::wav::WavReader;
 use anyhow::{Context, Result};
 use chrono::{DateTime, Local};
 use std::collections::HashMap;
@@ -45,23 +45,23 @@ fn rms(x: &[f32]) -> f32 {
     (x.iter().map(|v| v * v).sum::<f32>() / x.len() as f32).sqrt()
 }
 
-fn slice(track: &[f32], start: f64, end: f64) -> &[f32] {
-    let a = ((start.max(0.0) * 16000.0) as usize).min(track.len());
-    let b = ((end.max(0.0) * 16000.0) as usize).clamp(a, track.len());
-    &track[a..b]
+fn read_secs(track: &mut WavReader, start: f64, end: f64) -> Vec<f32> {
+    let (a, b) = ((start.max(0.0) * 16000.0) as usize, (end.max(0.0) * 16000.0) as usize);
+    track.read_range(a, b).unwrap_or_default()
 }
 
 /// Me/others by track energy, clusters for others (when an embedder is available).
+/// Reads only each segment's slice: a 3-hour meeting's tracks would not fit comfortably in RAM.
 fn diarize(folder: &Path, segs: &[Segment], embedder: Option<&mut Embedder>) -> Result<Vec<SegmentInfo>> {
-    let mic = read_wav_mono_16k(&folder.join(MIC_TRACK))?;
-    let sys = read_wav_mono_16k(&folder.join(SYS_TRACK))?;
+    let mut mic = WavReader::open(&folder.join(MIC_TRACK))?;
+    let mut sys = WavReader::open(&folder.join(SYS_TRACK))?;
     let mut infos: Vec<SegmentInfo> = segs
         .iter()
         .map(|s| SegmentInfo {
             seq: s.seq,
             start: s.start,
             end: s.end,
-            source: classify_source(rms(slice(&mic, s.start, s.end)), rms(slice(&sys, s.start, s.end))),
+            source: classify_source(rms(&read_secs(&mut mic, s.start, s.end)), rms(&read_secs(&mut sys, s.start, s.end))),
             cluster: None,
         })
         .collect();
@@ -70,7 +70,7 @@ fn diarize(folder: &Path, segs: &[Segment], embedder: Option<&mut Embedder>) -> 
         let mut embs = Vec::new();
         for (i, info) in infos.iter().enumerate() {
             if info.source == Source::Others && info.end - info.start >= MIN_EMBED_SECS {
-                match embedder.embed(slice(&sys, info.start, info.end)) {
+                match embedder.embed(&read_secs(&mut sys, info.start, info.end)) {
                     Ok(e) => {
                         embedded.push(i);
                         embs.push(e);

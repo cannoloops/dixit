@@ -163,12 +163,22 @@ fn texts(el: &El, out: &mut Vec<String>, budget: &mut usize) {
     }
 }
 
+/// A container labelled as the captions region (structural labels only: visible text such as a
+/// chat message mentioning "sottotitoli" must not match).
+fn is_captions_region(e: &cidre::ax::UiElement) -> bool {
+    ["AXGroup", "AXList", "AXScrollArea", "AXSection"].contains(&ax_util::role(e).as_str())
+        && ["AXDescription", "AXTitle", "AXIdentifier", "AXDOMIdentifier"]
+            .iter()
+            .filter_map(|a| ax_util::string_attr(e, a))
+            .any(|l| CAPTIONS_REGION.is_match(&l))
+}
+
 impl CaptionReader {
     pub fn read(&mut self, pid: i32) -> Vec<(String, String)> {
         let alive = self.region.as_ref().is_some_and(|r| !ax_util::role(r).is_empty());
         if !alive {
             self.region = call_window(pid).and_then(|w| {
-                ax_util::find_all(&w, 6000, &|e| ax_util::labels(e).iter().any(|l| CAPTIONS_REGION.is_match(l)))
+                ax_util::find_all(&w, 6000, &is_captions_region)
                     .into_iter()
                     .next()
             });
