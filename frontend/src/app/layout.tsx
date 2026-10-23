@@ -32,7 +32,7 @@ import { isAudioExtension, getAudioFormatsDisplayList } from '@/constants/audioF
 // Inscriptional capitals for speaker names and titles (self-hosted by next/font at build).
 const cinzel = Cinzel({
   subsets: ['latin'],
-  weight: ['500', '600', '700'],
+  weight: ['600'],
   variable: '--font-cinzel',
 })
 

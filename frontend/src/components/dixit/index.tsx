@@ -22,7 +22,7 @@ export function useMe(): string {
 }
 
 /**
- * CSS color of a speaker: bronze for the user, a Roman pigment per other person
+ * CSS color of a speaker: verde antico for the user, a Roman pigment per other person
  * (by order of appearance in `roster`, so a meeting never repeats a colour before the sixth voice),
  * stone grey for "Altri"/unknown.
  */
