@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Mic, Volume2 } from 'lucide-react';
+import { Mic, Volume2, Accessibility } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import type { PermissionStatus } from '@/types/onboarding';
+import type { AutopilotSettingsValue } from '@/components/AutopilotSettings';
 import { Button } from '@/components/ui/button';
 import { OnboardingContainer } from '../OnboardingContainer';
 import { PermissionRow } from '../shared';
@@ -9,6 +12,36 @@ import { useOnboarding } from '@/contexts/OnboardingContext';
 export function PermissionsStep() {
   const { setPermissionStatus, setPermissionsSkipped, permissions, completeOnboarding } = useOnboarding();
   const [isPending, setIsPending] = useState(false);
+  // Trascrivi: Accessibility (Teams window reading) and the user's speaker name
+  const [accessibility, setAccessibility] = useState<PermissionStatus>('not_determined');
+  const [displayName, setDisplayName] = useState('');
+
+  useEffect(() => {
+    invoke<boolean>('autopilot_request_accessibility', { prompt: false })
+      .then((ok) => setAccessibility(ok ? 'authorized' : 'not_determined'))
+      .catch(console.error);
+    invoke<AutopilotSettingsValue>('autopilot_get_settings')
+      .then((s) => setDisplayName(s.user_display_name))
+      .catch(console.error);
+  }, []);
+
+  const handleAccessibilityAction = async () => {
+    await invoke<boolean>('autopilot_request_accessibility', { prompt: true });
+    // macOS grants it in System Settings; re-check shortly after.
+    setTimeout(async () => {
+      const ok = await invoke<boolean>('autopilot_request_accessibility', { prompt: false });
+      setAccessibility(ok ? 'authorized' : 'denied');
+    }, 4000);
+  };
+
+  const saveDisplayName = async () => {
+    try {
+      const current = await invoke<AutopilotSettingsValue>('autopilot_get_settings');
+      await invoke('autopilot_save_settings', { settings: { ...current, user_display_name: displayName.trim() } });
+    } catch (error) {
+      console.error('[PermissionsStep] Failed to save display name:', error);
+    }
+  };
 
   // Check permissions - only logs current state, doesn't auto-authorize
   // Actual permission checks are done via explicit user actions (clicking Enable)
@@ -94,6 +127,9 @@ export function PermissionsStep() {
   };
 
   const handleFinish = async () => {
+    await saveDisplayName();
+    // Speaker model (26 MB) downloads in the background; attribution also fetches it on demand.
+    invoke('speakers_ensure_model').catch((e) => console.error('Speaker model download failed:', e));
     try {
       await completeOnboarding();
       window.location.reload();
@@ -114,7 +150,7 @@ export function PermissionsStep() {
   return (
     <OnboardingContainer
       title="Grant Permissions"
-      description="Meetily needs access to your microphone and system audio to record meetings"
+      description="Trascrivi needs access to your microphone and system audio to record meetings"
       step={4}
       hideProgress={true}
       showNavigation={allPermissionsGranted}
@@ -142,6 +178,32 @@ export function PermissionsStep() {
             isPending={isPending}
             onAction={handleSystemAudioAction}
           />
+
+          {/* Accessibility (Trascrivi) */}
+          <PermissionRow
+            icon={<Accessibility className="w-5 h-5" />}
+            title="Accessibilità"
+            description="Per riconoscere le call e leggere i nomi da Teams"
+            status={accessibility}
+            isPending={false}
+            onAction={handleAccessibilityAction}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="onboarding-display-name" className="text-sm font-medium block">
+            Il tuo nome (come appare in Teams, es. Rossi Mario)
+          </label>
+          <Input
+            id="onboarding-display-name"
+            value={displayName}
+            placeholder="Cognome Nome"
+            onChange={(e) => setDisplayName(e.target.value)}
+            onBlur={saveDisplayName}
+          />
+          <p className="text-xs text-muted-foreground">
+            In Teams imposta la lingua parlata su italiano, così sottotitoli e trascrizione riportano bene i nomi.
+          </p>
         </div>
 
         {/* Action Buttons */}

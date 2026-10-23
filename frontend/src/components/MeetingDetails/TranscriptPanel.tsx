@@ -4,6 +4,7 @@ import { Transcript, TranscriptSegmentData } from '@/types';
 import { TranscriptView } from '@/components/TranscriptView';
 import { VirtualizedTranscriptView } from '@/components/VirtualizedTranscriptView';
 import { TranscriptButtonGroup } from './TranscriptButtonGroup';
+import { SpeakersPanel } from './SpeakersPanel';
 import { useMemo } from 'react';
 
 interface TranscriptPanelProps {
@@ -61,8 +62,16 @@ export function TranscriptPanel({
       endTime: t.audio_end_time,
       text: t.text,
       confidence: t.confidence,
+      speaker: t.speaker,
     }));
   }, [transcripts, usePagination, segments]);
+
+  // Trascrivi: distinct speakers (with segment counts) for the rename panel
+  const speakers = useMemo(() => {
+    const counts = new Map<string, number>();
+    convertedSegments.forEach((s) => s.speaker && counts.set(s.speaker, (counts.get(s.speaker) ?? 0) + 1));
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [convertedSegments]);
 
   return (
     <div className="flex h-full min-w-0 w-full bg-white flex-col relative @container">
@@ -77,6 +86,9 @@ export function TranscriptPanel({
           onRefetchTranscripts={onRefetchTranscripts}
         />
       </div>
+      {meetingId && !isRecording && onRefetchTranscripts && (
+        <SpeakersPanel meetingId={meetingId} speakers={speakers} onChanged={onRefetchTranscripts} />
+      )}
 
       {/* Transcript content - use virtualized view for better performance */}
       <div className="flex-1 overflow-hidden pb-4">
