@@ -1,297 +1,282 @@
 ---
 name: Dixit
-description: "Epigrafe romana: ogni riunione è incisa come un'iscrizione, chi ha parlato è scolpito per nome."
+description: "Assistente di riunioni locale, nel design system Dixit: antracite e bianco, petrolio per l'azione, verde per la tua voce."
 colors:
-  marmo-carrara: "#f3f5f6"
-  marmo-lastra: "#f9fafb"
-  marmo-velo: "#e5e8eb"
-  marmo-ombra: "#e8ebed"
-  marmo-accento: "#dfe3e7"
-  filetto: "#d2d6db"
-  bordo-campo: "#c5c9ce"
-  inchiostro: "#1d1d1b"
-  inchiostro-tenue: "#555c62"
-  bronzo: "#7a5c24"
-  bronzo-anello: "#9c7d40"
-  bronzo-lettere: "#c9a259"
-  vinaccia: "#88304d"
-  minio: "#ca361c"
-  minio-su-pietra: "#e55238"
-  peperino: "#292b27"
-  peperino-testo: "#e9e9e2"
-  peperino-tenue: "#a4a59c"
-  peperino-filetto: "#3b3d38"
-  peperino-attivo: "#393b35"
-  verde-antico: "#2e6b4e"
-  lapislazzuli: "#2f5598"
-  blu-egizio: "#1c636e"
-  terra-verde: "#49602f"
-  terra-di-siena: "#894b2a"
-  pavonazzetto: "#5b4b8b"
-  pietra-altri: "#656b72"
+  background: "#FFFFFF"
+  foreground: "#2A2A2C"
+  primary: "#1F8093"
+  secondary: "#EEF0F2"
+  muted: "#F4F5F6"
+  muted-foreground: "#62656A"
+  accent: "#EEF4F6"
+  border: "#E2E6E9"
+  input: "#D2D6DA"
+  rail: "#F4F5F6"
+  rail-active: "#E3EFF2"
+  destructive: "#C3373C"
+  live: "#D83B40"
+  success: "#457D17"
+  speaker-me: "#457D17"
+  speaker-1: "#1A77AD"
+  speaker-2: "#A9610A"
+  speaker-3: "#A83E91"
+  speaker-4: "#12817C"
+  speaker-5: "#7350AF"
+  speaker-6: "#AB4121"
+  speaker-7: "#414EB4"
+  speaker-other: "#6F7276"
+  background-dark: "#2A2A2C"
+  foreground-dark: "#F2F2F3"
+  card-dark: "#343437"
+  muted-foreground-dark: "#AAACB1"
+  border-dark: "#404145"
+  rail-dark: "#232325"
+  rail-accent-dark: "#5DC3DA"
+  primary-dark: "#30AAC5"
+  destructive-dark: "#F06A6F"
+  live-dark: "#FF5C61"
+  success-dark: "#8DC828"
+  speaker-me-dark: "#8DC828"
+  speaker-1-dark: "#5BB7EC"
+  speaker-2-dark: "#F2A74A"
+  speaker-3-dark: "#E58ACA"
+  speaker-4-dark: "#3BC9BD"
+  speaker-5-dark: "#B99EEB"
+  speaker-6-dark: "#EE8363"
+  speaker-7-dark: "#919EF3"
+  speaker-other-dark: "#9D9FA4"
 typography:
-  titolo-inciso:
-    fontFamily: "Cinzel, serif"
-    fontSize: "1.875rem"
-    fontWeight: 600
+  display:
+    fontFamily: "Montserrat, 'Open Sans', sans-serif"
+    fontSize: "24px"
+    fontWeight: 700
     lineHeight: 1.25
-    letterSpacing: "0.06em"
-  nome-inciso:
-    fontFamily: "Cinzel, serif"
-    fontSize: "12px"
+    letterSpacing: "normal"
+  headline:
+    fontFamily: "Montserrat, 'Open Sans', sans-serif"
+    fontSize: "20px"
+    fontWeight: 600
+    lineHeight: 1.4
+    letterSpacing: "normal"
+  title:
+    fontFamily: "Montserrat, 'Open Sans', sans-serif"
+    fontSize: "14px"
+    fontWeight: 600
+    lineHeight: 1.43
+    letterSpacing: "normal"
+  speaker-name:
+    fontFamily: "Montserrat, 'Open Sans', sans-serif"
+    fontSize: "13px"
     fontWeight: 600
     lineHeight: "20px"
-    letterSpacing: "0.06em"
-  titolo-rail:
-    fontFamily: "Cinzel, serif"
+    letterSpacing: "normal"
+  body:
+    fontFamily: "'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif"
+    fontSize: "14px"
+    fontWeight: 400
+    lineHeight: 1.43
+    letterSpacing: "normal"
+  label:
+    fontFamily: "'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif"
+    fontSize: "12px"
+    fontWeight: 400
+    lineHeight: 1.33
+    letterSpacing: "normal"
+  stamp:
+    fontFamily: "'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif"
     fontSize: "11px"
     fontWeight: 600
-    lineHeight: "normal"
-    letterSpacing: "0.06em"
-  corpo:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif"
-    fontSize: "0.875rem"
-    fontWeight: 400
-    lineHeight: "1.25rem"
-  etichetta:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif"
-    fontSize: "0.75rem"
-    fontWeight: 500
-    lineHeight: "1rem"
-  nota:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif"
-    fontSize: "11px"
-    fontWeight: 500
     lineHeight: 1
+    letterSpacing: "normal"
 rounded:
-  sm: "0px"
-  md: "2px"
-  lg: "4px"
+  sm: "4px"
+  md: "6px"
+  lg: "8px"
+  full: "9999px"
 spacing:
   xs: "4px"
   sm: "8px"
   md: "12px"
   lg: "16px"
-  xl: "24px"
 components:
   button-primary:
-    backgroundColor: "{colors.bronzo}"
-    textColor: "{colors.marmo-lastra}"
-    typography: "{typography.etichetta}"
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.background}"
+    typography: "{typography.label}"
+    rounded: "{rounded.md}"
+    height: "32px"
+    padding: "0 12px"
+  button-rail-outline:
+    backgroundColor: "transparent"
+    textColor: "{colors.primary}"
     rounded: "{rounded.md}"
     height: "32px"
     padding: "0 12px"
   button-live:
-    backgroundColor: "{colors.minio}"
-    textColor: "#ffffff"
+    backgroundColor: "{colors.live}"
+    textColor: "{colors.background}"
     rounded: "{rounded.md}"
-    height: "28px"
-    padding: "0 10px"
+    height: "32px"
+    padding: "0 12px"
   button-destructive:
-    backgroundColor: "{colors.vinaccia}"
-    textColor: "{colors.marmo-lastra}"
+    backgroundColor: "{colors.destructive}"
+    textColor: "{colors.background}"
     rounded: "{rounded.md}"
     height: "32px"
     padding: "0 12px"
-  button-outline:
-    backgroundColor: "{colors.marmo-carrara}"
-    textColor: "{colors.inchiostro}"
-    rounded: "{rounded.md}"
-    height: "32px"
-    padding: "0 12px"
-  button-ghost-hover:
-    backgroundColor: "{colors.marmo-accento}"
-    textColor: "{colors.inchiostro}"
   input:
-    backgroundColor: "{colors.marmo-carrara}"
-    textColor: "{colors.inchiostro}"
+    backgroundColor: "{colors.background}"
+    textColor: "{colors.foreground}"
     rounded: "{rounded.md}"
     height: "32px"
     padding: "4px 10px"
   state-stamp:
     backgroundColor: "transparent"
-    textColor: "{colors.inchiostro-tenue}"
+    textColor: "{colors.muted-foreground}"
+    typography: "{typography.stamp}"
     rounded: "{rounded.sm}"
     height: "20px"
     padding: "0 6px"
-  state-stamp-live:
-    textColor: "{colors.minio}"
-  state-stamp-verify:
-    textColor: "{colors.bronzo}"
-  rail:
-    backgroundColor: "{colors.peperino}"
-    textColor: "{colors.peperino-testo}"
-    width: "256px"
-  rail-item-active:
-    backgroundColor: "{colors.peperino-attivo}"
-    textColor: "{colors.peperino-testo}"
+  sidebar-row-active:
+    backgroundColor: "{colors.rail-active}"
+    textColor: "{colors.foreground}"
     rounded: "{rounded.sm}"
-    height: "32px"
-  speaker-band:
-    backgroundColor: "{colors.marmo-ombra}"
-    rounded: "{rounded.sm}"
-    height: "10px"
-  tab-active:
-    textColor: "{colors.inchiostro}"
-    height: "36px"
-    padding: "0 12px"
-  dialog:
-    backgroundColor: "{colors.marmo-lastra}"
-    textColor: "{colors.inchiostro}"
-    rounded: "{rounded.lg}"
-    padding: "24px"
+    height: "28px"
+    padding: "0 8px"
 ---
 
 # Design System: Dixit
 
 ## Overview
 
-**Creative North Star: "Epigrafe romana"**
+**Creative North Star: "Il quaderno Dixit"**
 
-Dixit registra ogni riunione come un'iscrizione: chi ha parlato è scolpito per nome, in lettere capitali, nel colore di un pigmento romano. Il mondo è fatto di materiali di pietra. Un fondo di marmo di Carrara (freddo, mai crema), una colonna laterale di peperino scuro, il bronzo per l'azione principale, il minio rosso riservato a un solo significato: "si sta registrando adesso". Rifiuta il default della categoria: sidebar grigia, fumetti di chat, accento indaco.
+Dixit veste il design system Dixit (template Dixit 2023): antracite e bianco come base, petrolio per l'unica azione che conta, verde Dixit per la voce dell'utente e per ciò che è andato bene. L'interfaccia è un documento di lavoro, non una vetrina: testo piccolo e leggibile (14px), righe divise da filetti sottili, nessuna card. Il colore compare dove significa qualcosa: chi parla, se si sta registrando, cosa richiede attenzione.
 
-La densità è quella di uno strumento da scrivania per chi passa la giornata in call: filetti sottili al posto di schede e bordi decorativi, gerarchia ottenuta solo con scala e peso, nessuna ombra a riposo. Il chiaro e lo scuro seguono macOS (`darkMode: 'media'`); in scuro il fondo diventa peperino e le lettere diventano di bronzo.
-
-L'interfaccia è bilingue (italiano e inglese dalla lingua di sistema) tramite `makeT` in `src/i18n/index.ts`, con un file di messaggi per area. Le stringhe non stanno nei componenti.
+Light e dark seguono macOS (`prefers-color-scheme`); in scuro lo sfondo è l'antracite Dixit. La sidebar ha una superficie propria (`rail`), più chiara in light e più scura in dark, come nelle app macOS. Il marchio è una D a fumetto (coda in basso a sinistra) in `currentColor` nell'interfaccia; l'icona la mostra bianca su gradiente diagonale Dixit dal verde (alto a sinistra) al blu (basso a destra).
 
 **Key Characteristics:**
-- Fondo di marmo freddo (tinta 210) e colonna di peperino in entrambi i temi.
-- Un solo accento di azione, il bronzo (tinta 39); un solo rosso, il minio (tinta 9), solo per la registrazione in corso.
-- Un pigmento romano fisso per ogni voce; nessun pigmento vicino al bronzo o alla vinaccia distruttiva.
-- Capitali incise (Cinzel 600) solo per nomi dei parlanti e titoli di riunione; sans di sistema per tutto il resto.
-- Filetti, niente schede; angoli quasi vivi (2px e 4px); modulo di 4px.
-- Mossa firma: lo scalpello. Un nome che si risolve (Parlante A diventa ROSSI·MARIO) viene inciso una volta da sinistra a destra.
+- Un solo pulsante petrolio pieno per schermata; il resto è outline o ghost.
+- Il colore è informazione: rosso = sta registrando o distrugge, verde = tu o esito positivo, un colore per ogni altro parlante.
+- Montserrat per titoli e nomi, Open Sans per tutto il resto.
+- Piatto: filetti da 1px, niente card, un'unica ombra per ciò che galleggia.
+- Densità da strumento: controlli alti 32px (28px in sidebar), testo 12-14px.
 
 ## Colors
 
-Palette di materiali: marmo, pietra, bronzo, pigmenti minerali. I valori esadecimali nel frontmatter sono il tema chiaro; il tema scuro ridefinisce le stesse variabili in `src/app/globals.css` (terne HSL).
+Antracite e bianco, un petrolio, un verde e una scala di sette colori per le voci. I token con suffisso `-dark` sono i valori in modalità scura dello stesso ruolo; in CSS sono le stesse variabili ridefinite in `prefers-color-scheme: dark` (valori HSL in `globals.css`).
 
 ### Primary
-- **Bronzo** (`bronzo`): azione principale (Genera riassunto, Avvia registrazione, Conferma), link, selezione, cursore, tab attivo, stato "Nomi da verificare". In scuro diventa bronzo chiaro (#c9a259).
-- **Bronzo-anello** (`bronzo-anello`): anello di focus, 2px, offset 2px. In scuro coincide con il bronzo chiaro.
-- **Bronzo-lettere** (`bronzo-lettere`): bronzo chiaro sulla pietra; testi di accento e focus nella colonna, marchio dell'icona.
+- **Petrolio Dixit** (`primary`): l'azione principale della schermata, l'anello di focus, la selezione, i puntini e i timbri "da verificare". In scuro si schiarisce (`primary-dark`); in sidebar l'accento è `rail-accent-dark`.
 
 ### Secondary
-- **Minio** (`minio`): rosso di registrazione. Compare solo quando Dixit sta registrando: pallino e testo di LiveIndicator, timbro "Registrazione", pulsante `live` (Stop). Sulla colonna scura si usa **Minio-su-pietra** (`minio-su-pietra`, leggibile sul peperino); in scuro anche `--live` vale quel valore.
-- **Vinaccia** (`vinaccia`): distruttivo (tinta 340), volutamente lontana dal minio. In scuro #da819e.
+- **Verde Dixit** (`success`, `speaker-me`): la voce dell'utente e gli stati positivi. In chiaro è scurito (`#457D17`) per reggere il contrasto su bianco; in scuro è il verde pieno (`success-dark`, circa #8DC928).
 
-### Tertiary: i pigmenti dei parlanti
-Un pigmento per voce, assegnato per ordine di apparizione nel roster della riunione (nessuna ripetizione prima della sesta voce). In scuro ognuno ha una versione chiara con la stessa tinta.
-- **Verde antico** (`verde-antico`, tinta 151): sempre l'utente ("Io" o il nome impostato in Impostazioni, Automazione). Mai bronzo.
-- **Lapislazzuli** (218), **Blu egizio** (188), **Terra verde** (88), **Terra di Siena** (21), **Pavonazzetto** (255): le altre voci, cinque in rotazione.
-- **Pietra-altri** (`pietra-altri`): "Altri" e voci sconosciute.
+### Tertiary
+- **Rosso registrazione** (`live`): solo per "sta registrando" (puntino, etichetta, pulsante di stop).
+- **Rosso distruttivo** (`destructive`): solo per le azioni che distruggono.
+
+### Speaker
+- **Altri parlanti** (`speaker-1` ... `speaker-7`): blu, ambra, magenta, teal, viola, ruggine, indaco, assegnati per posizione nel roster ordinato per numero di turni (chi parla di più prende il primo colore), quindi in una riunione nessun colore si ripete prima dell'ottava voce. `speaker-other` (grigio) è per "Altri" e per i nomi sconosciuti. Se un nome non è nel roster, il colore deriva da un hash del nome.
 
 ### Neutral
-- **Marmo di Carrara** (`marmo-carrara`): fondo dell'app. **Marmo-lastra** (`marmo-lastra`): card, popover, dialoghi. **Marmo-velo**, **marmo-ombra**, **marmo-accento**: rampa di tre gradini per secondario, attenuato e hover.
-- **Inchiostro** (`inchiostro`): testo; **inchiostro-tenue**: testo secondario. **Filetto** e **bordo-campo**: linee e bordi dei campi.
-- **Peperino** (`peperino`) con **peperino-testo**, **peperino-tenue**, **peperino-filetto**, **peperino-attivo**: la colonna dell'archivio. In scuro la colonna diventa basalto (#121311) e il fondo dell'app peperino (#1c1d1b).
+- **Antracite e bianco** (`foreground`, `background`, `background-dark`, `foreground-dark`): testo e fondo; `card-dark` è la superficie scura rialzata (popover, card shadcn).
+- **Grigi** (`secondary`, `muted`, `accent`, `muted-foreground`): fondi tenui, hover e testo secondario.
+- **Filetti** (`border`, `input`, `border-dark`): divisori e contorni di campo.
+- **Sidebar** (`rail`, `rail-active`, `rail-dark`): superficie e riga selezionata della sidebar.
 
 ### Named Rules
-**The Minium Rule.** Il rosso minio compare solo mentre si registra. Avviare una registrazione è bronzo (`default`); fermarla è `live`. Ogni altro rosso (errore, eliminazione) è vinaccia.
+**The One Petrol Rule.** Un solo pulsante petrolio pieno per schermata, l'azione principale. Le azioni di avvio nella sidebar sono outline (testo e contorno `rail-accent`) o ghost.
 
-**The Own Pigment Rule.** Il pigmento dell'utente è verde antico e non è mai bronzo: il bronzo è l'azione, non una persona.
+**The Recording Red Rule.** Il rosso esiste solo per "sta registrando" e per le azioni distruttive. Mai per errori generici o decorazione.
 
-**The Hue Gap Rule.** Nessun pigmento sta vicino al bronzo (tinta 39) né alla vinaccia distruttiva (tinta 340). Un nuovo pigmento si sceglie a distanza dalle due, e anche dal minio (tinta 9) quando possibile.
+**The Own Voice Rule.** Il verde è la voce dell'utente e gli esiti positivi; nessun altro parlante lo usa.
 
-**The Stone Ramp Rule.** I neutri sono una rampa numerata di marmo e di peperino, non grigi puri: tinta 210 per il marmo, 60-90 per la pietra scura.
+**The Roster Rule.** I colori degli altri parlanti si assegnano per numero di turni, non per ordine di arrivo.
 
 ## Typography
 
-**Display Font:** Cinzel 600 (autoospitato con next/font, fallback serif), capitali, spaziatura 0.06em.
-**Body Font:** sans di sistema (-apple-system, SF Pro Text, Helvetica Neue).
-**Label/Mono Font:** nessuno; i numeri usano cifre tabulari (`tabular-nums`) per durate, offset e orari.
+**Display Font:** Montserrat (600, 700; fallback Open Sans, sans-serif), self-hosted da next/font
+**Body Font:** Open Sans (400, 600; fallback -apple-system, BlinkMacSystemFont, sans-serif)
 
-**Character:** una voce di pietra incisa per le persone e i titoli, una sans neutra e silenziosa per tutto ciò che si legge o si usa. Il contrasto sta tra i due registri, non tra molti pesi.
+**Character:** Montserrat dà ai titoli e ai nomi un tratto geometrico e fermo; Open Sans tiene il testo corrente neutro e leggibile a taglie piccole. Gli h1-h4 ereditano Montserrat da `globals.css`.
 
 ### Hierarchy
-- **Titolo inciso** (Cinzel 600, 30px, 1.25): titolo della riunione nel dettaglio, modificabile. 
-- **Nome inciso** (Cinzel 600, 12px / 20px, 0.06em): nome del parlante nel margine sinistro della trascrizione e nel pannello dei parlanti; 14px sulla riga corrente.
-- **Titolo-rail** (Cinzel 600, 11px): titolo della riunione nelle righe dell'archivio e nel recupero trascrizioni.
-- **Corpo** (sans 400, 14px / 20px): trascrizione, impostazioni, contenuti; trascrizione a misura fissa di 68ch.
-- **Etichetta** (sans 500, 12px / 16px): pulsanti, intestazioni di giorno, LiveIndicator.
-- **Nota** (sans 500, 11px): timbri di stato e orari sotto la fascia dei parlanti.
+- **Display** (700, 24px, 1.25): titolo della riunione nel dettaglio.
+- **Headline** (600, 20px, 1.4): titolo delle pagine (Impostazioni).
+- **Title** (600, 14px): titolo di gruppo nelle impostazioni (`SettingsSection`).
+- **Speaker name** (600, 13px, 20px, Montserrat): nome del parlante, nel suo colore, identico ovunque (`SpeakerName`).
+- **Body** (400, 14px): testo corrente; la trascrizione corrente sale a 14px con interlinea 28px; blocchi di testo vuoto con `max-w-[60ch]`.
+- **Label** (400/500, 12px): descrizioni, metadati, tempi (`tabular-nums`).
+- **Stamp** (600 nominale, 11px): etichette di stato dentro il timbro. Nota: il codice chiede `font-medium`, ma Open Sans è caricata solo a 400 e 600.
 
 ### Named Rules
-**The Inscription Rule.** Le capitali incise sono solo per nomi di parlanti e titoli di riunione. Mai per pulsanti, etichette, intestazioni di impostazioni o testo corrente.
-
-**The Display-Only Interpunct Rule.** L'interpunto (ROSSI·MARIO) si aggiunge solo alla visualizzazione con `inscribe()`; non si memorizza mai nel titolo o nel nome salvato.
-
-**The Stripped Tail Rule.** Le righe dell'archivio tolgono dal titolo la coda automatica di data e ora (`GG-MM-AAAA HH.MM`) con `railTitle()`, perché la data è già nell'intestazione del giorno e nell'orario della riga.
-
-**The No Relief Rule.** Nessun rilievo CSS sul testo: niente `text-shadow`, niente doppie ombre che simulino la scalpellatura. L'incisione è la forma delle lettere e l'animazione di rivelazione.
+**The Names Only Rule.** Montserrat solo per titoli e nomi (parlanti, titoli). Mai per pulsanti, campi o testo corrente.
 
 ## Layout
 
-Modello a due colonne: colonna di peperino a sinistra (256px, 64px quando è chiusa, transizione di larghezza 300ms) con l'archivio datato (data, titolo inciso, durata, stato) e in basso l'azione di avvio; area principale a destra. Il dettaglio riunione si compone, dall'alto: titolo inciso e riga data/durata, azione bronzo in alto a destra (Genera riassunto), fascia dei parlanti a larghezza piena, poi la trascrizione e a destra il pannello del riassunto (la trascrizione occupa il 65% di default).
+Finestra desktop a tutta altezza (`h-screen`, body senza scroll: scorrono le aree interne). Sidebar a sinistra, 256px aperta e 64px chiusa (transizione di larghezza 300ms), poi il contenuto. Il dettaglio riunione è una colonna: intestazione (`px-3 pt-4 pb-3`), banda dei parlanti, poi la trascrizione con scorrimento proprio e filetto sopra. Il ritmo dello spazio è su base 4px: gap 6-8px dentro le righe, 12-16px tra i blocchi, righe di impostazione con `py-2.5`. I turni di conversazione hanno più aria sopra (16-20px) delle righe dello stesso turno (4px).
 
-La trascrizione ha misura fissa: griglia `minmax(0,8rem) 3.5rem minmax(0,68ch)`, nomi scolpiti nel margine sinistro allineati a destra, offset tabulari, testo in sans. Il ritmo è un modulo di 4px (spazi 4, 8, 12, 16, 24). Le impostazioni sono righe separate da filetti (`SettingsSection`, `SettingRow`): titolo breve, descrizione, controllo a destra, nessuna scheda. Finestra dell'avviso di chiamata: `public/banner.html`, stesse variabili, Cinzel 600 a 15px per il titolo.
+Nell'archivio della sidebar le righe tolgono dal titolo la coda data/ora automatica (formato `gg-mm-aaaa hh.mm`); un puntino da 6px in `rail-accent` segnala le riunioni con nomi da verificare.
 
 ## Elevation & Depth
 
-Piatto per natura: la profondità viene dal cambio di materiale (marmo contro peperino) e dai filetti, non dalle ombre. Le superfici a riposo non hanno ombra.
+Piatto per scelta: la profondità viene da toni (sidebar su `rail`, superficie scura `card-dark`) e da filetti da 1px. Esiste una sola ombra, per ciò che galleggia (toast, popover, finestre).
 
 ### Shadow Vocabulary
-- **Float** (`--shadow-float`: `0 12px 32px -12px` inchiostro al 35% più `0 2px 6px -2px` al 12%; in scuro nero al 60% e 40%): solo per superfici che si staccano dalla pagina, cioè dialoghi e toast di Sonner. Diffusa, mai a sbalzo netto.
+- **Float** (`box-shadow: 0 12px 32px -12px hsl(240 2% 17% / 0.25), 0 2px 6px -2px hsl(240 2% 17% / 0.10)`; in scuro nero a 0.55 e 0.35): token `--shadow-float`.
 
 ### Named Rules
-**The Flat-At-Rest Rule.** Nessuna ombra su colonna, righe, pulsanti, campi. Solo dialoghi e toast usano Float.
+**The Hairline Rule.** Le suddivisioni sono filetti da 1px (`border-border`, `divide-y`), mai riquadri riempiti. Niente card.
 
 ## Shapes
 
-Angoli quasi vivi, da lastra tagliata: raggio base 4px (`--radius`), 2px per pulsanti e campi (`md`), 0 per timbri, righe della colonna e fascia (`sm`). Il timbro di stato è un rettangolo con bordo di 1px e lettere piccole, come un timbro. Il pallino di registrazione è l'unica forma circolare del sistema (8px). La fascia dei parlanti è una striscia di 10px dove ogni turno è un segmento nel pigmento del parlante su un'unica scala di tempo.
+Angoli piccoli e sobri: base `--radius` 8px (`lg`), 6px sui pulsanti e campi (`md`), 4px su righe di sidebar, timbri e pulsanti piccoli (`sm`); `full` per puntini e luce di registrazione. La banda dei parlanti è una barra sottile (10px) con angoli `sm`, ogni turno un segmento nel colore del parlante. Il marchio è una D con la coda di un fumetto; l'icona è uno squircle.
 
 ## Components
 
 ### Buttons
-- **Shape:** angoli di 2px, altezza 32px (28px `sm`, 36px `lg`), testo 14px peso 500.
-- **Primary (`default`):** fondo bronzo, testo marmo-lastra. Avvia registrazione, Genera riassunto, Conferma.
-- **Live:** fondo minio, testo bianco, altezza `sm`. Solo per fermare una registrazione in corso.
-- **Destructive:** vinaccia. **Outline:** bordo `input` su fondo. **Secondary / Ghost:** velo di marmo, hover su marmo-accento. **Link:** bronzo.
-- **Hover / Focus:** hover sfuma il fondo al 90%; focus ad anello di 1px in bronzo-anello; transizione dei colori, nessun movimento.
-- Le varianti `green`, `blue`, `red`, `gray` sono residui di Meetily rimappati sulla palette (bronzo, bronzo, vinaccia, secondario): non usarle in nuovo codice.
+- **Shape:** angolo 6px (`md`), altezza 32px (28px `sm`, 36px `lg`), testo 14px medio.
+- **Primary:** petrolio pieno, testo bianco; hover a 90% di opacità. Uno per schermata.
+- **Outline / Ghost:** outline con contorno `input`; ghost con velo `accent` all'hover. In sidebar, avvio in outline con accento `rail-accent`.
+- **Live:** rosso registrazione, solo per fermare una registrazione in corso.
+- **Destructive:** rosso distruttivo, solo per azioni distruttive.
+- **Focus:** outline globale da 2px con offset 2px nel colore `ring` (petrolio); i componenti shadcn aggiungono anche `ring-1`.
 
 ### Inputs / Fields
-- **Style:** altezza 32px, bordo 1px `bordo-campo`, fondo app, angolo 2px, testo 14px.
-- **Focus:** anello di 1px in bronzo-anello. Nella colonna: fondo peperino-attivo, bordo peperino-filetto, anello bronzo-lettere.
-- **Disabled:** opacità 50%.
+- **Style:** contorno 1px `input`, fondo `background`, angolo 6px, altezza 32px, padding 10px. In sidebar il campo di ricerca usa `rail-active` e `rail-border`.
+- **Focus:** anello `ring` da 1px; disabilitato a 50% di opacità.
 
 ### Navigation
-- **Colonna (peperino):** righe da 32px con icone da 16px in peperino-tenue; hover e attivo su peperino-attivo, testo peperino-testo; intestazioni di giorno in 12px peso 500. La riga archivio mostra orario tabulare, titolo inciso (11px), durata e, se serve, il timbro "Nomi da verificare" in bronzo-lettere.
-- **Tab:** linea di base con filetto, tab attivo con sottolineatura di 2px in bronzo e testo inchiostro.
+- **Sidebar:** righe da 28px (voci archivio) e 32px (controlli) con angolo `sm`; la riga selezionata prende `rail-active` e peso medio; hover `rail-active`. Icone da 16px in `rail-muted`. Separatori `rail-border`.
 
-### Dialoghi e toast
-Dialogo su marmo-lastra, bordo, angolo 4px, padding 24px, ombra Float, ingresso con zoom e dissolvenza di 150ms. I toast Sonner usano le stesse variabili del popover.
+### Impostazioni
+- **SettingsSection e SettingRow:** titolo breve, descrizione opzionale, righe separate da filetti (`divide-y` più filetto sopra e sotto), etichetta e descrizione a sinistra, controllo a destra. Niente card.
 
-### State stamp (timbro di stato)
-Vocabolario fisso: ogni stato ha una sola etichetta e un solo colore ovunque. Registrazione (minio), In elaborazione e Salvato (tenue), Nomi da verificare (bronzo), Annullata (tenue, barrata). Rettangolo di 20px con bordo 1px, testo da 11px.
+### SpeakerName
+Nome del parlante in Montserrat 600, 13px, nel colore assegnato da `speakerColor`; `title` con il nome completo; tronca se lungo. Le etichette provvisorie ("Parlante A", "Altri", "Io") passano da `speakerLabel`.
 
-### Speaker name e LiveIndicator (firma)
-`SpeakerName` mostra l'etichetta del parlante in capitali incise con interpunti, nel suo pigmento, troncata con titolo di tooltip; quando il nome cambia (Parlante A diventa un nome vero) riceve la classe `chisel`: `clip-path` da sinistra a destra in 420ms con easing `cubic-bezier(0.16, 1, 0.3, 1)`, una volta sola, disattivata con `prefers-reduced-motion`. I segnaposto del backend (Parlante A, Altri, Io) sono tradotti da `speakerLabel`. `LiveIndicator` è un pallino di 8px più etichetta di 12px, in minio (o minio-su-pietra sulla colonna).
+### SpeakerBand
+Barra sottile con un segmento per turno su un'unica scala temporale, nomi sotto, un clic salta alla prima riga del turno (opacità 70% all'hover). Senza tempi, solo legenda.
 
-### Icona
-Generata da `src-tauri/icons/source/dixit-mark.py`: monogramma bronzo "D·" (D con interpunto) su pietra, in tre forme (icona app, icona piccola, template per la barra dei menu). Gli effetti di rilievo e ombra valgono solo per il raster dell'icona, non per l'interfaccia.
+### StateStamp
+Timbro da 20px con contorno 1px, angolo `sm`, testo 11px: vocabolario fisso `recording` (rosso live), `verify` (petrolio), `processing` / `saved` (grigio), `cancelled` (grigio barrato). Ogni stato ha una sola etichetta e un solo colore ovunque.
+
+### LiveIndicator
+Puntino pieno da 8px più etichetta 12px, nel rosso `live` (`rail-live` in sidebar). Statico, senza pulsazione.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** usare bronzo per avviare e confermare, `live` solo per fermare la registrazione.
-- **Do** passare ogni nome di parlante da `SpeakerName` e ogni titolo mostrato da `inscribe()`; nelle righe archivio anche da `railTitle()`.
-- **Do** dare ai nuovi parlanti un pigmento con tinta lontana da 39, 340 e dal pigmento già in uso, con una versione chiara per lo scuro.
-- **Do** separare con filetti (`border-border`, `divide-y`), raggruppare con spazio.
-- **Do** usare le cifre tabulari per orari, offset e durate.
-- **Do** aggiungere stringhe tramite `makeT` nel file dell'area, sia `it` sia `en`.
+- **Do** usare un solo pulsante petrolio pieno per schermata; avvii in sidebar in outline o ghost.
+- **Do** riservare il rosso a "sta registrando" e alle azioni distruttive.
+- **Do** usare il verde per la voce dell'utente e per gli stati positivi: scurito in chiaro, #8DC928 pieno in scuro.
+- **Do** assegnare i sette colori degli altri parlanti per numero di turni, tramite `speakerColor` e un roster ordinato.
+- **Do** passare da `SpeakerName`, `StateStamp`, `LiveIndicator` invece di ricreare etichette.
+- **Do** dividere con filetti da 1px; seguire macOS per light e dark.
 
 ### Don't:
-- **Don't** usare il minio per errori, avvisi o decorazione; l'errore è vinaccia.
-- **Don't** dare all'utente un pigmento bronzo o vicino al bronzo.
-- **Don't** usare pigmenti con tinta vicina a 39 o 340.
-- **Don't** applicare rilievo CSS al testo (`text-shadow` o simili).
-- **Don't** salvare interpunti nei dati; si aggiungono solo in visualizzazione.
-- **Don't** usare Cinzel per pulsanti, etichette, intestazioni o corpo del testo.
-- **Don't** usare schede, fumetti di chat, ombre a riposo, bordi decorativi o accenti indaco.
-
-## Contraddizioni note del codice (registrate come fatto)
-
-Il codice le porta oggi; non sono regole da ereditare.
-- `src/components/onboarding/steps/WelcomeStep.tsx` imposta il nome del prodotto "Dixit" in `incisa` a 60px: non è né un nome di parlante né un titolo di riunione.
-- Terra di Siena (tinta 21) dista 12 gradi dal minio (tinta 9): rispetta bronzo e vinaccia, non il minio.
+- **Don't** usare Montserrat fuori da titoli e nomi.
+- **Don't** introdurre card o riquadri riempiti per raggruppare contenuti.
+- **Don't** usare il rosso o il verde come decorazione.
+- **Don't** aggiungere ombre oltre `shadow-float`.

@@ -24,7 +24,7 @@ const buttonVariants = cva(
         blue: "bg-primary text-primary-foreground hover:bg-primary/90",
         red: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         gray: "border border-input bg-secondary text-secondary-foreground hover:bg-accent",
-        // Only for stopping a recording in progress: minium is reserved for "Dixit is recording".
+        // Only for stopping a recording in progress: red is reserved for "Dixit is recording".
         live: "bg-live text-live-foreground hover:bg-live/90",
       },
       size: {

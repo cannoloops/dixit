@@ -21,7 +21,7 @@ interface RecordingStatusBarProps {
   className?: string;
 }
 
-/** The recording light (minium only while live) and the elapsed time. */
+/** The recording light (red only while live) and the elapsed time. */
 export const RecordingStatusBar: React.FC<RecordingStatusBarProps> = ({ isPaused = false, className }) => {
   // Backend-synced duration (polled every 500ms); keep the last value if it goes null.
   const { activeDuration } = useRecordingState();
