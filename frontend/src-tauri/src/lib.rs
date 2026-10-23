@@ -516,8 +516,9 @@ pub fn run() {
                 log::error!("Failed to create system tray: {}", e);
             }
 
-            // Trascrivi: automatic start/stop on Teams/Zoom/Meet calls
+            // Trascrivi: automatic start/stop on Teams/Zoom/Meet calls, post-call speaker attribution
             autopilot::spawn(_app.handle().clone());
+            speakers::listen_for_stops(_app.handle());
 
             // Initialize notification system with proper defaults
             log::info!("Initializing notification system...");
@@ -845,6 +846,9 @@ pub fn run() {
             autopilot::autopilot_cancel,
             autopilot::banner::autopilot_banner_close,
             teams::teams_dump_ax_tree,
+            speakers::speakers_rename,
+            speakers::speakers_reprocess,
+            speakers::speakers_ensure_model,
             autopilot::autopilot_request_accessibility,
         ])
         .build(tauri::generate_context!())
