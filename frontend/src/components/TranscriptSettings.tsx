@@ -8,6 +8,7 @@ import { ModelManager } from './WhisperModelManager';
 import { ParakeetModelManager } from './ParakeetModelManager';
 import { SettingsSection, SettingRow } from '@/components/molecules/form-components/setting-row';
 import { t } from '@/i18n/settings';
+import { ParakeetAPI } from '@/lib/parakeet';
 
 
 export interface TranscriptModelProps {
@@ -28,6 +29,15 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
     const [isApiKeyLocked, setIsApiKeyLocked] = useState<boolean>(true);
     const [isLockButtonVibrating, setIsLockButtonVibrating] = useState<boolean>(false);
     const [uiProvider, setUiProvider] = useState<TranscriptModelProps['provider']>(transcriptModelConfig.provider);
+
+    // With Whisper chosen, the live runs on Parakeet when a Parakeet model is downloaded.
+    const [parakeetReady, setParakeetReady] = useState(false);
+    useEffect(() => {
+        ParakeetAPI.init()
+            .then(() => ParakeetAPI.getAvailableModels())
+            .then((models) => setParakeetReady(models.some((m) => m.status === 'Available')))
+            .catch(() => setParakeetReady(false));
+    }, [uiProvider]);
 
     // Sync uiProvider when backend config changes (e.g., after model selection or initial load)
     useEffect(() => {
@@ -99,7 +109,22 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
     return (
         <div className="space-y-8">
             <SettingsSection title={t('transcriptSection')} description={t('transcriptDesc')}>
-                <SettingRow label={t('transcriptModel')} htmlFor="transcript-provider">
+                {uiProvider === 'localWhisper' && (
+                    <SettingRow label={t('transcriptLive')} description={t('transcriptLiveDesc')}>
+                        <p className="w-80 text-sm">
+                            {parakeetReady ? t('transcriptLiveParakeet') : t('transcriptLiveWhisper')}
+                        </p>
+                    </SettingRow>
+                )}
+                <SettingRow
+                    label={uiProvider === 'localWhisper' ? t('transcriptFinal') : t('transcriptModel')}
+                    description={
+                        uiProvider === 'localWhisper'
+                            ? parakeetReady ? t('transcriptFinalDesc') : t('transcriptFinalSameDesc')
+                            : uiProvider === 'parakeet' ? t('transcriptParakeetOnlyDesc') : undefined
+                    }
+                    htmlFor="transcript-provider"
+                >
                     <Select
                         value={uiProvider}
                         onValueChange={(value) => {
