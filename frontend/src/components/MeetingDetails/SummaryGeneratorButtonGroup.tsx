@@ -102,6 +102,11 @@ export function SummaryGeneratorButtonGroup({
   languageSlot
 }: SummaryGeneratorButtonGroupProps) {
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  // Dixit: the model button only in expert mode (Settings > Advanced); errors can still open the dialog.
+  const [expert, setExpert] = useState(false);
+  useEffect(() => {
+    try { setExpert(localStorage.getItem('dixit-expert-mode') === '1'); } catch {}
+  }, []);
 
   // Let the parent open the model dialog (e.g. from an error that needs a model).
   useEffect(() => {
@@ -117,12 +122,14 @@ export function SummaryGeneratorButtonGroup({
       {languageSlot}
 
       <Dialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen}>
-        <DialogTrigger asChild>
-          <Button variant="outline" size="sm" title={t('summaryModel')}>
-            <Settings />
-            <span className="hidden @[40rem]:inline">{t('model')}</span>
-          </Button>
-        </DialogTrigger>
+        {expert && (
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" title={t('summaryModel')}>
+              <Settings />
+              <span className="hidden @[40rem]:inline">{t('model')}</span>
+            </Button>
+          </DialogTrigger>
+        )}
         <DialogContent aria-describedby={undefined}>
           <VisuallyHidden>
             <DialogTitle>{t('modelSettings')}</DialogTitle>

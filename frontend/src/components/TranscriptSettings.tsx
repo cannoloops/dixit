@@ -21,9 +21,11 @@ export interface TranscriptSettingsProps {
     transcriptModelConfig: TranscriptModelProps;
     setTranscriptModelConfig: (config: TranscriptModelProps) => void;
     onModelSelect?: () => void;
+    /** Dixit: only show the configured engines; the pickers live in Settings > Advanced. */
+    readOnly?: boolean;
 }
 
-export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelConfig, onModelSelect }: TranscriptSettingsProps) {
+export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelConfig, onModelSelect, readOnly }: TranscriptSettingsProps) {
     const [apiKey, setApiKey] = useState<string | null>(transcriptModelConfig.apiKey || null);
     const [showApiKey, setShowApiKey] = useState<boolean>(false);
     const [isApiKeyLocked, setIsApiKeyLocked] = useState<boolean>(true);
@@ -105,6 +107,24 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
             onModelSelect();
         }
     };
+
+    if (readOnly) {
+        const finalModel = uiProvider === 'localWhisper' ? `Whisper ${transcriptModelConfig.model}` : t('providerParakeet');
+        return (
+            <SettingsSection title={t('transcriptSection')} description={t('transcriptDesc')}>
+                {uiProvider === 'localWhisper' && (
+                    <SettingRow label={t('transcriptLive')} description={t('transcriptLiveDesc')}>
+                        <p className="w-80 text-sm">
+                            {parakeetReady ? t('transcriptLiveParakeet') : t('transcriptLiveWhisper')}
+                        </p>
+                    </SettingRow>
+                )}
+                <SettingRow label={t('transcriptFinal')} description={t('transcriptFinalDesc')}>
+                    <p className="w-80 text-sm">{finalModel}</p>
+                </SettingRow>
+            </SettingsSection>
+        );
+    }
 
     return (
         <div className="space-y-8">

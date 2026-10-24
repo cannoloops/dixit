@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { invoke } from '@tauri-apps/api/core';
@@ -13,6 +13,8 @@ import { AutopilotSettings } from '@/components/AutopilotSettings';
 import { useConfig } from '@/contexts/ConfigContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { SettingsSection, SettingRow } from '@/components/molecules/form-components/setting-row';
 import { t } from '@/i18n/settings';
 
 // Tabs configuration (constant)
@@ -23,11 +25,23 @@ const TABS = [
   { value: 'transcription', label: t('tabTranscription') },
   { value: 'summary', label: t('tabSummary') },
   { value: 'beta', label: t('tabBeta') },
+  { value: 'advanced', label: t('tabAdvanced') },
 ] as const;
+
+const EXPERT_KEY = 'dixit-expert-mode';
 
 export default function SettingsPage() {
   const router = useRouter();
   const { transcriptModelConfig, setTranscriptModelConfig } = useConfig();
+  // Dixit: model pickers hidden unless expert mode is on (per-Mac preference).
+  const [expert, setExpert] = useState(false);
+  useEffect(() => {
+    try { setExpert(localStorage.getItem(EXPERT_KEY) === '1'); } catch {}
+  }, []);
+  const toggleExpert = (on: boolean) => {
+    setExpert(on);
+    try { localStorage.setItem(EXPERT_KEY, on ? '1' : '0'); } catch {}
+  };
 
   // Load saved transcript configuration on mount
   useEffect(() => {
@@ -83,6 +97,7 @@ export default function SettingsPage() {
             <TranscriptSettings
               transcriptModelConfig={transcriptModelConfig}
               setTranscriptModelConfig={setTranscriptModelConfig}
+              readOnly
             />
           </TabsContent>
           <TabsContent value="summary" className="mt-0">
@@ -90,6 +105,22 @@ export default function SettingsPage() {
           </TabsContent>
           <TabsContent value="beta" className="mt-0">
             <BetaSettings />
+          </TabsContent>
+          <TabsContent value="advanced" className="mt-0 space-y-8">
+            <SettingsSection title={t('expertSection')}>
+              <SettingRow label={t('expertMode')} description={t('expertModeDesc')} htmlFor="expert-mode">
+                <Switch id="expert-mode" checked={expert} onCheckedChange={toggleExpert} />
+              </SettingRow>
+            </SettingsSection>
+            {expert && (
+              <>
+                <TranscriptSettings
+                  transcriptModelConfig={transcriptModelConfig}
+                  setTranscriptModelConfig={setTranscriptModelConfig}
+                />
+                <SummaryModelSettings picker />
+              </>
+            )}
           </TabsContent>
         </div>
       </Tabs>

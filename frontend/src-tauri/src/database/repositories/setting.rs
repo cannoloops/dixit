@@ -346,3 +346,34 @@ impl SettingsRepository {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod dixit_migration_tests {
+    use sqlx::SqlitePool;
+
+    #[tokio::test]
+    async fn moves_local_providers_to_bundled_models() {
+        let p = SqlitePool::connect("sqlite::memory:").await.unwrap();
+        sqlx::migrate!("./migrations").run(&p).await.unwrap();
+
+        // Vito's current config: Ollama gemma4, transcription already on Whisper large-v3.
+        sqlx::query("INSERT INTO settings (id, provider, model, whisperModel) VALUES ('1', 'ollama', 'gemma4:latest', 'large-v3')")
+            .execute(&p).await.unwrap();
+        sqlx::query("INSERT INTO transcript_settings (id, provider, model) VALUES ('1', 'parakeet', 'parakeet-tdt-0.6b-v3-int8')")
+            .execute(&p).await.unwrap();
+        sqlx::raw_sql(include_str!("../../../migrations/20261024000000_dixit_bundled_models.sql"))
+            .execute(&p).await.unwrap();
+
+        let summary: (String, String) = sqlx::query_as("SELECT provider, model FROM settings").fetch_one(&p).await.unwrap();
+        assert_eq!(summary, ("builtin-ai".into(), "gemma4:e4b".into()));
+        let transcript: (String, String) = sqlx::query_as("SELECT provider, model FROM transcript_settings").fetch_one(&p).await.unwrap();
+        assert_eq!(transcript, ("localWhisper".into(), "large-v3".into()));
+
+        // A cloud provider chosen on purpose stays.
+        sqlx::query("UPDATE settings SET provider = 'claude', model = 'claude-sonnet'").execute(&p).await.unwrap();
+        sqlx::raw_sql(include_str!("../../../migrations/20261024000000_dixit_bundled_models.sql"))
+            .execute(&p).await.unwrap();
+        let summary: (String, String) = sqlx::query_as("SELECT provider, model FROM settings").fetch_one(&p).await.unwrap();
+        assert_eq!(summary, ("claude".into(), "claude-sonnet".into()));
+    }
+}

@@ -340,7 +340,7 @@ impl ParakeetEngine {
             let mut validation_errors = Vec::new();
 
             for spec in specs {
-                let model_path = self.models_dir.join(spec.name);
+                let model_path = crate::bundled_models::resolve(&self.models_dir.join(spec.name));
                 let status = if model_path.exists() {
                     match Self::validate_model_directory(&model_path, spec.artifacts) {
                         Ok(()) => ModelStatus::Available,
@@ -585,6 +585,9 @@ impl ParakeetEngine {
         // Allow deletion of corrupted or available models
         match &model_info.status {
             ModelStatus::Corrupted { .. } | ModelStatus::Available => {
+                if crate::bundled_models::is_bundled(&model_info.path) {
+                    return Err(anyhow!("Parakeet model '{}' is bundled with the app", model_name));
+                }
                 // Delete the entire model directory
                 if model_info.path.exists() {
                     fs::remove_dir_all(&model_info.path).await

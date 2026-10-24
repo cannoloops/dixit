@@ -12,12 +12,14 @@ import { t } from '@/i18n/settings';
 
 interface SummaryModelSettingsProps {
   refetchTrigger?: number; // Change this to trigger refetch
+  /** Dixit: the model picker, shown in Settings > Advanced; otherwise the configured model, read-only. */
+  picker?: boolean;
 }
 
-export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsProps) {
+export function SummaryModelSettings({ refetchTrigger, picker }: SummaryModelSettingsProps) {
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
-    provider: 'ollama',
-    model: 'llama3.2:latest',
+    provider: 'builtin-ai',
+    model: 'gemma4:e4b',
     whisperModel: 'large-v3',
     apiKey: null,
     ollamaEndpoint: null
@@ -124,6 +126,25 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
     }
   };
 
+  if (picker) {
+    return (
+      <section className="space-y-2">
+        <div>
+          <h3 className="text-sm font-semibold">{t('summaryModelSection')}</h3>
+          <p className="text-xs text-muted-foreground">{t('summaryModelDesc')}</p>
+        </div>
+        <ModelSettingsModal
+          modelConfig={modelConfig}
+          setModelConfig={setModelConfig}
+          onSave={handleSaveModelConfig}
+          skipInitialFetch={true}
+        />
+      </section>
+    );
+  }
+
+  const isBundled = modelConfig.provider === 'builtin-ai' && modelConfig.model === 'gemma4:e4b';
+
   return (
     <div className="space-y-8">
       <SettingsSection title={t('summaryGenSection')}>
@@ -134,19 +155,13 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
 
       <SummaryLanguageSettings />
 
-      <section className="space-y-2">
-        <div>
-          <h3 className="text-sm font-semibold">{t('summaryModelSection')}</h3>
-          <p className="text-xs text-muted-foreground">{t('summaryModelDesc')}</p>
-        </div>
-
-        <ModelSettingsModal
-          modelConfig={modelConfig}
-          setModelConfig={setModelConfig}
-          onSave={handleSaveModelConfig}
-          skipInitialFetch={true}
-        />
-      </section>
+      <SettingsSection title={t('summaryModelSection')}>
+        <SettingRow label={t('summaryModelSection')}>
+          <p className="w-80 text-sm">
+            {isBundled ? t('summaryModelBundled') : `${modelConfig.provider} · ${modelConfig.model}`}
+          </p>
+        </SettingRow>
+      </SettingsSection>
     </div>
   );
 }

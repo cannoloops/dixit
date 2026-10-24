@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/tooltip";
 
 export function SetupOverviewStep() {
-  const { goNext } = useOnboarding();
+  const { goToStep, completeOnboarding } = useOnboarding();
   const [isMac, setIsMac] = useState(false);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export function SetupOverviewStep() {
       title={t('overviewTitle')}
       description={t('overviewDescription')}
       step={2}
-      totalSteps={isMac ? 4 : 3}
+      totalSteps={isMac ? 3 : 2}
     >
       <ul className="divide-y divide-border border-y border-border">
         {models.map((model) => {
@@ -83,8 +83,16 @@ export function SetupOverviewStep() {
       </ul>
 
       <div className="mt-8 flex justify-end">
-        <Button size="lg" onClick={goNext}>
-          {t('startDownloads')}
+        {/* Dixit: models are bundled, so no download step: straight to the macOS permissions (step 4). */}
+        <Button
+          size="lg"
+          onClick={async () => {
+            if (isMac) return goToStep(4);
+            await completeOnboarding();
+            window.location.reload();
+          }}
+        >
+          {t('continue')}
         </Button>
       </div>
     </OnboardingContainer>

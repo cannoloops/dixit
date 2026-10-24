@@ -13,6 +13,7 @@ export const t = makeT({
     tabTranscription: 'Trascrizione',
     tabSummary: 'Riassunto',
     tabBeta: 'Beta',
+    tabAdvanced: 'Avanzate',
     tabAbout: 'Info',
 
     // Generali
@@ -143,6 +144,10 @@ export const t = makeT({
     autoSummaryDesc: 'Genera il riassunto appena la riunione finisce (allo stop della registrazione).',
     summaryModelSection: 'Modello per il riassunto',
     summaryModelDesc: 'Configura il modello di IA che genera i riassunti delle riunioni.',
+    summaryModelBundled: 'Gemma 4 E4B, incluso in Dixit',
+    expertSection: 'Modalità esperto',
+    expertMode: 'Scegli i modelli',
+    expertModeDesc: 'Dixit usa i modelli inclusi: Parakeet per il live, Whisper large-v3 per la definitiva, Gemma 4 E4B per il riassunto. Attiva solo per cambiarli o usare un servizio esterno.',
     modelLoadError: 'Impossibile caricare le impostazioni del modello',
     modelSaved: 'Impostazioni del modello salvate',
     modelNotSaved: 'Impostazioni del modello non salvate',
@@ -204,6 +209,7 @@ export const t = makeT({
     tabTranscription: 'Transcription',
     tabSummary: 'Summary',
     tabBeta: 'Beta',
+    tabAdvanced: 'Advanced',
     tabAbout: 'About',
 
     // General
@@ -334,6 +340,10 @@ export const t = makeT({
     autoSummaryDesc: 'Generate the summary as soon as the meeting ends (when recording stops).',
     summaryModelSection: 'Summary model',
     summaryModelDesc: 'Configure the AI model that generates meeting summaries.',
+    summaryModelBundled: 'Gemma 4 E4B, included in Dixit',
+    expertSection: 'Expert mode',
+    expertMode: 'Choose models',
+    expertModeDesc: 'Dixit uses its bundled models: Parakeet for the live, Whisper large-v3 for the final transcript, Gemma 4 E4B for the summary. Turn on only to change them or use an external provider.',
     modelLoadError: 'Could not load model settings',
     modelSaved: 'Model settings saved',
     modelNotSaved: 'Model settings not saved',

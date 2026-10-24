@@ -191,7 +191,7 @@ impl ModelManager {
         let mut models_map = HashMap::new();
 
         for model_def in model_defs {
-            let model_path = self.models_dir.join(&model_def.gguf_file);
+            let model_path = crate::bundled_models::resolve(&self.models_dir.join(&model_def.gguf_file));
             log::debug!(
                 "Checking model '{}' at path: {}",
                 model_def.name,

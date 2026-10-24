@@ -39,6 +39,7 @@ pub mod analytics;
 pub mod api;
 pub mod audio;
 pub mod autopilot;
+pub mod bundled_models;
 #[cfg(target_os = "macos")]
 pub mod ax_util;
 pub mod config;
@@ -550,6 +551,9 @@ pub fn run() {
                     }
                 }
             });
+
+            // Dixit: models shipped in the .app, looked up after the user's models dir
+            bundled_models::init(&_app.handle());
 
             // Set models directory to use app_data_dir (unified storage location)
             whisper_engine::commands::set_models_directory(&_app.handle());

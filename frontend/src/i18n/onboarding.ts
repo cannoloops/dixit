@@ -14,21 +14,20 @@ export const t = makeT({
     // Welcome
     welcomeTagline:
       'Si accende da solo quando inizia una call su Teams, Zoom o Meet, trascrive sul Mac e scrive chi ha detto cosa.',
-    welcomeNote: 'Al primo avvio Dixit scarica due modelli (alcuni GB) e chiede tre permessi di macOS.',
+    welcomeNote: 'I modelli sono già inclusi: al primo avvio Dixit chiede solo tre permessi di macOS.',
     welcomeStart: 'Inizia',
 
     // Setup overview
     overviewTitle: 'Prima configurazione',
     overviewDescription:
-      'Trascrizione e riassunti girano sul tuo Mac, quindi servono due modelli di intelligenza artificiale.',
+      'Trascrizione e riassunti girano sul tuo Mac con due modelli di intelligenza artificiale già inclusi in Dixit.',
     transcriptionEngine: 'Motore di trascrizione',
     transcriptionPurpose: 'Trasforma le voci della call in testo.',
     summaryEngine: 'Motore di riassunto',
     summaryPurpose: 'Scrive il riassunto della riunione.',
     summaryInfo:
-      'Per i riassunti puoi anche scegliere un servizio esterno come OpenAI, Claude o Ollama, dalle impostazioni.',
+      'Per i riassunti puoi anche scegliere un servizio esterno come OpenAI, Claude o Ollama, dalle impostazioni avanzate.',
     summaryInfoLabel: 'Altre opzioni per i riassunti',
-    startDownloads: 'Scarica i modelli',
 
     // Downloads
     downloadsTitle: 'Download dei modelli',
@@ -95,21 +94,20 @@ export const t = makeT({
     // Welcome
     welcomeTagline:
       'Starts by itself when a call begins on Teams, Zoom or Meet, transcribes on your Mac and writes down who said what.',
-    welcomeNote: 'On first launch Dixit downloads two models (a few GB) and asks for three macOS permissions.',
+    welcomeNote: 'The models are included: on first launch Dixit only asks for three macOS permissions.',
     welcomeStart: 'Get started',
 
     // Setup overview
     overviewTitle: 'First-time setup',
     overviewDescription:
-      'Transcription and summaries run on your Mac, so Dixit needs two artificial intelligence models.',
+      'Transcription and summaries run on your Mac with two artificial intelligence models included in Dixit.',
     transcriptionEngine: 'Transcription engine',
     transcriptionPurpose: 'Turns the voices on the call into text.',
     summaryEngine: 'Summary engine',
     summaryPurpose: 'Writes the meeting summary.',
     summaryInfo:
-      'For summaries you can also choose an external provider such as OpenAI, Claude or Ollama in settings.',
+      'For summaries you can also choose an external provider such as OpenAI, Claude or Ollama in advanced settings.',
     summaryInfoLabel: 'Other summary options',
-    startDownloads: 'Download models',
 
     // Downloads
     downloadsTitle: 'Downloading models',

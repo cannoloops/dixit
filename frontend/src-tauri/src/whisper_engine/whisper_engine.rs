@@ -214,7 +214,7 @@ impl WhisperEngine {
         let model_configs = WHISPER_MODEL_CATALOG;
 
         for &(name, filename, size_mb, accuracy, speed, description) in model_configs {
-            let model_path = models_dir.join(filename);
+            let model_path = crate::bundled_models::resolve(&models_dir.join(filename));
             let status = if model_path.exists() {
                 // Check if file size is reasonable (at least 1MB for a valid model)
                 match std::fs::metadata(&model_path) {
@@ -877,6 +877,9 @@ impl WhisperEngine {
 
         // Check if model is corrupted before allowing deletion
         log::info!("Model '{}' has status: {:?}", model_name, model_info.status);
+        if crate::bundled_models::is_bundled(&model_info.path) {
+            return Err(anyhow!("Model '{}' is bundled with the app", model_name));
+        }
         match &model_info.status {
             ModelStatus::Corrupted { file_size, expected_min_size } => {
                 log::info!("Deleting corrupted model '{}' (file size: {} bytes, expected min: {} bytes)",

@@ -8,10 +8,9 @@ use tokio::sync::Mutex;
 
 use super::model_manager::{DownloadProgress, ModelInfo, ModelManager};
 
-const QWEN35_4B_RECOMMENDED_RAM_GB: u64 = 14;
-
 pub(crate) fn summary_model_priority(model_name: &str) -> u8 {
     match model_name {
+        "gemma4:e4b" => 5,
         "qwen3.5:4b" => 4,
         "qwen3.5:2b" => 3,
         "gemma3:4b" => 2,
@@ -20,12 +19,9 @@ pub(crate) fn summary_model_priority(model_name: &str) -> u8 {
     }
 }
 
-pub(crate) fn recommend_summary_model(_is_macos: bool, system_ram_gb: u64) -> &'static str {
-    if system_ram_gb >= QWEN35_4B_RECOMMENDED_RAM_GB {
-        "qwen3.5:4b"
-    } else {
-        "qwen3.5:2b"
-    }
+/// Dixit: always the bundled Gemma 4 E4B, so no download is ever needed.
+pub(crate) fn recommend_summary_model(_is_macos: bool, _system_ram_gb: u64) -> &'static str {
+    super::models::get_default_model_name()
 }
 
 pub(crate) fn get_recommended_summary_model_for_current_system() -> Result<&'static str, String> {
@@ -412,19 +408,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn recommended_summary_model_uses_qwen2b_below_effective_16gb_floor() {
-        assert_eq!(recommend_summary_model(true, 13), "qwen3.5:2b");
-        assert_eq!(recommend_summary_model(false, 13), "qwen3.5:2b");
-    }
-
-    #[test]
-    fn recommended_summary_model_uses_qwen4b_at_effective_16gb_floor() {
-        assert_eq!(recommend_summary_model(true, 14), "qwen3.5:4b");
-        assert_eq!(recommend_summary_model(false, 14), "qwen3.5:4b");
+    fn recommended_summary_model_is_the_bundled_gemma4() {
+        assert_eq!(recommend_summary_model(true, 8), "gemma4:e4b");
+        assert_eq!(recommend_summary_model(true, 48), "gemma4:e4b");
     }
 
     #[test]
     fn available_summary_model_priority_prefers_qwen_over_gemma() {
+        assert!(summary_model_priority("gemma4:e4b") > summary_model_priority("qwen3.5:4b"));
         assert!(summary_model_priority("qwen3.5:4b") > summary_model_priority("qwen3.5:2b"));
         assert!(summary_model_priority("qwen3.5:2b") > summary_model_priority("gemma3:4b"));
         assert!(summary_model_priority("gemma3:4b") > summary_model_priority("gemma3:1b"));

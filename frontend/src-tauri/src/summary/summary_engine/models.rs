@@ -163,6 +163,19 @@ pub struct ModelDef {
 /// Add new models here - the system will automatically detect and manage them
 pub fn get_available_models() -> Vec<ModelDef> {
     vec![
+        // Dixit default, bundled in the .app: Gemma 4 E4B, same weights as Ollama's gemma4:latest
+        ModelDef {
+            name: "gemma4:e4b".to_string(),
+            display_name: "Gemma 4 E4B".to_string(),
+            gguf_file: "gemma-4-E4B-it-Q4_K_M.gguf".to_string(),
+            template: "gemma4".to_string(),
+            download_url: "https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf".to_string(),
+            size_mb: 4747,
+            context_size: 32768,
+            layer_count: 42,
+            sampling: SamplingParams::gemma3_instruct(vec!["<turn|>".to_string()]),
+            description: "Default model, included in the app. Good Italian summaries. Requires ~7GB RAM.".to_string(),
+        },
         // Qwen 3.5 2B - Balanced tier
         ModelDef {
             name: "qwen3.5:2b".to_string(),
@@ -223,6 +236,11 @@ pub fn get_model_by_name(name: &str) -> Option<ModelDef> {
     get_available_models().into_iter().find(|m| m.name == name)
 }
 
+/// Name of the default model, the bundled one.
+pub fn get_default_model_name() -> &'static str {
+    "gemma4:e4b"
+}
+
 /// Get the default model (first in list)
 pub fn get_default_model() -> ModelDef {
     get_available_models()
@@ -237,7 +255,7 @@ pub fn get_model_path(app_data_dir: &PathBuf, model_name: &str) -> Result<PathBu
         .ok_or_else(|| anyhow!("Unknown model: {}", model_name))?;
 
     let models_dir = get_models_directory(app_data_dir);
-    let model_path = models_dir.join(&model.gguf_file);
+    let model_path = crate::bundled_models::resolve(&models_dir.join(&model.gguf_file));
 
     Ok(model_path)
 }
@@ -258,6 +276,15 @@ pub const GEMMA3_TEMPLATE: &str = "\
 <start_of_turn>user
 {user_prompt}<end_of_turn>
 <start_of_turn>model
+";
+
+/// Gemma 4 chat template, thinking off (no `<|think|>` in the system turn).
+pub const GEMMA4_TEMPLATE: &str = "\
+<|turn>system
+{system_prompt}<turn|>
+<|turn>user
+{user_prompt}<turn|>
+<|turn>model
 ";
 
 /// Qwen 3.5 non-thinking chat template format.
@@ -281,6 +308,8 @@ fn escape_user_prompt_control_markers(user_prompt: &str) -> String {
         .replace("<|im_end|>", "< |im_end| >")
         .replace("<start_of_turn>", "< start_of_turn >")
         .replace("<end_of_turn>", "< end_of_turn >")
+        .replace("<|turn>", "< |turn >")
+        .replace("<turn|>", "< turn| >")
         .replace("<think>", "< think >")
         .replace("</think>", "< /think >")
 }
@@ -301,6 +330,7 @@ pub fn format_prompt(
 ) -> Result<String> {
     let template = match template_name {
         "gemma3" => GEMMA3_TEMPLATE,
+        "gemma4" => GEMMA4_TEMPLATE,
         "qwen3.5_nonthinking" => QWEN35_NONTHINKING_TEMPLATE,
         _ => return Err(anyhow!("Unknown template: {}", template_name)),
     };
@@ -432,6 +462,15 @@ mod tests {
         assert!(formatted.contains("literal < start_of_turn > and < end_of_turn >"));
         assert_eq!(formatted.matches("<start_of_turn>").count(), 3);
         assert_eq!(formatted.matches("<end_of_turn>").count(), 2);
+    }
+
+    #[test]
+    fn gemma4_e4b_is_the_default_and_formats_prompt() {
+        assert_eq!(get_default_model().name, "gemma4:e4b");
+        let formatted = format_prompt("gemma4", "rules", "literal <turn|> here").unwrap();
+        assert!(formatted.starts_with("<|turn>system\nrules<turn|>\n<|turn>user\n"));
+        assert!(formatted.ends_with("<turn|>\n<|turn>model\n"));
+        assert_eq!(formatted.matches("<turn|>").count(), 2);
     }
 
     #[test]

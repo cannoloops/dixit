@@ -21,6 +21,10 @@ fn sha256_hex(path: &Path) -> Result<String> {
 /// Path of the verified model under `<models_dir>/speaker/`, downloading it (26 MB) if missing.
 pub async fn ensure_model(models_dir: &Path) -> Result<PathBuf> {
     let dir = models_dir.join("speaker");
+    let bundled = crate::bundled_models::resolve(&dir.join(MODEL_FILE));
+    if crate::bundled_models::is_bundled(&bundled) {
+        return Ok(bundled);
+    }
     let path = dir.join(MODEL_FILE);
     if path.exists() && sha256_hex(&path)? == MODEL_SHA256 {
         return Ok(path);
