@@ -176,6 +176,19 @@ pub fn get_available_models() -> Vec<ModelDef> {
             sampling: SamplingParams::gemma3_instruct(vec!["<turn|>".to_string()]),
             description: "Default model, included in the app. Good Italian summaries. Requires ~7GB RAM.".to_string(),
         },
+        // Gemma 4 26B-A4B (MoE, 4B active): expert option, downloaded on demand
+        ModelDef {
+            name: "gemma4:26b-a4b".to_string(),
+            display_name: "Gemma 4 26B-A4B (MoE)".to_string(),
+            gguf_file: "gemma-4-26B-A4B-it-UD-Q4_K_M.gguf".to_string(),
+            template: "gemma4".to_string(),
+            download_url: "https://huggingface.co/unsloth/gemma-4-26B-A4B-it-GGUF/resolve/main/gemma-4-26B-A4B-it-UD-Q4_K_M.gguf".to_string(),
+            size_mb: 16162,
+            context_size: 32768,
+            layer_count: 30,
+            sampling: SamplingParams::gemma3_instruct(vec!["<turn|>".to_string()]),
+            description: "Larger Gemma 4 mixture-of-experts model. Better summaries, needs ~20GB RAM and a 16GB download.".to_string(),
+        },
         // Qwen 3.5 2B - Balanced tier
         ModelDef {
             name: "qwen3.5:2b".to_string(),
@@ -344,6 +357,15 @@ pub fn format_prompt(
     Ok(formatted)
 }
 
+/// Gemma 4 (the 26B-A4B in particular) may open its answer with a thought channel,
+/// empty when thinking is off: `<|channel>thought\n<channel|>`. Keeps only the answer.
+pub fn strip_gemma4_thought(text: &str) -> String {
+    match text.trim_start().strip_prefix("<|channel>") {
+        Some(rest) => rest.split_once("<channel|>").map_or(rest, |(_, answer)| answer).trim_start().to_string(),
+        None => text.to_string(),
+    }
+}
+
 // ============================================================================
 // Configuration Constants
 // ============================================================================
@@ -471,6 +493,12 @@ mod tests {
         assert!(formatted.starts_with("<|turn>system\nrules<turn|>\n<|turn>user\n"));
         assert!(formatted.ends_with("<turn|>\n<|turn>model\n"));
         assert_eq!(formatted.matches("<turn|>").count(), 2);
+    }
+
+    #[test]
+    fn strips_empty_gemma4_thought_channel() {
+        assert_eq!(strip_gemma4_thought("<|channel>thought\n<channel|># Titolo\n"), "# Titolo\n");
+        assert_eq!(strip_gemma4_thought("# Titolo"), "# Titolo");
     }
 
     #[test]

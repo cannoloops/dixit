@@ -6,6 +6,8 @@ pub mod commands;
 pub mod model_manager;
 pub mod models;
 pub mod sidecar;
+#[cfg(test)]
+mod bench;
 
 // Re-export commonly used types
 pub use client::{generate_with_builtin, is_sidecar_healthy, shutdown_sidecar_gracefully, force_shutdown_sidecar};

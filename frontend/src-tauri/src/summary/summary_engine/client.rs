@@ -238,7 +238,7 @@ pub async fn generate_with_builtin(
                 Err(anyhow!("Generation failed: {}", err_msg))
             } else {
                 log::info!("Generation completed: {} chars", text.len());
-                Ok(text)
+                Ok(models::strip_gemma4_thought(&text))
             }
         }
         Response::Error { message } => Err(anyhow!("Sidecar error: {}", message)),
