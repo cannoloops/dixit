@@ -1,0 +1,46 @@
+{
+  "name": "SAL - Status update",
+  "description": "Minutes of a status meeting: progress by activity, decisions, actions, risks and next steps.",
+  "name_it": "SAL - Stato avanzamento lavori",
+  "description_it": "Minuta di una call di avanzamento: stato per attività, decisioni, azioni, rischi e prossimi passi.",
+  "sections": [
+    {
+      "title": "Summary",
+      "instruction": "3-5 sentences: why the call took place, the overall state of the work and the main outcome. A reader who only reads this must know what happened",
+      "format": "paragraph"
+    },
+    {
+      "title": "Participants",
+      "instruction": "Real names of the people who took part, from the speaker names or from people addressed by name. Never list generic labels such as 'Speaker A' or 'Parlante B': if there are unnamed speakers, end with one item 'Other unnamed speakers'. If no real name appears, write 'Not stated'",
+      "format": "list"
+    },
+    {
+      "title": "Activity Status",
+      "instruction": "One row per activity, phase or deliverable explicitly discussed. Status is one of: Done, In progress, Blocked, Not started. Notes hold what was said about it (percentages, estimates, dates) only if stated",
+      "format": "list",
+      "item_format": "| **Activity / Phase** | **Status** | **Notes** |\n| --- | --- | --- |"
+    },
+    {
+      "title": "Decisions",
+      "instruction": "Only points on which the participants explicitly agreed, each with its context in a few words. Proposals or ideas still to evaluate are not decisions",
+      "format": "list"
+    },
+    {
+      "title": "Action Items",
+      "instruction": "Every task someone took on. 'Who' and 'By when' only if stated in the call, otherwise 'Not stated'",
+      "format": "list",
+      "item_format": "| **Who** | **What** | **By when** |\n| --- | --- | --- |"
+    },
+    {
+      "title": "Risks and Blockers",
+      "instruction": "Risks, delays, dependencies or blockers that were raised, with impact and mitigation only if discussed",
+      "format": "list",
+      "item_format": "| **Risk / Blocker** | **Impact** | **Mitigation** |\n| --- | --- | --- |"
+    },
+    {
+      "title": "Next Steps",
+      "instruction": "What happens after this call, including follow-up meetings or deadlines with their date only if stated",
+      "format": "list"
+    }
+  ]
+}

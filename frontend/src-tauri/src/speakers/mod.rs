@@ -114,9 +114,11 @@ pub fn listen_for_stops<R: Runtime>(app: &AppHandle<R>) {
         let app = handle.clone();
         tauri::async_runtime::spawn(async move {
             crate::audio::retranscription::final_pass(&app, &folder).await;
-            if let Err(e) = process_meeting(app, folder, true).await {
+            if let Err(e) = process_meeting(app.clone(), folder.clone(), true).await {
                 log::error!("Speaker attribution failed: {e:#}");
             }
+            // Dixit: the summary starts only on the final, attributed transcript.
+            crate::summary::auto::after_final_transcript(&app, &folder).await;
         });
     });
 }

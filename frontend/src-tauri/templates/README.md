@@ -24,6 +24,19 @@ General-purpose meeting notes template focusing on key outcomes and actions.
 - Action Items
 - Discussion Highlights
 
+### 3. `sal.json`, `analisi.json`, `sal_analisi.json` (Dixit)
+Picked automatically with the `auto` template id: a short LLM pass classifies the call
+(`sal`, `analisi`, `mix`, `altro`, see `src/summary/classification.rs`) and saves the type on
+the meeting (`meetings.meeting_type`). `altro` uses `standard_meeting.json`.
+
+- **SAL**: summary, participants, activity status (done / in progress / blocked), decisions, action items, risks, next steps
+- **Analisi**: context, participants, topics, requirements and rules, decisions, open questions, next steps
+- **SAL + Analisi**: the SAL minutes plus the analysis sections
+
+Templates are written in English (the summary is generated in English and then translated);
+`name_it` and `description_it` are the Italian labels shown in the app. Write instructions
+that never ask for facts the call may not contain: anything not stated is "Not stated".
+
 ## Template Structure
 
 Each template JSON file follows this schema:
@@ -59,6 +72,7 @@ Custom templates override built-in templates with the same filename.
 - `name` (required): Display name for the template
 - `description` (required): Brief explanation of the template's use case
 - `sections` (required): Array of section definitions
+- `name_it`, `description_it` (optional): Italian name and description for the UI
 
 ### Section Object
 - `title` (required): Section heading text

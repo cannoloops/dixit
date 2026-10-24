@@ -492,6 +492,28 @@ pub async fn api_process_transcript<R: Runtime>(
         if t.is_empty() { None } else { Some(t.to_string()) }
     });
 
+    start_summary(
+        app, pool, m_id, text, model, model_name, _chunk_size.unwrap_or(40000),
+        _overlap.unwrap_or(1000), final_prompt, final_template_id, summary_language,
+    )
+    .await
+}
+
+/// Starts a background summary; shared by the command and the automatic summary.
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn start_summary<R: Runtime>(
+    app: AppHandle<R>,
+    pool: sqlx::SqlitePool,
+    m_id: String,
+    text: String,
+    model: String,
+    model_name: String,
+    chunk_size: i32,
+    overlap: i32,
+    final_prompt: String,
+    final_template_id: String,
+    summary_language: Option<String>,
+) -> Result<ProcessTranscriptResponse, String> {
     // ponytail: summary starts are rare; use per-meeting locks only if start contention is measured.
     let _start_guard = SUMMARY_START_LOCK.lock().await;
     let started_at = next_summary_start(Utc::now());
@@ -499,8 +521,6 @@ pub async fn api_process_transcript<R: Runtime>(
         .await
         .map_err(|e| format!("Failed to initialize process: {}", e))?;
 
-    let chunk_size = _chunk_size.unwrap_or(40000);
-    let overlap = _overlap.unwrap_or(1000);
     if let Err(error) = TranscriptChunksRepository::save_transcript_data(
         &pool,
         &m_id,

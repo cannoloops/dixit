@@ -20,6 +20,7 @@ import { t } from '@/i18n/meeting';
 import { useMeetingData } from '@/hooks/meeting-details/useMeetingData';
 import { useSummaryGeneration } from '@/hooks/meeting-details/useSummaryGeneration';
 import { useTemplates } from '@/hooks/meeting-details/useTemplates';
+import { MeetingTypePicker } from '@/components/MeetingDetails/MeetingTypePicker';
 import { useCopyOperations } from '@/hooks/meeting-details/useCopyOperations';
 import { useMeetingNotes } from '@/hooks/meeting-details/useMeetingNotes';
 import { useMeetingOperations } from '@/hooks/meeting-details/useMeetingOperations';
@@ -50,8 +51,6 @@ export default function PageContent({
   meeting,
   summaryData,
   initialSummary,
-  shouldAutoGenerate = false,
-  onAutoGenerateComplete,
   onMeetingUpdated,
   onRefetchTranscripts,
   // Pagination props for efficient transcript loading
@@ -65,8 +64,6 @@ export default function PageContent({
   meeting: any;
   summaryData: MeetingSummary | null;
   initialSummary: SummaryProcessResponse | null;
-  shouldAutoGenerate?: boolean;
-  onAutoGenerateComplete?: () => void;
   onMeetingUpdated?: () => Promise<void>;
   onRefetchTranscripts?: () => Promise<void>;
   // Pagination props
@@ -95,7 +92,6 @@ export default function PageContent({
   const openModelSettingsRef = useRef<(() => void) | null>(null);
   const autoSwitchedSummaryMeetingIdsRef = useRef(new Set<string>());
   const manuallySelectedTabMeetingIdsRef = useRef(new Set<string>());
-  const autoGenerationStartedMeetingIdRef = useRef<string | null>(null);
 
   // Get model config from ConfigContext
   const { modelConfig, setModelConfig, isModelConfigLoading } = useConfig();
@@ -242,34 +238,6 @@ export default function PageContent({
     }
   }, [meeting.id, meetingData.aiSummary, summaryGeneration.summaryStatus]);
 
-  // Auto-generate only after the model configuration has settled.
-  useEffect(() => {
-    if (
-      !shouldAutoGenerate
-      || summaryGeneration.summaryStatus !== 'idle'
-      || isModelConfigLoading
-      || meetingData.transcripts.length === 0
-      || autoGenerationStartedMeetingIdRef.current === meeting.id
-    ) {
-      return;
-    }
-
-    autoGenerationStartedMeetingIdRef.current = meeting.id;
-    console.log(`🤖 Auto-generating summary with ${modelConfig.provider}/${modelConfig.model}...`);
-    onAutoGenerateComplete?.();
-    void summaryGeneration.handleGenerateSummary('');
-  }, [
-    shouldAutoGenerate,
-    meeting.id,
-    meetingData.transcripts.length,
-    isModelConfigLoading,
-    modelConfig.provider,
-    modelConfig.model,
-    summaryGeneration.handleGenerateSummary,
-    summaryGeneration.summaryStatus,
-    onAutoGenerateComplete,
-  ]);
-
   return (
     <div className="flex h-screen min-w-0 flex-col bg-background">
       <header className="shrink-0 px-3 pb-3 pt-4">
@@ -371,6 +339,16 @@ export default function PageContent({
               isModelConfigLoading={isModelConfigLoading}
               onOpenModelSettings={handleRegisterModalOpen}
               onChooseModel={handleOpenModelSettings}
+              typeSlot={
+                <MeetingTypePicker
+                  meetingId={meeting.id}
+                  refreshKey={summaryGeneration.summaryStatus}
+                  onChanged={() => {
+                    templates.setSelectedTemplate('auto');
+                    void summaryGeneration.handleGenerateSummary('', 'auto');
+                  }}
+                />
+              }
             />
           }
         />

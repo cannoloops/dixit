@@ -166,6 +166,34 @@ impl MeetingsRepository {
         Ok((transcripts, total.0))
     }
 
+    /// Dixit: meeting type and the classifier's reason (None when chosen by hand).
+    pub async fn get_meeting_type(
+        pool: &SqlitePool,
+        meeting_id: &str,
+    ) -> Result<Option<(String, Option<String>)>, SqlxError> {
+        let row: Option<(Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT meeting_type, meeting_type_reason FROM meetings WHERE id = ?")
+                .bind(meeting_id)
+                .fetch_optional(pool)
+                .await?;
+        Ok(row.and_then(|(kind, reason)| Some((kind?, reason))))
+    }
+
+    pub async fn set_meeting_type(
+        pool: &SqlitePool,
+        meeting_id: &str,
+        meeting_type: &str,
+        reason: Option<&str>,
+    ) -> Result<bool, SqlxError> {
+        let result = sqlx::query("UPDATE meetings SET meeting_type = ?, meeting_type_reason = ? WHERE id = ?")
+            .bind(meeting_type)
+            .bind(reason)
+            .bind(meeting_id)
+            .execute(pool)
+            .await?;
+        Ok(result.rows_affected() > 0)
+    }
+
     pub async fn update_meeting_title(
         pool: &SqlitePool,
         meeting_id: &str,

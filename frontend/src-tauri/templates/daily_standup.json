@@ -1,38 +1,40 @@
 {
   "name": "Daily Standup",
   "description": "Time-boxed daily updates for engineering/product teams.",
+  "name_it": "Daily standup",
+  "description_it": "Aggiornamento quotidiano a tempo per team di sviluppo e prodotto.",
   "sections": [
     {
       "title": "Date",
-      "instruction": "YYYY-MM-DD",
+      "instruction": "Meeting date only if stated in the transcript, otherwise 'Not stated'",
       "format": "string"
     },
     {
       "title": "Attendees",
-      "instruction": "List of participants present",
+      "instruction": "Names of the people present as they appear in the transcript; generic labels such as 'Speaker A' are not names",
       "format": "list"
     },
     {
       "title": "Yesterday",
-      "instruction": "What I completed yesterday (short bullets)",
+      "instruction": "Work each person reported as completed (short bullets)",
       "format": "list",
       "example_item_format": "| **Owner** | **Completed Work** |\n| --- | --- |"
     },
     {
       "title": "Today",
-      "instruction": "Planned work for today (short bullets)",
+      "instruction": "Work each person plans for today (short bullets)",
       "format": "list",
       "example_item_format": "| **Owner** | **Planned Work** |\n| --- | --- |"
     },
     {
       "title": "Blockers",
-      "instruction": "Any impediments and owner if known",
+      "instruction": "Impediments raised, with owner and impact only if stated",
       "format": "list",
       "item_format": "| **Owner** | **Blocker** | Impact |\n| --- | --- | --- |"
     },
     {
       "title": "Notes",
-      "instruction": "Optional quick notes or announcements",
+      "instruction": "Announcements or quick notes, if any",
       "format": "paragraph"
     }
   ]

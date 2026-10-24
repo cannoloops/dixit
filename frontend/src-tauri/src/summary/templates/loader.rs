@@ -199,14 +199,14 @@ pub fn list_template_ids() -> Vec<String> {
 
 /// List all available templates with their metadata
 ///
-/// Returns a list of (id, name, description) tuples
-pub fn list_templates() -> Vec<(String, String, String)> {
+/// Returns a list of (id, template) pairs
+pub fn list_templates() -> Vec<(String, Template)> {
     let mut templates = Vec::new();
 
     for id in list_template_ids() {
         match get_template(&id) {
             Ok(template) => {
-                templates.push((id, template.name, template.description));
+                templates.push((id, template));
             }
             Err(e) => {
                 warn!("Failed to load template '{}': {}", id, e);

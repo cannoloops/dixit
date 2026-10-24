@@ -7,7 +7,7 @@ import { ModelConfig } from '@/components/ModelSettingsModal';
 import { SummaryGeneratorButtonGroup } from './SummaryGeneratorButtonGroup';
 import { SummaryUpdaterButtonGroup } from './SummaryUpdaterButtonGroup';
 import Analytics from '@/lib/analytics';
-import { useEffect, useRef, useState, RefObject } from 'react';
+import { useEffect, useRef, useState, RefObject, ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Languages, ChevronDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -54,6 +54,8 @@ interface SummaryPanelProps {
   onOpenModelSettings?: (openFn: () => void) => void;
   /** Opens the summary model dialog (from the empty state or an error). */
   onChooseModel?: () => void;
+  /** Dixit: call type picker, shown next to the summary options. */
+  typeSlot?: ReactNode;
 }
 
 export function SummaryPanel({
@@ -82,6 +84,7 @@ export function SummaryPanel({
   isModelConfigLoading = false,
   onOpenModelSettings,
   onChooseModel,
+  typeSlot,
 }: SummaryPanelProps) {
   const [summaryLang, setSummaryLang] = useState<string | null>(null);
   const [summaryLangStorage, setSummaryLangStorage] = useState<SummaryLanguageStorage>('metadata');
@@ -243,6 +246,7 @@ export function SummaryPanel({
       <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-4">
         <h2 className="text-sm font-semibold">{t('summary')}</h2>
         <div className="ml-auto flex min-w-0 items-center gap-2">
+          {transcripts.length > 0 && typeSlot}
           <SummaryGeneratorButtonGroup
             modelConfig={modelConfig}
             setModelConfig={setModelConfig}

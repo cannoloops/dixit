@@ -30,6 +30,12 @@ pub struct Template {
     /// Brief description of the template's purpose
     pub description: String,
 
+    /// Dixit: Italian display name and description for the UI (the summary itself is translated)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name_it: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description_it: Option<String>,
+
     /// List of sections in the template
     pub sections: Vec<TemplateSection>,
 }
@@ -118,6 +124,8 @@ mod tests {
         let template = Template {
             name: "Test Template".to_string(),
             description: "A test template".to_string(),
+            name_it: None,
+            description_it: None,
             sections: vec![
                 TemplateSection {
                     title: "Summary".to_string(),
@@ -137,6 +145,8 @@ mod tests {
         let template = Template {
             name: "".to_string(),
             description: "A test template".to_string(),
+            name_it: None,
+            description_it: None,
             sections: vec![],
         };
 
@@ -148,6 +158,8 @@ mod tests {
         let template = Template {
             name: "Test".to_string(),
             description: "Test".to_string(),
+            name_it: None,
+            description_it: None,
             sections: vec![
                 TemplateSection {
                     title: "Test".to_string(),

@@ -776,6 +776,9 @@ pub fn run() {
             summary::commands::api_cancel_summary,
             // Template commands
             summary::template_commands::api_list_templates,
+            summary::auto::api_set_auto_summary,
+            summary::auto::api_get_meeting_type,
+            summary::auto::api_set_meeting_type,
             summary::template_commands::api_get_template_details,
             summary::template_commands::api_validate_template,
             // Built-in AI commands
