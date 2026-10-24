@@ -24,6 +24,8 @@ pub struct Brief {
     pub line_count: i64,
     pub notes_count: i64,
     pub has_summary: bool,
+    /// sal, analisi, mix or altro, once the summary classified it.
+    pub meeting_type: Option<String>,
 }
 
 impl Brief {
@@ -69,6 +71,7 @@ struct BriefRow {
     duration: Option<f64>,
     line_count: i64,
     speakers: Option<String>,
+    meeting_type: Option<String>,
 }
 
 /// Every meeting, newest first. (Fine up to thousands of meetings; paginate in SQL beyond that.)
@@ -81,7 +84,8 @@ pub async fn briefs(pool: &SqlitePool) -> Result<Vec<Brief>, sqlx::Error> {
                 (SELECT COUNT(*) FROM summary_processes s WHERE s.meeting_id = m.id AND s.status = 'completed' AND s.result IS NOT NULL) AS has_summary,
                 (SELECT MAX(t.audio_end_time) FROM transcripts t WHERE t.meeting_id = m.id) AS duration,
                 (SELECT COUNT(*) FROM transcripts t WHERE t.meeting_id = m.id) AS line_count,
-                (SELECT group_concat(DISTINCT t.speaker) FROM transcripts t WHERE t.meeting_id = m.id AND t.speaker <> '') AS speakers
+                (SELECT group_concat(DISTINCT t.speaker) FROM transcripts t WHERE t.meeting_id = m.id AND t.speaker <> '') AS speakers,
+                m.meeting_type
          FROM meetings m ORDER BY m.created_at DESC",
     )
     .fetch_all(pool)
@@ -108,6 +112,7 @@ pub async fn briefs(pool: &SqlitePool) -> Result<Vec<Brief>, sqlx::Error> {
                 line_count: r.line_count,
                 notes_count: r.notes_count,
                 has_summary: r.has_summary > 0,
+                meeting_type: r.meeting_type,
             }
         })
         .collect())
@@ -155,7 +160,7 @@ pub mod fixtures {
     pub async fn pool() -> SqlitePool {
         let p = SqlitePoolOptions::new().max_connections(1).connect("sqlite::memory:").await.unwrap();
         for sql in [
-            "CREATE TABLE meetings (id TEXT PRIMARY KEY, title TEXT, created_at TEXT, updated_at TEXT, folder_path TEXT)",
+            "CREATE TABLE meetings (id TEXT PRIMARY KEY, title TEXT, created_at TEXT, updated_at TEXT, folder_path TEXT, meeting_type TEXT)",
             "CREATE TABLE transcripts (id TEXT PRIMARY KEY, meeting_id TEXT, transcript TEXT, timestamp TEXT, audio_start_time REAL, audio_end_time REAL, duration REAL, speaker TEXT)",
             "CREATE TABLE summary_processes (meeting_id TEXT PRIMARY KEY, status TEXT, updated_at TEXT, result TEXT)",
         ] {
@@ -171,7 +176,7 @@ pub mod fixtures {
     }
 
     pub async fn meeting(p: &SqlitePool, id: &str, title: &str, created: &str, lines: &[(f64, &str, &str)]) {
-        sqlx::query("INSERT INTO meetings VALUES (?, ?, ?, ?, NULL)").bind(id).bind(title).bind(created).bind(created).execute(p).await.unwrap();
+        sqlx::query("INSERT INTO meetings VALUES (?, ?, ?, ?, NULL, NULL)").bind(id).bind(title).bind(created).bind(created).execute(p).await.unwrap();
         for (i, (start, speaker, text)) in lines.iter().enumerate() {
             sqlx::query("INSERT INTO transcripts VALUES (?, ?, ?, '', ?, ?, 1.0, ?)")
                 .bind(format!("{id}-{i}"))

@@ -371,6 +371,7 @@ mod tests {
                 line_count: lines.len() as i64,
                 notes_count: notes.len() as i64,
                 has_summary: summary.is_some(),
+                meeting_type: None,
             },
             lines,
             notes,

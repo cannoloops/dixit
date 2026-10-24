@@ -43,7 +43,7 @@ async fn bench_summary_model() {
 
         let start = std::time::Instant::now();
         let result = generate_meeting_summary(
-            &client, &provider, &model, "", &text, "", "standard_meeting", &template, 32768 - 300,
+            &client, &provider, &model, "", &text, "", "", "standard_meeting", &template, 32768 - 300,
             None, None, None, None, None, Some(&app_data), None, Some("it"), Some("it"), None,
         )
         .await;

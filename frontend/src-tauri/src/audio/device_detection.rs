@@ -483,7 +483,8 @@ mod tests {
             3840,
             48000,
         );
-        assert_eq!(timeout, Duration::from_millis(160));
+        // f32 math lands a few ns under 160ms
+        assert!(timeout.abs_diff(Duration::from_millis(160)) < Duration::from_micros(1));
     }
 
     #[test]

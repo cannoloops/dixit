@@ -34,7 +34,7 @@ pub fn definitions() -> Vec<Value> {
         }),
         json!({
             "name": "get_meeting",
-            "description": "One meeting in full: metadata, participants, transcript with speakers and times, summary \
+            "description": "One meeting in full: metadata, call type (sal, analisi, mix, altro), participants, transcript with speakers and times, summary \
                 and the user's own notes (typed during the call, each with its instant). `format: markdown` is ready \
                 to ingest into a wiki; `json` is structured.",
             "inputSchema": {"type": "object", "properties": {
@@ -107,6 +107,7 @@ fn brief_json(b: &Brief) -> Value {
         "participants": b.participants,
         "notes_count": b.notes_count,
         "has_summary": b.has_summary,
+        "meeting_type": b.meeting_type,
     })
 }
 
@@ -171,6 +172,9 @@ pub fn meeting_markdown(m: &Meeting, include_notes: bool, it: bool) -> String {
     }
     if !b.participants.is_empty() {
         md.push_str(&format!("- **{}:** {}\n", tr("Partecipanti", "Participants"), b.participants.join(", ")));
+    }
+    if let Some(t) = &b.meeting_type {
+        md.push_str(&format!("- **{}:** {}\n", tr("Tipo", "Type"), t));
     }
     md.push_str(&format!("- **ID:** {}\n", b.id));
     if let Some(summary) = &m.summary {
@@ -366,7 +370,7 @@ mod tests {
     fn markdown_puts_a_note_inside_a_turn_when_its_instant_falls_between_lines() {
         let line = |start: f64, text: &str| library::Line { start, end: start + 1.0, speaker: Some("Rossi".into()), text: text.into() };
         let mut m = Meeting {
-            brief: Brief { id: "m".into(), title: "T".into(), created_at: Default::default(), updated_at: Default::default(), duration_secs: 0.0, participants: vec![], line_count: 2, notes_count: 1, has_summary: false },
+            brief: Brief { id: "m".into(), title: "T".into(), created_at: Default::default(), updated_at: Default::default(), duration_secs: 0.0, participants: vec![], line_count: 2, notes_count: 1, has_summary: false, meeting_type: None },
             lines: vec![line(1.0, "uno"), line(10.0, "due")],
             notes: vec![Note::new("in mezzo", 5_000)],
             summary: None,
