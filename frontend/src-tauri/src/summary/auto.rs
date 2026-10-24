@@ -22,7 +22,7 @@ pub fn api_set_auto_summary(enabled: bool) {
 }
 
 /// Real names only: the diarization's "Parlante X" / "Altri" labels end up listed as participants.
-fn is_named(speaker: &str) -> bool {
+pub(crate) fn is_named(speaker: &str) -> bool {
     let s = speaker.trim();
     let generic = s == "Altri"
         || s.strip_prefix("Parlante ").is_some_and(|l| !l.is_empty() && l.chars().all(|c| c.is_ascii_uppercase()));

@@ -8,7 +8,7 @@ pub struct TranscriptsRepository;
 
 /// When the recording began, from the meeting folder's metadata.json (saved at recording start).
 /// Meetings are dated by their start, not by when the transcript was saved at the end of the call.
-fn started_at(folder_path: Option<&str>) -> Option<chrono::DateTime<Utc>> {
+pub(crate) fn started_at(folder_path: Option<&str>) -> Option<chrono::DateTime<Utc>> {
     let text = std::fs::read_to_string(std::path::Path::new(folder_path?).join("metadata.json")).ok()?;
     let metadata: serde_json::Value = serde_json::from_str(&text).ok()?;
     chrono::DateTime::parse_from_rfc3339(metadata["created_at"].as_str()?)

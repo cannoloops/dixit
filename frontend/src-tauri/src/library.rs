@@ -72,6 +72,7 @@ struct BriefRow {
     line_count: i64,
     speakers: Option<String>,
     meeting_type: Option<String>,
+    folder_path: Option<String>,
 }
 
 /// Every meeting, newest first. (Fine up to thousands of meetings; paginate in SQL beyond that.)
@@ -85,22 +86,23 @@ pub async fn briefs(pool: &SqlitePool) -> Result<Vec<Brief>, sqlx::Error> {
                 (SELECT MAX(t.audio_end_time) FROM transcripts t WHERE t.meeting_id = m.id) AS duration,
                 (SELECT COUNT(*) FROM transcripts t WHERE t.meeting_id = m.id) AS line_count,
                 (SELECT group_concat(DISTINCT t.speaker) FROM transcripts t WHERE t.meeting_id = m.id AND t.speaker <> '') AS speakers,
-                m.meeting_type
-         FROM meetings m ORDER BY m.created_at DESC",
+                m.meeting_type, m.folder_path
+         FROM meetings m",
     )
     .fetch_all(pool)
     .await?;
-    Ok(rows
+    let mut briefs: Vec<Brief> = rows
         .into_iter()
         .map(|r| {
-            let created_at = parse_ts(&r.created_at);
+            // The start of the recording (metadata.json), not when the meeting was saved at the end of the call.
+            let created_at = crate::database::repositories::transcript::started_at(r.folder_path.as_deref()).unwrap_or_else(|| parse_ts(&r.created_at));
             let updated_at = [Some(parse_ts(&r.updated_at)), r.summary_updated.as_deref().map(parse_ts), r.notes_updated.as_deref().map(parse_ts)]
                 .into_iter()
                 .flatten()
                 .max()
                 .unwrap_or(created_at);
             let mut participants: Vec<String> =
-                r.speakers.unwrap_or_default().split(',').filter(|s| !s.is_empty()).map(String::from).collect();
+                r.speakers.unwrap_or_default().split(',').filter(|s| crate::summary::auto::is_named(s)).map(String::from).collect();
             participants.sort();
             Brief {
                 id: r.id,
@@ -115,7 +117,9 @@ pub async fn briefs(pool: &SqlitePool) -> Result<Vec<Brief>, sqlx::Error> {
                 meeting_type: r.meeting_type,
             }
         })
-        .collect())
+        .collect();
+    briefs.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    Ok(briefs)
 }
 
 /// The markdown of a stored summary result (`{"markdown": "..."}`), if it has any text.
@@ -242,5 +246,24 @@ mod tests {
         assert_eq!(full.notes[0].text, "chiedere budget");
         assert_eq!(full.summary.as_deref(), Some("# Riassunto"));
         assert!(load(&p, "nope").await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn participants_are_names_and_the_date_is_the_recording_start() {
+        let p = pool().await;
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("metadata.json"), r#"{"created_at": "2026-10-23T13:18:23+00:00"}"#).unwrap();
+        // saved at the end of the call (14:37), recorded from 13:18
+        meeting(&p, "m1", "Teams", "2026-10-23T14:37:33+00:00", &[(1.0, "Rossi", "a"), (2.0, "Parlante A", "b"), (3.0, "Parlante AL", "c"), (4.0, "Altri", "d"), (5.0, "Parlante Neri", "e")]).await;
+        sqlx::query("UPDATE meetings SET folder_path = ? WHERE id = 'm1'").bind(dir.path().to_string_lossy().to_string()).execute(&p).await.unwrap();
+        meeting(&p, "m2", "Senza cartella", "2026-10-22T09:00:00+00:00", &[(1.0, "Bianchi", "x")]).await;
+
+        let all = briefs(&p).await.unwrap();
+        let m1 = all.iter().find(|b| b.id == "m1").unwrap();
+        assert_eq!(m1.participants, ["Parlante Neri", "Rossi"]); // generic labels stay in the transcript only
+        assert_eq!(m1.created_at.to_rfc3339(), "2026-10-23T13:18:23+00:00");
+        assert_eq!(all.iter().find(|b| b.id == "m2").unwrap().created_at.to_rfc3339(), "2026-10-22T09:00:00+00:00"); // no folder: the DB date
+        assert_eq!(load(&p, "m1").await.unwrap().unwrap().lines.len(), 5);
+        assert_eq!(all[0].id, "m1"); // still newest first, by start
     }
 }

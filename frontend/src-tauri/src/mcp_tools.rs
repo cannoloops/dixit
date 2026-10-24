@@ -14,6 +14,9 @@ const DEFAULT_HITS: usize = 10;
 const MAX_HITS: usize = 50;
 /// Silence longer than this starts a new turn even if the same person goes on speaking.
 const TURN_GAP_SECS: f64 = 30.0;
+/// A reply carries about this many characters of transcript unless `transcript_limit` says otherwise
+/// (agents cut replies at ~25k characters, header, summary and notes included).
+const TRANSCRIPT_CHARS: usize = 18_000;
 
 pub fn definitions() -> Vec<Value> {
     let read_only = json!({"readOnlyHint": true});
@@ -40,6 +43,9 @@ pub fn definitions() -> Vec<Value> {
             "inputSchema": {"type": "object", "properties": {
                 "id": {"type": "string", "description": "Meeting id from list_meetings or search_transcripts"},
                 "include_notes": {"type": "boolean", "description": "Include the user's notes (default true)"},
+                "include_transcript": {"type": "boolean", "description": "Include the transcript (default true); false for metadata, summary and notes only"},
+                "transcript_offset": {"type": "integer", "description": "First transcript line to return (default 0); continue with `next_transcript_offset` from the reply"},
+                "transcript_limit": {"type": "integer", "description": "How many transcript lines to return (default: as many as fit in ~18k characters; long meetings come in several pages)"},
                 "format": {"type": "string", "enum": ["json", "markdown"], "description": "Default json"}
             }, "required": ["id"]},
             "annotations": read_only,
@@ -140,29 +146,81 @@ async fn get_meeting(pool: &SqlitePool, args: &Value) -> Result<String, String> 
         other => return Err(format!("`format` must be json or markdown, got '{other}'")),
     };
     let m = library::load(pool, id).await.map_err(db_err)?.ok_or_else(|| format!("No meeting with id '{id}'"))?;
-    Ok(if markdown { meeting_markdown(&m, include_notes, crate::i18n::it()) } else { meeting_json(&m, include_notes).to_string() })
+    let page = args["include_transcript"].as_bool().unwrap_or(true).then(|| {
+        let offset = args["transcript_offset"].as_u64().unwrap_or(0) as usize;
+        Page::new(&m.lines, offset, args["transcript_limit"].as_u64().map(|n| (n as usize).max(1)))
+    });
+    Ok(if markdown { meeting_markdown(&m, include_notes, crate::i18n::it(), page.as_ref()) } else { meeting_json(&m, include_notes, page.as_ref()).to_string() })
+}
+
+/// The part of the transcript a reply carries (lines `from..to` of `total`), and the time window
+/// whose notes go with it: a note belongs to the page of the first line at or after its instant.
+struct Page {
+    from: usize,
+    to: usize,
+    total: usize,
+    t_lo: f64,
+    t_hi: f64,
+}
+
+impl Page {
+    fn new(lines: &[library::Line], offset: usize, limit: Option<usize>) -> Page {
+        let total = lines.len();
+        let from = offset.min(total);
+        let to = match limit {
+            Some(n) => (from + n).min(total),
+            None => {
+                let (mut chars, mut to) = (0, from);
+                while to < total && (to == from || chars < TRANSCRIPT_CHARS) {
+                    chars += lines[to].text.len() + 8;
+                    to += 1;
+                }
+                to
+            }
+        };
+        Page {
+            from,
+            to,
+            total,
+            t_lo: if from == 0 { f64::NEG_INFINITY } else { lines.get(from).map_or(f64::INFINITY, |l| l.start) }, // past the end: no notes either
+            t_hi: if to == total { f64::INFINITY } else { lines[to].start },
+        }
+    }
+
+    fn next(&self) -> Option<usize> {
+        (self.to < self.total).then_some(self.to)
+    }
+
+    fn holds(&self, n: &Note) -> bool {
+        let at = n.offset_ms as f64 / 1000.0;
+        self.t_lo <= at && at < self.t_hi
+    }
 }
 
 fn note_json(n: &Note) -> Value {
     json!({"id": n.id, "at": clock(n.offset_ms as f64 / 1000.0), "offset_ms": n.offset_ms, "text": n.text, "created_at": n.created_at})
 }
 
-fn meeting_json(m: &Meeting, include_notes: bool) -> Value {
+fn meeting_json(m: &Meeting, include_notes: bool, page: Option<&Page>) -> Value {
     let mut v = brief_json(&m.brief);
     v["summary"] = json!(m.summary);
-    v["transcript"] = m
-        .lines
-        .iter()
-        .map(|l| json!({"start": (l.start * 100.0).round() / 100.0, "end": (l.end * 100.0).round() / 100.0, "at": clock(l.start), "speaker": l.speaker, "text": l.text}))
-        .collect();
+    if let Some(p) = page {
+        v["transcript"] = m.lines[p.from..p.to]
+            .iter()
+            .map(|l| json!({"start": (l.start * 100.0).round() / 100.0, "end": (l.end * 100.0).round() / 100.0, "at": clock(l.start), "speaker": l.speaker, "text": l.text}))
+            .collect();
+        v["transcript_offset"] = json!(p.from);
+        v["transcript_total"] = json!(p.total);
+        v["next_transcript_offset"] = json!(p.next());
+    }
     if include_notes {
-        v["notes"] = m.notes.iter().map(note_json).collect();
+        v["notes"] = m.notes.iter().filter(|n| page.is_none_or(|p| p.holds(n))).map(note_json).collect();
     }
     v
 }
 
 /// Wiki-ready markdown: header, summary, then the transcript by turn with the notes in between.
-pub fn meeting_markdown(m: &Meeting, include_notes: bool, it: bool) -> String {
+fn meeting_markdown(m: &Meeting, include_notes: bool, it: bool, page: Option<&Page>) -> String {
     let tr = |a: &'static str, b: &'static str| if it { a } else { b };
     let b = &m.brief;
     let mut md = format!("# {}\n\n", b.title.trim());
@@ -180,8 +238,18 @@ pub fn meeting_markdown(m: &Meeting, include_notes: bool, it: bool) -> String {
     if let Some(summary) = &m.summary {
         md.push_str(&format!("\n## {}\n\n{}\n", tr("Riassunto", "Summary"), summary.trim()));
     }
+    let Some(page) = page else {
+        // No transcript asked for: the notes still make a section of their own.
+        if include_notes && !m.notes.is_empty() {
+            md.push_str(&format!("\n## {}\n\n", tr("Note", "Notes")));
+            for n in &m.notes {
+                md.push_str(&format!("- [{}] {}\n", clock(n.offset_ms as f64 / 1000.0), n.text.split_whitespace().collect::<Vec<_>>().join(" ")));
+            }
+        }
+        return md;
+    };
     md.push_str(&format!("\n## {}\n", tr("Trascrizione", "Transcript")));
-    let notes: Vec<&Note> = if include_notes { m.notes.iter().collect() } else { vec![] };
+    let notes: Vec<&Note> = if include_notes { m.notes.iter().filter(|n| page.holds(n)).collect() } else { vec![] };
     let mut notes = notes.into_iter().peekable();
     let write_notes_before = |md: &mut String, notes: &mut std::iter::Peekable<std::vec::IntoIter<&Note>>, at: f64| {
         while let Some(n) = notes.next_if(|n| n.offset_ms as f64 / 1000.0 <= at) {
@@ -198,7 +266,7 @@ pub fn meeting_markdown(m: &Meeting, include_notes: bool, it: bool) -> String {
             }
         }
     };
-    for l in m.lines.iter().filter(|l| !l.text.trim().is_empty()) {
+    for l in m.lines[page.from..page.to].iter().filter(|l| !l.text.trim().is_empty()) {
         let text = l.text.split_whitespace().collect::<Vec<_>>().join(" ");
         let breaks = l.start - last_end > TURN_GAP_SECS || notes.peek().is_some_and(|n| n.offset_ms as f64 / 1000.0 <= l.start);
         last_end = l.end;
@@ -216,6 +284,16 @@ pub fn meeting_markdown(m: &Meeting, include_notes: bool, it: bool) -> String {
     }
     flush(&mut md, &mut turn);
     write_notes_before(&mut md, &mut notes, f64::MAX);
+    if let Some(next) = page.next() {
+        md.push_str(&format!(
+            "\n---\n{} {}–{} {} {}. next_transcript_offset: {next}\n",
+            tr("Trascrizione parziale: righe", "Partial transcript: lines"),
+            page.from + 1,
+            page.to,
+            tr("di", "of"),
+            page.total
+        ));
+    }
     md
 }
 
@@ -363,7 +441,7 @@ mod tests {
         let without = call(&p, "get_meeting", &json!({"id": "m1", "format": "markdown", "include_notes": false})).await.unwrap().unwrap();
         assert!(!without.contains("Nota"));
         // the English labels
-        assert!(meeting_markdown(&library::load(&p, "m1").await.unwrap().unwrap(), true, false).contains("## Transcript\n"));
+        assert!(meeting_markdown(&library::load(&p, "m1").await.unwrap().unwrap(), true, false, Some(&Page::new(&library::load(&p, "m1").await.unwrap().unwrap().lines, 0, None))).contains("## Transcript\n"));
     }
 
     #[test]
@@ -375,10 +453,10 @@ mod tests {
             notes: vec![Note::new("in mezzo", 5_000)],
             summary: None,
         };
-        let md = meeting_markdown(&m, true, true);
+        let md = meeting_markdown(&m, true, true, Some(&Page::new(&m.lines, 0, None)));
         assert!(md.ends_with("\n[00:01] **Rossi:** uno\n\n> Nota [00:05] in mezzo\n\n[00:10] **Rossi:** due\n"), "{md}");
         m.notes[0].offset_ms = 99_000; // after everything: goes last
-        assert!(meeting_markdown(&m, true, true).ends_with("due\n\n> Nota [01:39] in mezzo\n"));
+        assert!(meeting_markdown(&m, true, true, Some(&Page::new(&m.lines, 0, None))).ends_with("due\n\n> Nota [01:39] in mezzo\n"));
     }
 
     #[tokio::test]
@@ -403,5 +481,58 @@ mod tests {
         assert!(r["results"][0]["excerpt"].as_str().unwrap().contains("sistema è lento"));
         assert!(call(&p, "search_transcripts", &json!({"query": "  "})).await.unwrap().is_err());
         assert!(call(&p, "search_transcripts", &json!({"query": "x", "mode": "fuzzy"})).await.unwrap().is_err());
+    }
+
+    /// A long meeting in pages: nothing lost, nothing repeated, notes follow their lines.
+    #[tokio::test]
+    async fn transcript_comes_in_pages_with_their_notes() {
+        let p = pool().await;
+        let lines: Vec<(f64, &str, &str)> = (0..10).map(|i| (i as f64 * 10.0, if i % 2 == 0 { "Rossi" } else { "Bianchi" }, "riga")).collect();
+        meeting(&p, "m1", "Lunga", "2026-10-23T10:00:00+00:00", &lines).await;
+        for (id, ms) in [("n1", 5_000), ("n2", 40_000), ("n3", 95_000)] {
+            sqlx::query("INSERT INTO meeting_note_entries VALUES (?, 'm1', ?, ?, 'a', 'b')").bind(id).bind(format!("nota {id}")).bind(ms).execute(&p).await.unwrap();
+        }
+        let get = |args: Value| {
+            let p = p.clone();
+            async move { parse(call(&p, "get_meeting", &args).await) }
+        };
+        let (mut seen, mut notes, mut offset) = (0, vec![], 0);
+        loop {
+            let m = get(json!({"id": "m1", "transcript_offset": offset, "transcript_limit": 4})).await;
+            assert_eq!((m["transcript_offset"].clone(), m["transcript_total"].clone()), (json!(offset), json!(10)));
+            seen += m["transcript"].as_array().unwrap().len();
+            notes.extend(m["notes"].as_array().unwrap().iter().map(|n| n["id"].as_str().unwrap().to_string()));
+            match m["next_transcript_offset"].as_u64() {
+                Some(n) => offset = n as usize,
+                None => break,
+            }
+        }
+        assert_eq!(seen, 10);
+        assert_eq!(notes, ["n1", "n2", "n3"]); // each note on exactly one page, the last one after the last line
+
+        // markdown: the footer names the next offset only while there is more
+        let md = text_of(call(&p, "get_meeting", &json!({"id": "m1", "format": "markdown", "transcript_limit": 4})).await);
+        assert!(md.contains("nota n1") && !md.contains("nota n2") && md.trim_end().ends_with("lines 1–4 of 10. next_transcript_offset: 4") || md.contains("righe 1–4 di 10. next_transcript_offset: 4"), "{md}");
+        let last = text_of(call(&p, "get_meeting", &json!({"id": "m1", "format": "markdown", "transcript_offset": 8})).await);
+        assert!(!last.contains("next_transcript_offset") && last.contains("nota n3"), "{last}");
+
+        // default page fits the budget; an offset past the end is an empty last page
+        let big: Vec<(f64, &str, &str)> = (0..400).map(|i| (i as f64, "Rossi", "una frase abbastanza lunga da occupare un po' di spazio nella trascrizione di prova")).collect();
+        meeting(&p, "m2", "Enorme", "2026-10-24T10:00:00+00:00", &big).await;
+        let md = text_of(call(&p, "get_meeting", &json!({"id": "m2", "format": "markdown"})).await);
+        assert!(md.len() < 25_000 && md.contains("next_transcript_offset: "), "{}", md.len());
+        let end = get(json!({"id": "m2", "transcript_offset": 9999})).await;
+        assert_eq!((end["transcript"].as_array().unwrap().len(), end["next_transcript_offset"].clone()), (0, Value::Null));
+
+        // metadata only: no transcript keys, every note, markdown without a transcript section
+        let meta = get(json!({"id": "m1", "include_transcript": false})).await;
+        assert!(meta.get("transcript").is_none() && meta.get("next_transcript_offset").is_none());
+        assert_eq!(meta["notes"].as_array().unwrap().len(), 3);
+        let md = text_of(call(&p, "get_meeting", &json!({"id": "m1", "format": "markdown", "include_transcript": false})).await);
+        assert!(!md.contains("Trascrizione") && md.contains("## Note\n\n- [00:05] nota n1"), "{md}");
+    }
+
+    fn text_of(r: Option<Result<String, String>>) -> String {
+        r.unwrap().unwrap()
     }
 }
