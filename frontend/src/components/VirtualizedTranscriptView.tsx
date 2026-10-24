@@ -1,8 +1,10 @@
 'use client';
 
-import { useRef, useReducer, startTransition, useEffect, useMemo, memo } from "react";
+import { useRef, useState, useReducer, startTransition, useEffect, useMemo, memo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Loader2 } from "lucide-react";
+import { Check, Loader2, Pencil, Trash2, X } from "lucide-react";
+import { Input } from "./ui/input";
+import { Button } from "./ui/button";
 import { useAutoScroll } from "@/hooks/useAutoScroll";
 import { useTranscriptStreaming } from "@/hooks/useTranscriptStreaming";
 import { ConfidenceIndicator } from "./ConfidenceIndicator";
@@ -41,6 +43,10 @@ export interface VirtualizedTranscriptViewProps {
     totalCount?: number;
     loadedCount?: number;
     onLoadMore?: () => void;
+
+    /** Edit / delete of the user's notes (saved meetings only; live notes are read-only). */
+    onEditNote?: (id: string, text: string) => void;
+    onDeleteNote?: (id: string) => void;
 }
 
 // Threshold for enabling virtualization (below this, use simple rendering)
@@ -157,6 +163,93 @@ const TranscriptLine = memo(function TranscriptLine({
     );
 });
 
+/** A note of the user at its instant: petrol rule on the left, "Nota" label, edit and delete on hover. */
+const NoteLine = memo(function NoteLine({
+    segment,
+    hasSpeakers,
+    onEdit,
+    onDelete,
+}: {
+    segment: TranscriptSegmentData;
+    hasSpeakers: boolean;
+    onEdit?: (id: string, text: string) => void;
+    onDelete?: (id: string) => void;
+}) {
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft] = useState(segment.text);
+    const commit = () => {
+        const text = draft.trim();
+        setEditing(false);
+        if (text && text !== segment.text) onEdit?.(segment.id, text);
+    };
+
+    return (
+        <div
+            id={`segment-${segment.id}`}
+            className={cn(
+                'group grid items-baseline justify-center gap-x-3 py-2 text-sm',
+                hasSpeakers
+                    ? 'grid-cols-[minmax(0,8rem)_3.5rem_minmax(0,68ch)]'
+                    : 'grid-cols-[3.5rem_minmax(0,68ch)]'
+            )}
+        >
+            {hasSpeakers && <div />}
+            <div className="text-right text-xs tabular-nums text-muted-foreground">{formatClock(segment.timestamp)}</div>
+            <div className="flex min-w-0 items-baseline gap-2 border-l-2 border-primary pl-3">
+                {editing ? (
+                    <>
+                        <Input
+                            autoFocus
+                            value={draft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.nativeEvent.isComposing) commit();
+                                if (e.key === 'Escape') setEditing(false);
+                            }}
+                            aria-label={t('noteEdit')}
+                        />
+                        <Button size="sm" variant="ghost" onClick={commit} aria-label={t('noteEdit')}><Check /></Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditing(false)} aria-label="Esc"><X /></Button>
+                    </>
+                ) : (
+                    <>
+                        <p className="min-w-0 leading-6 text-foreground">
+                            <span className="mr-2 text-xs font-semibold text-primary">{t('noteLabel')}</span>
+                            {segment.text}
+                        </p>
+                        {(onEdit || onDelete) && (
+                            <span className="ml-auto flex shrink-0 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                                {onEdit && (
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        title={t('noteEdit')}
+                                        aria-label={t('noteEdit')}
+                                        onClick={() => { setDraft(segment.text); setEditing(true); }}
+                                    >
+                                        <Pencil />
+                                    </Button>
+                                )}
+                                {onDelete && (
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        title={t('noteDelete')}
+                                        aria-label={t('noteDelete')}
+                                        onClick={() => onDelete(segment.id)}
+                                    >
+                                        <Trash2 />
+                                    </Button>
+                                )}
+                            </span>
+                        )}
+                    </>
+                )}
+            </div>
+        </div>
+    );
+});
+
 export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps> = ({
     segments,
     roster: rosterProp,
@@ -171,6 +264,8 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
     totalCount = 0,
     loadedCount = 0,
     onLoadMore,
+    onEditNote,
+    onDeleteNote,
 }) => {
     // Create scroll ref first - shared between virtualizer and auto-scroll hook
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -187,7 +282,8 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
     // up to CURRENT_TURN_MAX; just the last line when speakers are not known yet) are set larger.
     const currentFrom = useMemo(() => {
         if (!isRecording || segments.length === 0) return segments.length;
-        const last = segments.length - 1;
+        let last = segments.length - 1;
+        while (last > 0 && segments[last].note) last--; // a note is never "who spoke last"
         const speaker = segments[last].speaker;
         if (!speaker) return last;
         let i = last;
@@ -287,6 +383,9 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
 
     const renderLine = (index: number) => {
         const segment = segments[index];
+        if (segment.note) {
+            return <NoteLine segment={segment} hasSpeakers={hasSpeakers} onEdit={onEditNote} onDelete={onDeleteNote} />;
+        }
         return (
             <TranscriptLine
                 segment={segment}
@@ -294,7 +393,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                 roster={roster}
                 hasSpeakers={hasSpeakers}
                 isTurnStart={index === 0 || segments[index - 1].speaker !== segment.speaker}
-                isCurrent={index >= currentFrom}
+                isCurrent={index >= currentFrom && !segments[index].note}
                 isCurrentStart={index === currentFrom && index > 0}
                 isStreaming={streamingSegmentId === segment.id}
                 showConfidence={showConfidence}

@@ -232,7 +232,7 @@ pub fn attribute_folder(folder: &Path, me: &str, embedder: Option<&mut Embedder>
     let lines: Vec<(String, f64, String)> =
         segs.iter().zip(&names).map(|(s, n)| (n.clone(), s.start, s.text.clone())).collect();
     let md = folder.join(format!("{}-Trascrizione della riunione.md", super::sanitize_title_for_file(&title)));
-    write_teams_md(&md, &title, started, duration, &lines)?;
+    write_teams_md(&md, &title, started, duration, &lines, &crate::notes::for_md(folder))?;
 
     Ok(Outcome {
         title,
@@ -306,6 +306,26 @@ mod tests {
         assert_eq!(turns, vec!["Manuguerra Vito   0:00  ", "Rossi Mario   0:03  ", "Bianchi Anna   0:06  "]);
         assert!(md.contains("Rossi Mario   0:03  \nil deploy è pronto\n\n"));
         assert!(!out.md.with_extension("docx").exists());
+    }
+
+    #[test]
+    fn notes_json_lands_in_the_md_between_the_turns() {
+        let dir = tempfile::tempdir().unwrap();
+        fixture(dir.path());
+        let notes: Vec<_> = [("verificare il deploy", 4_200), ("chiedere a Rossi", 7_000), ("prima nota", 1_000)]
+            .iter()
+            .map(|(t, ms)| crate::notes::Note::new(t, *ms))
+            .collect();
+        crate::notes::write_file(dir.path(), &notes).unwrap();
+        let out = attribute_folder(dir.path(), "Manuguerra Vito", None).unwrap();
+        let md = std::fs::read_to_string(&out.md).unwrap();
+        let body: Vec<_> = md.lines().filter(|l| l.starts_with("> Nota")).collect();
+        assert_eq!(body, ["> Nota [00:01] prima nota", "> Nota [00:04] verificare il deploy", "> Nota [00:07] chiedere a Rossi"]);
+        // order in the file: line at 0 s, note 1 s, line 3 s, note 4 s, line 6 s, note 7 s
+        let pos = |needle: &str| md.find(needle).unwrap();
+        assert!(pos("buongiorno") < pos("prima nota") && pos("prima nota") < pos("il deploy è pronto"));
+        assert!(pos("verificare il deploy") < pos("confermo") && pos("confermo") < pos("chiedere a Rossi"));
+        assert_eq!(crate::notes::read_file(dir.path()).len(), 3); // notes.json untouched
     }
 
     #[test]

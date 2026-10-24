@@ -1013,6 +1013,8 @@ pub async fn api_save_transcript<R: Runtime>(
             // Trascrivi: attribution may have finished before the frontend saved the meeting
             if let Some(folder) = saved_folder {
                 crate::speakers::apply_saved_speakers(pool, std::path::Path::new(&folder)).await;
+                crate::notes::import_folder(pool, &meeting_id, std::path::Path::new(&folder)).await;
+                crate::search::kick();
             }
             log_info!(
                 "Successfully saved transcript and created meeting with id: {}",

@@ -1,6 +1,8 @@
 'use client';
 
 import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
+import { MeetingNote } from '@/lib/notes';
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, MutableRefObject } from 'react';
 import { Transcript, TranscriptUpdate } from '@/types';
 import { toast } from 'sonner';
@@ -14,7 +16,7 @@ interface TranscriptContextType {
   transcripts: Transcript[];
   transcriptsRef: MutableRefObject<Transcript[]>
   addTranscript: (update: TranscriptUpdate) => void;
-  copyTranscript: () => void;
+  copyTranscript: () => Promise<void>;
   flushBuffer: () => void;
   transcriptContainerRef: React.RefObject<HTMLDivElement>;
   meetingTitle: string;
@@ -474,7 +476,7 @@ export function TranscriptProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Copy transcript to clipboard with recording-relative timestamps
-  const copyTranscript = useCallback(() => {
+  const copyTranscript = useCallback(async () => {
     // Format timestamps as recording-relative [MM:SS] instead of wall-clock time
     const formatTime = (seconds: number | undefined): string => {
       if (seconds === undefined) return '[--:--]';
@@ -484,10 +486,22 @@ export function TranscriptProvider({ children }: { children: ReactNode }) {
       return `[${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}]`;
     };
 
-    const fullTranscript = transcripts
-      .map(t => `${formatTime(t.audio_start_time)} ${t.text}`)
-      .join('\n');
-    navigator.clipboard.writeText(fullTranscript);
+    // The user's notes of this recording go between the lines (same choice as the meeting view's copy).
+    let includeNotes = true;
+    try {
+      includeNotes = localStorage.getItem('dixit.copy.includeNotes') !== '0';
+    } catch {
+      // default on
+    }
+    const notes = includeNotes
+      ? await invoke<MeetingNote[]>('recording_notes_list').catch(() => [] as MeetingNote[])
+      : [];
+    const rows = [
+      ...transcripts.map(t => ({ at: t.audio_start_time ?? 0, line: `${formatTime(t.audio_start_time)} ${t.text}` })),
+      ...notes.map(n => ({ at: n.offset_ms / 1000, line: `> ${t('noteLabel')} ${formatTime(n.offset_ms / 1000)} ${n.text.replace(/\s+/g, ' ')}` })),
+    ];
+    const fullTranscript = rows.sort((a, b) => a.at - b.at).map(r => r.line).join('\n');
+    await navigator.clipboard.writeText(fullTranscript);
 
     toast.success(t('transcriptCopied'));
   }, [transcripts]);

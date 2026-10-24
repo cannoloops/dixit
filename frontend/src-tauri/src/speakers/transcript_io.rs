@@ -63,7 +63,13 @@ fn one_line(s: &str) -> String {
 /// Teams-style transcript in Markdown: header (title, date, duration), then one block per turn.
 /// Speaker lines stay plain (parse_teams.py's `SPEAKER_RE` takes no markup) and end with two
 /// spaces, a Markdown hard line break before the text.
-pub fn teams_md(title: &str, started: DateTime<Local>, duration_secs: f64, lines: &[(String, f64, String)]) -> String {
+pub fn teams_md(
+    title: &str,
+    started: DateTime<Local>,
+    duration_secs: f64,
+    lines: &[(String, f64, String)],
+    notes: &[(f64, String)],
+) -> String {
     let d = duration_secs.max(0.0) as u64;
     let duration = if d >= 3600 {
         format!("{}h {}m {}s", d / 3600, (d % 3600) / 60, d % 60)
@@ -80,13 +86,25 @@ pub fn teams_md(title: &str, started: DateTime<Local>, duration_secs: f64, lines
         started.hour(),
         started.minute()
     );
-    for (name, start, text) in merge_lines(lines) {
-        let mut text = one_line(&text);
-        // A text line ending with a time ("alle 10:30") would read as a speaker line.
-        if SPEAKER_LINE.is_match(&text) {
-            text.push('.');
+    // Each note goes after the lines that start before it and splits a speaker's turn there.
+    let mut notes: Vec<&(f64, String)> = notes.iter().filter(|n| !n.1.trim().is_empty()).collect();
+    notes.sort_by(|a, b| a.0.total_cmp(&b.0));
+    let mut rest = lines;
+    for chunk in notes.iter().map(Some).chain([None]) {
+        let cut = chunk.map_or(rest.len(), |n| rest.iter().take_while(|l| l.1 <= n.0).count());
+        for (name, start, text) in merge_lines(&rest[..cut]) {
+            let mut text = one_line(&text);
+            // A text line ending with a time ("alle 10:30") would read as a speaker line.
+            if SPEAKER_LINE.is_match(&text) {
+                text.push('.');
+            }
+            md.push_str(&format!("{}   {}  \n{text}\n\n", one_line(&name), format_offset(start)));
         }
-        md.push_str(&format!("{}   {}  \n{text}\n\n", one_line(&name), format_offset(start)));
+        rest = &rest[cut..];
+        if let Some((at, text)) = chunk.map(|n| (n.0, &n.1)) {
+            let s = at.max(0.0) as u64;
+            md.push_str(&format!("> Nota [{:02}:{:02}] {}\n\n", s / 60, s % 60, one_line(text)));
+        }
     }
     md
 }
@@ -97,9 +115,10 @@ pub fn write_teams_md(
     started: DateTime<Local>,
     duration_secs: f64,
     lines: &[(String, f64, String)],
+    notes: &[(f64, String)],
 ) -> Result<()> {
     let tmp = path.with_extension("md.part");
-    std::fs::write(&tmp, teams_md(title, started, duration_secs, lines))?;
+    std::fs::write(&tmp, teams_md(title, started, duration_secs, lines, notes))?;
     std::fs::rename(&tmp, path)?;
     Ok(())
 }
@@ -277,7 +296,7 @@ mod tests {
             ("Rossi Mario".to_string(), 8.0, "come va".to_string()),
             ("Bianchi Anna".to_string(), 4512.0, "bene".to_string()),
         ];
-        let md = teams_md("Sprint review", started(), 4600.0, &lines);
+        let md = teams_md("Sprint review", started(), 4600.0, &lines, &[]);
         assert_eq!(
             md,
             "# Sprint review-20261023_100215-Trascrizione della riunione\n\n\
@@ -298,9 +317,38 @@ mod tests {
             ("Bianchi Anna".to_string(), 65.0, "ok\n\n  fine\r\ncosì".to_string()),
             ("Verdi Luca".to_string(), 3700.0, "".to_string()),
         ];
-        let md = teams_md("Daily", started(), 3725.0, &lines);
+        let md = teams_md("Daily", started(), 3725.0, &lines, &[]);
         assert!(md.contains("Rossi Mario   0:05  \nci vediamo alle 10:30.\n\n"));
         assert!(md.contains("Bianchi Anna   1:05  \nok fine così\n\n"));
+        assert_eq!(md.lines().filter(|l| PY_SPEAKER_RE.is_match(l.trim())).count(), 3);
+    }
+
+    #[test]
+    fn md_interleaves_notes_at_their_instant() {
+        let lines = vec![
+            ("Rossi Mario".to_string(), 5.0, "ciao".to_string()),
+            ("Rossi Mario".to_string(), 8.0, "come va".to_string()),
+            ("Bianchi Anna".to_string(), 125.0, "bene".to_string()),
+        ];
+        // Out of order, one blank (dropped), one before everything, one after everything.
+        let notes = vec![
+            (130.0, "chiudere\nentro venerdì".to_string()),
+            (6.5, "  budget  ".to_string()),
+            (50.0, "   ".to_string()),
+            (0.0, "inizio".to_string()),
+        ];
+        let md = teams_md("Daily", started(), 200.0, &lines, &notes);
+        let body = md.split("3m 20s\n\n").nth(1).unwrap();
+        assert_eq!(
+            body,
+            "> Nota [00:00] inizio\n\n\
+             Rossi Mario   0:05  \nciao\n\n\
+             > Nota [00:06] budget\n\n\
+             Rossi Mario   0:08  \ncome va\n\n\
+             Bianchi Anna   2:05  \nbene\n\n\
+             > Nota [02:10] chiudere entro venerdì\n\n"
+        );
+        // Notes are never taken for speaker turns.
         assert_eq!(md.lines().filter(|l| PY_SPEAKER_RE.is_match(l.trim())).count(), 3);
     }
 
@@ -309,8 +357,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("Daily-Trascrizione della riunione.md");
         let lines = vec![("Rossi Mario".to_string(), 5.0, "ciao".to_string())];
-        write_teams_md(&path, "Daily", started(), 125.0, &lines).unwrap();
-        assert_eq!(std::fs::read_to_string(&path).unwrap(), teams_md("Daily", started(), 125.0, &lines));
+        write_teams_md(&path, "Daily", started(), 125.0, &lines, &[]).unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), teams_md("Daily", started(), 125.0, &lines, &[]));
         let names: Vec<_> = std::fs::read_dir(dir.path()).unwrap().map(|e| e.unwrap().file_name()).collect();
         assert_eq!(names.len(), 1, "no leftover temp file: {names:?}");
     }
@@ -329,6 +377,6 @@ mod tests {
             ("Bianchi Anna".to_string(), 4512.0, "Confermo.".to_string()),
             ("Parlante B".to_string(), 6100.0, "Anch'io.".to_string()),
         ];
-        write_teams_md(std::path::Path::new(&out), "Sprint review", started(), 6200.0, &lines).unwrap();
+        write_teams_md(std::path::Path::new(&out), "Sprint review", started(), 6200.0, &lines, &[]).unwrap();
     }
 }

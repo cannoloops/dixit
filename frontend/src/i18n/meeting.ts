@@ -40,6 +40,8 @@ export const t = makeT({
 
     // Transcript toolbar
     copy: 'Copia',
+    includeNotes: 'Includi le mie note',
+    noteLabel: 'Nota',
     copyTranscript: 'Copia la trascrizione',
     noTranscript: 'Nessuna trascrizione disponibile',
     folder: 'Cartella',
@@ -221,6 +223,8 @@ export const t = makeT({
 
     // Transcript toolbar
     copy: 'Copy',
+    includeNotes: 'Include my notes',
+    noteLabel: 'Note',
     copyTranscript: 'Copy the transcript',
     noTranscript: 'No transcript available',
     folder: 'Folder',
