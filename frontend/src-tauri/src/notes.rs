@@ -175,6 +175,7 @@ async fn sync_folder<R: Runtime>(app: &AppHandle<R>, meeting: Option<String>) ->
     }
     let notes = list(&pool, &meeting).await.map_err(|e| e.to_string())?;
     write_file(&folder, &notes).map_err(|e| e.to_string())?;
+    crate::search::kick();
     if folder.join("transcripts.json").exists() {
         crate::speakers::process_meeting(app.clone(), folder, false).await.map_err(|e| e.to_string())?;
     }

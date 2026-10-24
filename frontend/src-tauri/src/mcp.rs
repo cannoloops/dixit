@@ -1,18 +1,30 @@
-//! Dixit MCP server: lets local agents (Claude Code, Claude Desktop) read the live transcript.
-//! Streamable HTTP on 127.0.0.1, JSON responses only (no SSE stream), one read-only tool.
-// ponytail: hand-rolled HTTP/JSON-RPC for one tool; switch to the `rmcp` crate if tools multiply.
+//! Dixit MCP server: lets local agents (Claude Code, Claude Desktop) read the live transcript and
+//! the saved meetings (list, full meeting, search). Streamable HTTP on 127.0.0.1, JSON responses
+//! only (no SSE stream), read-only tools.
+// ponytail: hand-rolled HTTP/JSON-RPC for four tools; switch to the `rmcp` crate if they multiply.
 
 use crate::teams::captions::Turn;
 use once_cell::sync::Lazy;
 use serde_json::{json, Value};
-use std::sync::Mutex;
+use sqlx::SqlitePool;
+use std::sync::{Arc, Mutex, OnceLock};
 use tauri::async_runtime::JoinHandle;
+use tauri::{AppHandle, Manager, Runtime};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 
 pub const ADDR: &str = "127.0.0.1:7337";
 /// Upper bound on what one request may send (headers + body).
 const MAX_REQUEST: u64 = 1 << 20;
+
+/// Where the tools get the database: it may not exist yet when the server starts (first launch).
+pub type PoolSource = Arc<dyn Fn() -> Option<SqlitePool> + Send + Sync>;
+
+static POOL_SOURCE: OnceLock<PoolSource> = OnceLock::new();
+
+pub fn set_pool_source<R: Runtime>(app: AppHandle<R>) {
+    let _ = POOL_SOURCE.set(Arc::new(move || app.try_state::<crate::state::AppState>().map(|s| s.db_manager.pool().clone())));
+}
 
 static SERVER: Lazy<Mutex<Option<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(None));
 static BIND_ERROR: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
@@ -35,7 +47,8 @@ pub async fn apply(enabled: bool) {
     match TcpListener::bind(ADDR).await {
         Ok(listener) => {
             *BIND_ERROR.lock().unwrap() = None;
-            *SERVER.lock().unwrap() = Some(tauri::async_runtime::spawn(serve(listener)));
+            let source = POOL_SOURCE.get().cloned().unwrap_or_else(|| Arc::new(|| None));
+            *SERVER.lock().unwrap() = Some(tauri::async_runtime::spawn(serve(listener, source)));
             log::info!("MCP server listening on http://{ADDR}/mcp");
         }
         Err(e) => {
@@ -54,12 +67,13 @@ pub fn mcp_status() -> Result<bool, String> {
     Ok(SERVER.lock().unwrap().is_some())
 }
 
-async fn serve(listener: TcpListener) {
+async fn serve(listener: TcpListener, source: PoolSource) {
     loop {
         match listener.accept().await {
             Ok((stream, _)) => {
+                let source = source.clone();
                 tauri::async_runtime::spawn(async move {
-                    if let Err(e) = handle(stream).await {
+                    if let Err(e) = handle(stream, &source).await {
                         log::debug!("MCP connection error: {e}");
                     }
                 });
@@ -70,7 +84,7 @@ async fn serve(listener: TcpListener) {
 }
 
 /// One request per connection (`Connection: close`).
-async fn handle(stream: TcpStream) -> std::io::Result<()> {
+async fn handle(stream: TcpStream, source: &PoolSource) -> std::io::Result<()> {
     let mut reader = BufReader::new(stream).take(MAX_REQUEST);
     let mut line = String::new();
     reader.read_line(&mut line).await?;
@@ -104,7 +118,7 @@ async fn handle(stream: TcpStream) -> std::io::Result<()> {
     } else {
         let mut body = vec![0; len];
         reader.read_exact(&mut body).await?;
-        match respond(&body).await {
+        match respond(&body, source).await {
             Some(reply) => ("200 OK", reply.to_string()),
             None => ("202 Accepted", String::new()),
         }
@@ -121,7 +135,7 @@ async fn handle(stream: TcpStream) -> std::io::Result<()> {
 }
 
 /// JSON-RPC reply, or None for a notification (no id).
-async fn respond(body: &[u8]) -> Option<Value> {
+async fn respond(body: &[u8], source: &PoolSource) -> Option<Value> {
     let Ok(req) = serde_json::from_slice::<Value>(body) else {
         return Some(json!({"jsonrpc": "2.0", "id": null, "error": {"code": -32700, "message": "Parse error"}}));
     };
@@ -133,22 +147,42 @@ async fn respond(body: &[u8]) -> Option<Value> {
             "serverInfo": {"name": "dixit", "version": env!("CARGO_PKG_VERSION")},
         })),
         "ping" => Ok(json!({})),
-        "tools/list" => Ok(json!({"tools": [{
-            "name": "live_transcript",
-            "description": "What was said in the last N minutes of the call Dixit is recording right now, \
-                one line per turn: [mm:ss] Speaker: text (mm:ss from recording start). Speaker names are \
-                available on Teams calls with live captions; otherwise lines have no speaker. Fast live \
-                transcript: expect recognition errors.",
-            "inputSchema": {"type": "object", "properties": {
-                "minutes": {"type": "number", "description": "How many minutes back (default 5)"}
-            }},
-            "annotations": {"readOnlyHint": true},
-        }]})),
+        "tools/list" => {
+            let mut tools = vec![json!({
+                "name": "live_transcript",
+                "description": "What was said in the last N minutes of the call Dixit is recording right now, \
+                    one line per turn: [mm:ss] Speaker: text (mm:ss from recording start). Speaker names are \
+                    available on Teams calls with live captions; otherwise lines have no speaker. Fast live \
+                    transcript: expect recognition errors.",
+                "inputSchema": {"type": "object", "properties": {
+                    "minutes": {"type": "number", "description": "How many minutes back (default 5)"}
+                }},
+                "annotations": {"readOnlyHint": true},
+            })];
+            tools.extend(crate::mcp_tools::definitions());
+            Ok(json!({ "tools": tools }))
+        }
         "tools/call" if req["params"]["name"] == "live_transcript" => {
             let minutes = req["params"]["arguments"]["minutes"].as_f64().unwrap_or(5.0).clamp(0.5, 240.0);
             Ok(json!({"content": [{"type": "text", "text": live_transcript(minutes).await}]}))
         }
-        "tools/call" => Err((-32602, "Unknown tool".to_string())),
+        "tools/call" => {
+            let name = req["params"]["name"].as_str().unwrap_or("");
+            let args = &req["params"]["arguments"];
+            let outcome = match source() {
+                Some(pool) => crate::mcp_tools::call(&pool, name, args).await,
+                None if crate::mcp_tools::definitions().iter().any(|d| d["name"] == name) => {
+                    Some(Err("Dixit's database is not ready yet; try again in a moment".to_string()))
+                }
+                None => None,
+            };
+            match outcome {
+                // Tool failures are results with isError, so the agent can read and correct them.
+                Some(Ok(text)) => Ok(json!({"content": [{"type": "text", "text": text}]})),
+                Some(Err(text)) => Ok(json!({"content": [{"type": "text", "text": text}], "isError": true})),
+                None => Err((-32602, "Unknown tool".to_string())),
+            }
+        }
         other => Err((-32601, format!("Method not found: {other}"))),
     };
     Some(match result {
@@ -231,7 +265,7 @@ mod tests {
     async fn speaks_mcp_over_http() {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let addr = listener.local_addr().unwrap();
-        tokio::spawn(serve(listener));
+        tokio::spawn(serve(listener, Arc::new(|| None)));
 
         let init = post(addr, "", r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}"#).await;
         assert!(init.starts_with("HTTP/1.1 200"), "{init}");
@@ -248,5 +282,52 @@ mod tests {
 
         let web = post(addr, "Origin: http://evil.example\r\n", r#"{"jsonrpc":"2.0","id":4,"method":"tools/list"}"#).await;
         assert!(web.starts_with("HTTP/1.1 403"), "{web}");
+    }
+
+    /// The saved-meeting tools through the real HTTP server, with a database behind it.
+    #[tokio::test]
+    async fn serves_the_meeting_tools_over_http() {
+        use crate::library::fixtures::{meeting, pool};
+        let p = pool().await;
+        meeting(&p, "m1", "Sprint review", "2026-10-23T10:00:00+00:00", &[(1.0, "Rossi", "Il rilascio slitta a luglio"), (9.0, "Bianchi", "Perché il sistema è lento")]).await;
+        sqlx::query("INSERT INTO meeting_note_entries VALUES ('n1', 'm1', 'chiedere il budget', 6000, 'a', '2026-10-26T08:00:00+00:00')").execute(&p).await.unwrap();
+        crate::search::sync_text(&p).await.unwrap();
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let pool = p.clone();
+        tokio::spawn(serve(listener, Arc::new(move || Some(pool.clone()))));
+
+        // The reply's body is JSON-RPC; the tool's own text sits in result.content[0].text.
+        let call = |name: &str, args: Value| {
+            let body = json!({"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": args}}).to_string();
+            async move {
+                let raw = post(addr, "", &body).await;
+                serde_json::from_str::<Value>(raw.split("\r\n\r\n").nth(1).unwrap()).unwrap()
+            }
+        };
+        let text = |v: &Value| v["result"]["content"][0]["text"].as_str().unwrap().to_string();
+
+        let tools = post(addr, "", r#"{"jsonrpc":"2.0","id":2,"method":"tools/list"}"#).await;
+        for name in ["live_transcript", "list_meetings", "get_meeting", "search_transcripts"] {
+            assert!(tools.contains(name), "{name} missing: {tools}");
+        }
+
+        let list = call("list_meetings", json!({"updated_since": "2026-10-01"})).await;
+        let list: Value = serde_json::from_str(&text(&list)).unwrap();
+        assert_eq!((list["total"].clone(), list["meetings"][0]["id"].clone()), (json!(1), json!("m1")));
+
+        let md = text(&call("get_meeting", json!({"id": "m1", "format": "markdown"})).await);
+        assert!(md.starts_with("# Sprint review") && md.contains("**Rossi:** Il rilascio slitta a luglio") && md.contains("> Nota [00:06] chiedere il budget"), "{md}");
+
+        let found = call("search_transcripts", json!({"query": "perche", "mode": "classic"})).await;
+        let found: Value = serde_json::from_str(&text(&found)).unwrap();
+        assert_eq!((found["results"][0]["meeting_id"].clone(), found["results"][0]["at"].clone()), (json!("m1"), json!("00:01"))); // the passage starts at 00:01 (both lines are one chunk)
+
+        // a bad argument is a tool error (isError), not a protocol error
+        let bad = call("get_meeting", json!({"id": "nope"})).await;
+        assert_eq!(bad["result"]["isError"], true);
+        assert!(text(&bad).contains("No meeting"));
+        assert!(call("nope", json!({})).await["error"]["code"] == -32602);
     }
 }

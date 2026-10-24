@@ -77,6 +77,7 @@ pub async fn process_meeting<R: Runtime>(app: AppHandle<R>, folder: PathBuf, not
         };
         crate::autopilot::notify(&app, &head, body);
     }
+    crate::search::kick(); // names changed
     let _ = app.emit("speakers-updated", serde_json::json!({ "folder": folder }));
     Ok(())
 }

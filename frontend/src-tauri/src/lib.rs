@@ -44,8 +44,11 @@ pub mod ax_util;
 pub mod config;
 pub mod console_utils;
 pub mod database;
+pub mod embedding;
 pub mod i18n;
+pub mod library;
 pub mod mcp;
+pub mod mcp_tools;
 pub mod notes;
 pub mod notifications;
 pub mod ollama;
@@ -55,6 +58,7 @@ pub mod anthropic;
 pub mod groq;
 pub mod openrouter;
 pub mod parakeet_engine;
+pub mod search;
 pub mod state;
 pub mod speakers;
 pub mod summary;
@@ -524,6 +528,8 @@ pub fn run() {
             speakers::listen_for_stops(_app.handle());
             teams::downloads::spawn(_app.handle().clone());
             let mcp_enabled = autopilot::settings::load(_app.handle()).mcp_enabled;
+            mcp::set_pool_source(_app.handle().clone());
+            search::spawn(_app.handle().clone());
             tauri::async_runtime::spawn(mcp::apply(mcp_enabled));
 
             // Initialize notification system with proper defaults
