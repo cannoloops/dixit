@@ -5,7 +5,7 @@
 use super::engine::TranscriptionEngine;
 use super::provider::TranscriptionError;
 use crate::audio::AudioChunk;
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
@@ -68,6 +68,12 @@ pub fn start_transcription_task<R: Runtime>(
                 }));
                 return;
             }
+        };
+
+        // Dixit: words of the sentence still being spoken (Parakeet is fast enough to redo it every second)
+        let partials = match &transcription_engine {
+            TranscriptionEngine::Parakeet(e) => Some(tokio::spawn(emit_partials(app.clone(), e.clone()))),
+            _ => None,
         };
 
         // Create parallel workers for faster processing while preserving ALL chunks
@@ -325,6 +331,10 @@ pub fn start_transcription_task<R: Runtime>(
                 error!("❌ Failed to send chunk to workers - this should not happen!");
                 break;
             }
+        }
+
+        if let Some(partials) = partials {
+            partials.abort();
         }
 
         // Signal that input is finished
@@ -606,3 +616,22 @@ fn format_recording_time(seconds: f64) -> String {
             assert!(!should_emit_transcript("   "));
         }
     }
+
+/// Dixit: transcribes the open speech segment and emits `transcript-partial` {text, start};
+/// the next `transcript-update` replaces it.
+async fn emit_partials<R: Runtime>(app: AppHandle<R>, engine: Arc<crate::parakeet_engine::ParakeetEngine>) {
+    let audio = &crate::audio::pipeline::PARTIAL_AUDIO;
+    audio.send_replace(None);
+    let mut rx = audio.subscribe();
+    while rx.changed().await.is_ok() {
+        let Some((samples, start)) = rx.borrow_and_update().clone() else { continue };
+        match engine.transcribe_audio(samples).await {
+            // Skip it when a newer partial or the end of the segment arrived meanwhile.
+            Ok(text) if !rx.has_changed().unwrap_or(true) && !text.trim().is_empty() => {
+                let _ = app.emit("transcript-partial", serde_json::json!({ "text": text.trim(), "start": start }));
+            }
+            Ok(_) => {}
+            Err(e) => debug!("Partial transcription failed: {e}"),
+        }
+    }
+}

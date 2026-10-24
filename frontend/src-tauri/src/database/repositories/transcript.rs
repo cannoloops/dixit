@@ -131,6 +131,10 @@ impl TranscriptsRepository {
             .rows_affected())
     }
 
+    pub async fn meeting_for_folder(pool: &SqlitePool, folder_path: &str) -> Result<Option<String>, SqlxError> {
+        sqlx::query_scalar("SELECT id FROM meetings WHERE folder_path = ?").bind(folder_path).fetch_optional(pool).await
+    }
+
     pub async fn folder_for_meeting(pool: &SqlitePool, meeting_id: &str) -> Result<Option<String>, SqlxError> {
         let folder: Option<Option<String>> = sqlx::query_scalar("SELECT folder_path FROM meetings WHERE id = ?")
             .bind(meeting_id)

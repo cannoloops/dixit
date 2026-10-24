@@ -237,6 +237,13 @@ impl ContinuousVadProcessor {
         Ok(completed_segments)
     }
 
+    /// Dixit: the speech segment still open (16 kHz samples) and its start in ms, for live partials.
+    pub fn open_speech(&self) -> Option<(&[f32], f64)> {
+        (self.in_speech && !self.current_speech.is_empty()).then(|| {
+            (self.current_speech.as_slice(), self.speech_start_sample as f64 * 1000.0 / VAD_SAMPLE_RATE as f64)
+        })
+    }
+
     fn process_chunk(&mut self, chunk: &[f32]) -> Result<()> {
         // Track accumulated speech buffer size to detect memory issues
         let current_speech_size = self.current_speech.len();

@@ -8,7 +8,8 @@ import { useRecordingState } from '@/contexts/RecordingStateContext';
 import { usePermissionCheck } from '@/hooks/usePermissionCheck';
 import { ModalType } from '@/hooks/useModalState';
 import { useIsLinux } from '@/hooks/usePlatform';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { listen } from '@tauri-apps/api/event';
 import { t } from '@/i18n/recording';
 
 /**
@@ -36,6 +37,17 @@ export function TranscriptPanel({
   const { isRecording, isPaused } = useRecordingState();
   const { checkPermissions, isChecking, hasSystemAudio, hasMicrophone } = usePermissionCheck();
   const isLinux = useIsLinux();
+
+  // Words still being spoken: each partial replaces the last, the final segment replaces it.
+  const [partial, setPartial] = useState<{ text: string; start: number } | null>(null);
+  useEffect(() => {
+    if (!isRecording) return setPartial(null);
+    const offs = [
+      listen<{ text: string; start: number }>('transcript-partial', (e) => setPartial(e.payload)),
+      listen('transcript-update', () => setPartial(null)),
+    ];
+    return () => offs.forEach((off) => off.then((fn) => fn()));
+  }, [isRecording]);
 
   // Convert transcripts to segments for virtualized view
   const segments = useMemo(() =>
@@ -119,7 +131,7 @@ export function TranscriptPanel({
             isPaused={isPaused}
             isProcessing={isProcessingStop}
             isStopping={isStopping}
-            enableStreaming={isRecording}
+            partial={partial}
             showConfidence={showConfidenceIndicator}
           />
         </div>

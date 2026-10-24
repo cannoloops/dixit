@@ -26,6 +26,16 @@ use super::vad::{ContinuousVadProcessor};
 /// during continuous speech is tracked separately in #756.
 const VAD_REDEMPTION_TIME_MS: u32 = 500;
 
+/// Dixit: the speech segment still being spoken (16 kHz samples, start secs), latest value only;
+/// the worker transcribes it so the UI shows words before the pause. None = segment closed.
+pub static PARTIAL_AUDIO: once_cell::sync::Lazy<tokio::sync::watch::Sender<Option<(Vec<f32>, f64)>>> =
+    once_cell::sync::Lazy::new(|| tokio::sync::watch::channel(None).0);
+/// A new partial every second of speech.
+const PARTIAL_STEP: usize = 16_000;
+// ponytail: each partial re-transcribes the whole open segment; past 30s (continuous system
+// audio) partials stop and the line waits for the pause. Sliding window if that matters.
+const PARTIAL_MAX: usize = 30 * 16_000;
+
 /// Ring buffer for synchronized audio mixing
 /// Accumulates samples from mic and system streams until we have aligned windows
 struct AudioMixerRingBuffer {
@@ -697,6 +707,8 @@ pub struct AudioPipeline {
     vad_processor: ContinuousVadProcessor,
     sample_rate: u32,
     chunk_id_counter: u64,
+    // Dixit: samples of the open segment already sent as a partial
+    partial_sent: usize,
     // Performance optimization: reduce logging frequency
     last_summary_time: std::time::Instant,
     processed_chunks: u64,
@@ -778,6 +790,7 @@ impl AudioPipeline {
             vad_processor,
             sample_rate,
             chunk_id_counter: 0,
+            partial_sent: 0,
             // Performance optimization: reduce logging frequency
             last_summary_time: std::time::Instant::now(),
             processed_chunks: 0,
@@ -888,6 +901,19 @@ impl AudioPipeline {
                                         } else {
                                             debug!("⏭️ Dropping short VAD segment: {:.1}ms ({} samples < 800)",
                                                    duration_ms, segment.samples.len());
+                                        }
+                                    }
+                                    match self.vad_processor.open_speech() {
+                                        Some((speech, start_ms)) => {
+                                            if speech.len() <= PARTIAL_MAX && speech.len() >= self.partial_sent + PARTIAL_STEP {
+                                                self.partial_sent = speech.len();
+                                                PARTIAL_AUDIO.send_replace(Some((speech.to_vec(), start_ms / 1000.0)));
+                                            }
+                                        }
+                                        None => {
+                                            if std::mem::take(&mut self.partial_sent) > 0 {
+                                                PARTIAL_AUDIO.send_replace(None);
+                                            }
                                         }
                                     }
                                 }

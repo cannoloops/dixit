@@ -51,6 +51,10 @@ impl TranscriptionEngine {
 // MODEL VALIDATION AND INITIALIZATION
 // ============================================================================
 
+/// Dixit: set when the live path runs on Parakeet in place of the configured Whisper model,
+/// so Termina re-transcribes the recording with Whisper (`retranscription::final_pass`).
+pub static FINAL_PASS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// Validate that transcription models (Whisper or Parakeet) are ready before starting recording
 pub async fn validate_transcription_model_ready<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
     // Check transcript configuration to determine which engine to validate
@@ -86,9 +90,21 @@ pub async fn validate_transcription_model_ready<R: Runtime>(app: &AppHandle<R>) 
         }
     };
 
+    FINAL_PASS.store(false, std::sync::atomic::Ordering::SeqCst);
     // Validate based on provider
     match config.provider.as_str() {
         "localWhisper" => {
+            // Dixit: live on Parakeet (near real time), Whisper quality comes back at Termina.
+            if crate::parakeet_engine::commands::parakeet_init().await.is_ok() {
+                match crate::parakeet_engine::commands::parakeet_validate_model_ready_with_config(app).await {
+                    Ok(model) => {
+                        info!("⚡ Live transcription on Parakeet '{}', Whisper '{}' at stop", model, config.model);
+                        FINAL_PASS.store(true, std::sync::atomic::Ordering::SeqCst);
+                        return Ok(());
+                    }
+                    Err(e) => info!("Parakeet not available for live ({}), live on Whisper", e),
+                }
+            }
             info!("🔍 Validating Whisper model...");
             // Ensure whisper engine is initialized first
             if let Err(init_error) = crate::whisper_engine::commands::whisper_init().await {
@@ -183,7 +199,8 @@ pub async fn get_or_init_transcription_engine<R: Runtime>(
     };
 
     // Initialize the appropriate engine based on provider
-    match config.provider.as_str() {
+    let provider = if FINAL_PASS.load(std::sync::atomic::Ordering::SeqCst) { "parakeet" } else { config.provider.as_str() };
+    match provider {
         "parakeet" => {
             info!("🦜 Initializing Parakeet transcription engine");
 

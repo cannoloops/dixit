@@ -30,6 +30,8 @@ export interface VirtualizedTranscriptViewProps {
     enableStreaming?: boolean;
     /** Show confidence indicators */
     showConfidence?: boolean;
+    /** Words of the sentence still being spoken (live only), replaced by the next segment */
+    partial?: { text: string; start: number } | null;
     /** Completely disable auto-scroll behavior (for meeting details page) */
     disableAutoScroll?: boolean;
 
@@ -163,6 +165,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
     enableStreaming = false,
     showConfidence = true,
     disableAutoScroll = false,
+    partial = null,
     hasMore = false,
     isLoadingMore = false,
     totalCount = 0,
@@ -299,6 +302,22 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
         );
     };
 
+    const partialLine = partial && (
+        <div className="opacity-50">
+            <TranscriptLine
+                segment={{ id: 'partial', timestamp: partial.start, text: partial.text }}
+                visibleText={partial.text}
+                roster={roster}
+                hasSpeakers={hasSpeakers}
+                isTurnStart={false}
+                isCurrent
+                isCurrentStart={false}
+                isStreaming={false}
+                showConfidence={false}
+            />
+        </div>
+    );
+
     const loadMore = (hasMore || isLoadingMore) && !isRecording && segments.length > 0 && (
         <div ref={loadMoreTriggerRef} className="flex items-center justify-center py-4 text-xs text-muted-foreground">
             {isLoadingMore ? (
@@ -314,7 +333,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
 
     return (
         <div ref={scrollRef} className="flex h-full flex-col overflow-y-auto px-4 py-2">
-            {segments.length === 0 ? (
+            {segments.length === 0 && !partial ? (
                 <p className="mx-auto w-full max-w-[60ch] pt-10 text-sm text-muted-foreground">
                     {isRecording ? (isPaused ? t('pausedEmpty') : t('listeningEmpty')) : t('noTranscript')}
                 </p>
@@ -347,6 +366,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                             </div>
                         ))}
                     </div>
+                    {partialLine}
                     {loadMore}
                 </>
             ) : (
@@ -356,6 +376,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                             <div key={segment.id}>{renderLine(index)}</div>
                         ))}
                     </div>
+                    {partialLine}
                     {loadMore}
                 </>
             )}

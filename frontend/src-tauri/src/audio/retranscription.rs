@@ -137,6 +137,36 @@ pub async fn start_retranscription<R: Runtime>(
     result
 }
 
+/// Dixit: after a live on Parakeet, replaces the transcript with the configured Whisper model's.
+/// Runs before speaker attribution, which then labels the new segments.
+pub async fn final_pass<R: Runtime>(app: &AppHandle<R>, folder: &Path) {
+    if !super::transcription::engine::FINAL_PASS.swap(false, Ordering::SeqCst) {
+        return;
+    }
+    let pool = app.state::<AppState>().db_manager.pool().clone();
+    let folder_str = folder.to_string_lossy().to_string();
+    // The frontend saves the meeting right after the stop: wait for its row.
+    let mut meeting_id = None;
+    for _ in 0..120 {
+        if let Ok(Some(id)) =
+            crate::database::repositories::transcript::TranscriptsRepository::meeting_for_folder(&pool, &folder_str).await
+        {
+            meeting_id = Some(id);
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    }
+    let Some(meeting_id) = meeting_id else {
+        warn!("Final pass skipped: meeting for {} not saved", folder.display());
+        return;
+    };
+    info!("Final pass: re-transcribing meeting {} with Whisper", meeting_id);
+    let language = crate::get_language_preference_internal();
+    if let Err(e) = start_retranscription(app.clone(), meeting_id, folder_str, language, None, Some("localWhisper".into())).await {
+        warn!("Final pass failed, keeping the live transcript: {e:#}");
+    }
+}
+
 /// Find audio file in meeting folder
 /// Tries common names first, then scans for any file with an audio extension
 fn find_audio_file(folder: &Path) -> Result<PathBuf> {
