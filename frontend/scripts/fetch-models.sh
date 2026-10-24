@@ -41,10 +41,10 @@ done
 fetch speaker/wespeaker_en_voxceleb_resnet34_LM.onnx \
   "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/wespeaker_en_voxceleb_resnet34_LM.onnx"
 
-# Embedding per la ricerca: models/embedding/<nome>/<file>. Attivo quando il modello è scelto, es.
-#   EMBEDDING_FILES="embeddinggemma-300m/model.onnx=<url> embeddinggemma-300m/tokenizer.json=<url>"
-for pair in ${EMBEDDING_FILES:-}; do
-  fetch "embedding/${pair%%=*}" "${pair#*=}"
-done
+# Embedding per la ricerca (W2): EmbeddingGemma 300M ONNX quantizzato
+E="$HF/onnx-community/embeddinggemma-300m-ONNX/resolve/main"
+fetch embeddinggemma-300m/model_quantized.onnx "$E/onnx/model_quantized.onnx"
+fetch embeddinggemma-300m/model_quantized.onnx_data "$E/onnx/model_quantized.onnx_data"
+fetch embeddinggemma-300m/tokenizer.json "$E/tokenizer.json"
 
 du -sh "$DEST"
