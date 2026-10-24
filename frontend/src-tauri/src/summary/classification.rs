@@ -2,6 +2,7 @@
 
 use crate::summary::llm_client::{generate_summary, LLMProvider};
 use crate::summary::processor::clean_llm_markdown_detailed;
+use regex::Regex;
 use reqwest::Client;
 use serde::Serialize;
 use std::path::PathBuf;
@@ -70,32 +71,36 @@ Reply with ONLY a JSON object, no Markdown: {"tipo": "sal|analisi|mix|altro", "m
 
 /// Reads the model's answer; anything unreadable or unknown falls back to `altro`.
 pub fn parse_classification(raw: &str) -> Classification {
+    read_classification(raw).unwrap_or_else(|tipo| Classification {
+        kind: MeetingKind::Altro,
+        reason: match tipo {
+            Some(tipo) => format!("Tipo «{tipo}» non riconosciuto."),
+            None => "Classificazione non riuscita: risposta del modello non leggibile.".into(),
+        },
+    })
+}
+
+/// Err carries the unknown type, if the answer had one.
+fn read_classification(raw: &str) -> Result<Classification, Option<String>> {
     let cleaned = clean_llm_markdown_detailed(raw).markdown;
     let json = match (cleaned.find('{'), cleaned.rfind('}')) {
         (Some(start), Some(end)) if start < end => &cleaned[start..=end],
         _ => "",
     };
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(json) else {
-        return Classification {
-            kind: MeetingKind::Altro,
-            reason: "Classificazione non riuscita: risposta del modello non leggibile.".into(),
-        };
-    };
+    let value = serde_json::from_str::<serde_json::Value>(json).unwrap_or_default();
+    // Broken JSON (an unescaped quote in the reason) still names the type: read the fields by hand.
     let field = |keys: &[&str]| {
         keys.iter()
-            .find_map(|k| value.get(*k).and_then(|v| v.as_str()))
+            .find_map(|k| {
+                value.get(*k).and_then(|v| v.as_str()).map(str::to_string).or_else(|| {
+                    Regex::new(&format!(r#"(?s)"{k}"\s*:\s*"(.*?)"\s*[,}}]"#)).ok()?.captures(&cleaned).map(|c| c[1].to_string())
+                })
+            })
             .map(|s| s.trim().to_string())
-            .unwrap_or_default()
     };
-    let tipo = field(&["tipo", "type"]);
-    let reason = field(&["motivazione", "reason"]);
-    match MeetingKind::from_id(&tipo) {
-        Some(kind) => Classification { kind, reason },
-        None => Classification {
-            kind: MeetingKind::Altro,
-            reason: format!("Tipo «{tipo}» non riconosciuto. {reason}").trim().to_string(),
-        },
-    }
+    let tipo = field(&["tipo", "type"]).ok_or(None)?;
+    let reason = field(&["motivazione", "reason"]).unwrap_or_default();
+    MeetingKind::from_id(&tipo).map(|kind| Classification { kind, reason }).ok_or(Some(tipo))
 }
 
 /// Head and tail of long transcripts: the opening sets the agenda, the end the outcome.
@@ -128,12 +133,20 @@ pub async fn classify_meeting(
         });
     }
     let user_prompt = format!("<transcript>\n{}\n</transcript>", sample(text));
-    let completion = generate_summary(
-        client, provider, model_name, api_key, SYSTEM_PROMPT, &user_prompt, ollama_endpoint,
-        custom_openai_endpoint, None, None, None, app_data_dir, cancellation_token,
-    )
-    .await?;
-    Ok(parse_classification(&completion.content))
+    // The model is sampled (Ollama ignores the temperature here): ask again once on a bad answer.
+    let mut last = String::new();
+    for _ in 0..2 {
+        last = generate_summary(
+            client, provider, model_name, api_key, SYSTEM_PROMPT, &user_prompt, ollama_endpoint,
+            custom_openai_endpoint, None, None, None, app_data_dir, cancellation_token,
+        )
+        .await?
+        .content;
+        if let Ok(classification) = read_classification(&last) {
+            return Ok(classification);
+        }
+    }
+    Ok(parse_classification(&last))
 }
 
 #[cfg(test)]
@@ -168,6 +181,13 @@ mod tests {
         let c = parse_classification(r#"{"tipo": "retrospettiva", "motivazione": "x"}"#);
         assert_eq!(c.kind, MeetingKind::Altro);
         assert!(c.reason.contains("retrospettiva"));
+    }
+
+    #[test]
+    fn broken_json_still_gives_the_type() {
+        let c = parse_classification(r#"{"tipo": "analisi", "motivazione": "si parla di "KB" e plugin"}"#);
+        assert_eq!(c.kind, MeetingKind::Analisi);
+        assert_eq!(c.reason, r#"si parla di "KB" e plugin"#);
     }
 
     #[test]

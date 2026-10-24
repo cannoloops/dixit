@@ -456,8 +456,12 @@ export function useSummaryGeneration({
 
     return {
       transcriptText: allTranscripts
-        // Same shape as the automatic summary (summary::auto::transcript_text): speakers name action owners.
-        .map((transcript) => `${formatTime(transcript.audio_start_time, transcript.timestamp)} ${transcript.speaker ? `${transcript.speaker}: ` : ''}${transcript.text}`)
+        // Same shape as the automatic summary (summary::auto::transcript_text): real speaker names
+        // name action owners; the diarization's "Parlante X" / "Altri" labels are left out.
+        .map((transcript) => {
+          const named = transcript.speaker && !/^(Parlante [A-Z]+|Altri)$/.test(transcript.speaker.trim());
+          return `${formatTime(transcript.audio_start_time, transcript.timestamp)} ${named ? `${transcript.speaker}: ` : ''}${transcript.text}`;
+        })
         .join('\n'),
       transcriptTexts: allTranscripts.map((transcript) => transcript.text),
     };

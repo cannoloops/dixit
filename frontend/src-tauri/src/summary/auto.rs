@@ -21,6 +21,14 @@ pub fn api_set_auto_summary(enabled: bool) {
     AUTO_SUMMARY.store(enabled, Ordering::SeqCst);
 }
 
+/// Real names only: the diarization's "Parlante X" / "Altri" labels end up listed as participants.
+fn is_named(speaker: &str) -> bool {
+    let s = speaker.trim();
+    let generic = s == "Altri"
+        || s.strip_prefix("Parlante ").is_some_and(|l| !l.is_empty() && l.chars().all(|c| c.is_ascii_uppercase()));
+    !s.is_empty() && !generic
+}
+
 /// Transcript as the summary reads it: `[mm:ss] Speaker: text`, in time order.
 pub(crate) async fn transcript_text(pool: &SqlitePool, meeting_id: &str) -> Result<String, sqlx::Error> {
     let rows: Vec<(String, Option<f64>, Option<String>)> = sqlx::query_as(
@@ -33,7 +41,7 @@ pub(crate) async fn transcript_text(pool: &SqlitePool, meeting_id: &str) -> Resu
         .into_iter()
         .map(|(text, start, speaker)| {
             let secs = start.unwrap_or(0.0) as u64;
-            let speaker = speaker.filter(|s| !s.trim().is_empty()).map(|s| format!("{s}: ")).unwrap_or_default();
+            let speaker = speaker.filter(|s| is_named(s)).map(|s| format!("{s}: ")).unwrap_or_default();
             format!("[{:02}:{:02}] {speaker}{}", secs / 60, secs % 60, text.trim())
         })
         .collect::<Vec<_>>()
@@ -125,4 +133,16 @@ pub async fn api_set_meeting_type(
         .await
         .map(|_| ())
         .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn generic_speaker_labels_are_dropped() {
+        assert!(super::is_named("Manuguerra"));
+        assert!(super::is_named("Parlante Rossi"));
+        for label in ["Parlante A", "Parlante AK", "Altri", " "] {
+            assert!(!super::is_named(label), "{label}");
+        }
+    }
 }

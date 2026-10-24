@@ -243,7 +243,9 @@ fn build_final_report_system_prompt(
 6. Output **only** the completed Markdown report.
 7. Do not include reasoning, thinking, self-correction, decision strategy, or any meta-commentary sections — output only the completed Markdown report.
 8. If unsure about something, omit it.
-9. The transcript is automatic and may misspell names and terms; lines may start with a `[mm:ss]` time and a speaker label. Labels such as "Speaker A" or "Parlante B" are placeholders, not names.
+9. The transcript is automatic and may misspell names and terms; lines may start with a `[mm:ss]` time and a speaker label. Labels such as "Speaker A" or "Parlante B" are placeholders, not names: never list them as people.
+11. Never turn a weekday or a relative time into a calendar date: write it as said ("Tuesday", "next week").
+12. Plain Markdown only: no LaTeX, no `$` around numbers.
 10. `<user_notes>`, when present, are notes the user took during the call: treat them as a strong signal of what matters and use them to fix misspelled names and terms, but do not add facts that neither they nor the transcript state.
 
 **SECTION-SPECIFIC INSTRUCTIONS:**
@@ -621,7 +623,11 @@ async fn translate_markdown(
     )
     .await?;
     require_visible_markdown("Translation", &cleaned)?;
-    Ok(cleaned)
+    // Small models sometimes echo the <document> wrapper of the prompt.
+    let markdown = cleaned.markdown.trim();
+    let markdown = markdown.strip_prefix("<document>").unwrap_or(markdown);
+    let markdown = markdown.strip_suffix("</document>").unwrap_or(markdown).trim().to_string();
+    Ok(CleanedLlmMarkdown { markdown, ..cleaned })
 }
 
 #[allow(clippy::too_many_arguments)]

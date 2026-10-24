@@ -11,7 +11,7 @@
     },
     {
       "title": "Participants",
-      "instruction": "Names of the people present, as they appear in the transcript. Generic labels such as 'Speaker A' or 'Parlante B' are not names: if no real name appears, write 'Not stated'",
+      "instruction": "Real names of the people who took part, from the speaker names or from people addressed by name. Never list generic labels such as 'Speaker A' or 'Parlante B': if there are unnamed speakers, end with one item 'Other unnamed speakers'. If no real name appears, write 'Not stated'",
       "format": "list"
     },
     {
