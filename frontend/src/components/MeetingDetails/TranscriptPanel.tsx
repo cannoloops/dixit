@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { TranscriptButtonGroup } from './TranscriptButtonGroup';
 import { useEffect, useMemo, useRef } from 'react';
 import { t } from '@/i18n/meeting';
+import { MeetingNote, withNotes } from '@/lib/notes';
 
 interface TranscriptPanelProps {
   transcripts: Transcript[];
@@ -34,6 +35,13 @@ interface TranscriptPanelProps {
   roster?: string[];
   /** Line to scroll to (from the speaker band); a new nonce repeats the jump. */
   jumpTo?: { id: string; nonce: number } | null;
+
+  /** The user's notes, shown in the transcript at their instant. */
+  notes?: MeetingNote[];
+  onEditNote?: (id: string, text: string) => void;
+  onDeleteNote?: (id: string) => void;
+  includeNotes?: boolean;
+  onIncludeNotesChange?: (value: boolean) => void;
 }
 
 /** Scrolls the list to a line, also when it sits outside the virtualized window. */
@@ -69,17 +77,18 @@ export function TranscriptPanel({
   onRefetchTranscripts,
   roster,
   jumpTo = null,
+  notes = [],
+  onEditNote,
+  onDeleteNote,
+  includeNotes = true,
+  onIncludeNotesChange,
 }: TranscriptPanelProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const handledJump = useRef<number | null>(null);
 
   // Convert transcripts to segments if pagination is not used but we want virtualization
   const convertedSegments = useMemo(() => {
-    if (usePagination && segments) {
-      return segments;
-    }
-    // Convert transcripts to segments for virtualization
-    return transcripts.map(line => ({
+    const base = usePagination && segments ? segments : transcripts.map(line => ({
       id: line.id,
       timestamp: line.audio_start_time ?? 0,
       endTime: line.audio_end_time,
@@ -87,7 +96,8 @@ export function TranscriptPanel({
       confidence: line.confidence,
       speaker: line.speaker,
     }));
-  }, [transcripts, usePagination, segments]);
+    return withNotes(base, notes, !hasMore);
+  }, [transcripts, usePagination, segments, notes, hasMore]);
 
   // Jump from the speaker band: load pages until the line is there, then scroll to it.
   useEffect(() => {
@@ -108,7 +118,7 @@ export function TranscriptPanel({
     return () => window.clearTimeout(timer);
   }, [jumpTo, convertedSegments, hasMore, isLoadingMore, onLoadMore]);
 
-  const lineCount = usePagination ? (totalCount ?? convertedSegments.length) : (transcripts?.length || 0);
+  const lineCount = usePagination ? (totalCount ?? segments?.length ?? 0) : (transcripts?.length || 0);
 
   return (
     <div className="@container relative flex h-full w-full min-w-0 flex-col bg-background">
@@ -125,6 +135,9 @@ export function TranscriptPanel({
             meetingId={meetingId}
             meetingFolderPath={meetingFolderPath}
             onRefetchTranscripts={onRefetchTranscripts}
+            hasNotes={notes.length > 0}
+            includeNotes={includeNotes}
+            onIncludeNotesChange={onIncludeNotesChange}
           />
         </div>
       </div>
@@ -146,6 +159,8 @@ export function TranscriptPanel({
           totalCount={totalCount}
           loadedCount={loadedCount}
           onLoadMore={onLoadMore}
+          onEditNote={onEditNote}
+          onDeleteNote={onDeleteNote}
         />
       </div>
 

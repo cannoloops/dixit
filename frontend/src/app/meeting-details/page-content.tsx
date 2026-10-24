@@ -21,6 +21,7 @@ import { useMeetingData } from '@/hooks/meeting-details/useMeetingData';
 import { useSummaryGeneration } from '@/hooks/meeting-details/useSummaryGeneration';
 import { useTemplates } from '@/hooks/meeting-details/useTemplates';
 import { useCopyOperations } from '@/hooks/meeting-details/useCopyOperations';
+import { useMeetingNotes } from '@/hooks/meeting-details/useMeetingNotes';
 import { useMeetingOperations } from '@/hooks/meeting-details/useMeetingOperations';
 import { useMeetingTimeline, rosterOf } from '@/hooks/meeting-details/useMeetingTimeline';
 import { useConfig } from '@/contexts/ConfigContext';
@@ -162,6 +163,8 @@ export default function PageContent({
     aiSummary: meetingData.aiSummary,
     blockNoteSummaryRef: meetingData.blockNoteSummaryRef,
   });
+
+  const meetingNotes = useMeetingNotes(meeting.id);
 
   const meetingOperations = useMeetingOperations({
     meeting,
@@ -334,6 +337,11 @@ export default function PageContent({
               onRefetchTranscripts={refreshTranscripts}
               roster={roster}
               jumpTo={jumpTo}
+              notes={meetingNotes.notes}
+              onEditNote={meetingNotes.edit}
+              onDeleteNote={meetingNotes.remove}
+              includeNotes={copyOperations.includeNotes}
+              onIncludeNotesChange={copyOperations.setIncludeNotes}
             />
           }
           summary={

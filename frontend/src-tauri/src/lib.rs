@@ -46,6 +46,7 @@ pub mod console_utils;
 pub mod database;
 pub mod i18n;
 pub mod mcp;
+pub mod notes;
 pub mod notifications;
 pub mod ollama;
 pub mod onboarding;
@@ -852,6 +853,11 @@ pub fn run() {
             autopilot::autopilot_cancel,
             autopilot::banner::autopilot_banner_close,
             teams::teams_dump_ax_tree,
+            notes::recording_note_add,
+            notes::recording_notes_list,
+            notes::meeting_notes_list,
+            notes::meeting_note_update,
+            notes::meeting_note_delete,
             speakers::speakers_rename,
             speakers::speakers_reprocess,
             speakers::speakers_ensure_model,

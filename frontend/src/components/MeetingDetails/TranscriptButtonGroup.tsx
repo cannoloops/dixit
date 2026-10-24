@@ -17,6 +17,9 @@ interface TranscriptButtonGroupProps {
   meetingId?: string;
   meetingFolderPath?: string | null;
   onRefetchTranscripts?: () => Promise<void>;
+  hasNotes?: boolean;
+  includeNotes?: boolean;
+  onIncludeNotesChange?: (value: boolean) => void;
 }
 
 
@@ -27,6 +30,9 @@ export function TranscriptButtonGroup({
   meetingId,
   meetingFolderPath,
   onRefetchTranscripts,
+  hasNotes = false,
+  includeNotes = true,
+  onIncludeNotesChange,
 }: TranscriptButtonGroupProps) {
   const { betaFeatures } = useConfig();
   const [showRetranscribeDialog, setShowRetranscribeDialog] = useState(false);
@@ -41,6 +47,17 @@ export function TranscriptButtonGroup({
 
   return (
     <>
+      {hasNotes && onIncludeNotesChange && (
+        <label className="mr-3 inline-flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            className="accent-primary"
+            checked={includeNotes}
+            onChange={(e) => onIncludeNotesChange(e.target.checked)}
+          />
+          <span className="hidden @[28rem]:inline">{t('includeNotes')}</span>
+        </label>
+      )}
       <ButtonGroup>
         <Button
           variant="outline"

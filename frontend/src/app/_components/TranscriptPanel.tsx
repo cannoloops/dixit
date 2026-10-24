@@ -10,6 +10,8 @@ import { ModalType } from '@/hooks/useModalState';
 import { useIsLinux } from '@/hooks/usePlatform';
 import { useEffect, useMemo, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
+import { MeetingNote, withNotes } from '@/lib/notes';
 import { t } from '@/i18n/recording';
 
 /**
@@ -49,17 +51,29 @@ export function TranscriptPanel({
     return () => offs.forEach((off) => off.then((fn) => fn()));
   }, [isRecording]);
 
+  // Notes typed during this recording (the backend emits the full list after each one).
+  const [notes, setNotes] = useState<MeetingNote[]>([]);
+  useEffect(() => {
+    if (!isRecording) return;
+    setNotes([]);
+    invoke<MeetingNote[]>('recording_notes_list').then(setNotes).catch(() => {});
+    const off = listen<MeetingNote[]>('recording-notes', (e) => setNotes(e.payload));
+    return () => {
+      off.then((fn) => fn());
+    };
+  }, [isRecording]);
+
   // Convert transcripts to segments for virtualized view
   const segments = useMemo(() =>
-    transcripts.map(t => ({
+    withNotes(transcripts.map(t => ({
       id: t.id,
       timestamp: t.audio_start_time ?? 0,
       endTime: t.audio_end_time,
       text: t.text,
       confidence: t.confidence,
       speaker: t.speaker,
-    })),
-    [transcripts]
+    })), notes),
+    [transcripts, notes]
   );
 
   const canPickLanguage = transcriptModelConfig.provider === 'localWhisper';

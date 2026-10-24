@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { RecordingControls } from '@/components/RecordingControls';
+import { RecordingNoteInput } from '@/components/RecordingNoteInput';
 import { useSidebar } from '@/components/Sidebar/SidebarProvider';
 import { usePermissionCheck } from '@/hooks/usePermissionCheck';
 import { useRecordingState, RecordingStatus } from '@/contexts/RecordingStateContext';
@@ -201,7 +202,12 @@ export default function Home() {
         {(hasMicrophone || isRecording) &&
           status !== RecordingStatus.PROCESSING_TRANSCRIPTS &&
           status !== RecordingStatus.SAVING && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex justify-center px-6">
+            <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex flex-col items-center gap-3 px-6">
+              {recordingState.isRecording && (
+                <div className="pointer-events-auto">
+                  <RecordingNoteInput />
+                </div>
+              )}
               <div className="pointer-events-auto">
                 <RecordingControls
                   isRecording={recordingState.isRecording}

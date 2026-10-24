@@ -232,7 +232,7 @@ pub fn attribute_folder(folder: &Path, me: &str, embedder: Option<&mut Embedder>
     let lines: Vec<(String, f64, String)> =
         segs.iter().zip(&names).map(|(s, n)| (n.clone(), s.start, s.text.clone())).collect();
     let md = folder.join(format!("{}-Trascrizione della riunione.md", super::sanitize_title_for_file(&title)));
-    write_teams_md(&md, &title, started, duration, &lines)?;
+    write_teams_md(&md, &title, started, duration, &lines, &crate::notes::for_md(folder))?;
 
     Ok(Outcome {
         title,

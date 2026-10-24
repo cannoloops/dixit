@@ -143,4 +143,6 @@ export interface TranscriptSegmentData {
   text: string;
   confidence?: number;
   speaker?: string;
+  /** A note of the user (text = the note), shown in the transcript at its instant. */
+  note?: boolean;
 }
