@@ -2,12 +2,14 @@
 //!
 //! DIXIT_DB_COPY=/path/copy.sqlite DIXIT_OUT=/path/out \
 //!   cargo test --lib -p meetily verifica_riassunti -- --ignored --nocapture
-//! Optional: DIXIT_MODEL (default gemma4:latest, via Ollama).
+//! Optional: DIXIT_MODEL (default gemma4:latest, via Ollama), DIXIT_ONLY (meeting id prefix).
+//! Notes in meeting_note_entries (if the copy has the table) go to <user_notes> as in the app.
 
 use crate::summary::auto::transcript_text;
 use crate::summary::classification::classify_meeting;
 use crate::summary::llm_client::LLMProvider;
 use crate::summary::processor::generate_meeting_summary;
+use crate::summary::service::format_user_notes;
 use crate::summary::templates;
 use sqlx::SqlitePool;
 
@@ -41,15 +43,17 @@ async fn verifica_riassunti() {
     let provider = LLMProvider::Ollama;
     let mut report = Vec::new();
 
-    for (id, title) in meetings {
+    let only = std::env::var("DIXIT_ONLY").unwrap_or_default();
+    for (id, title) in meetings.into_iter().filter(|(id, _)| id.starts_with(&only)) {
         let text = transcript_text(&pool, &id).await.unwrap();
+        let notes = format_user_notes(&crate::notes::list(&pool, &id).await.unwrap_or_default());
         let class = classify_meeting(&client, &provider, &model, "", &text, None, None, None, None)
             .await
             .unwrap();
         let template = templates::get_template(class.kind.template_id()).unwrap();
         let started = std::time::Instant::now();
         let summary = generate_meeting_summary(
-            &client, &provider, &model, "", &text, "", "", class.kind.template_id(), &template,
+            &client, &provider, &model, "", &text, "", &notes, class.kind.template_id(), &template,
             130_000, None, None, None, None, None, None, None, Some("it"), Some("it"), None,
         )
         .await
@@ -69,7 +73,7 @@ async fn verifica_riassunti() {
             "id": id, "title": title, "chars": text.chars().count(), "type": class.kind.id(),
             "reason": class.reason, "template": class.kind.template_id(),
             "missing_sections": missing_sections, "numbers_not_in_transcript": suspicious,
-            "seconds": started.elapsed().as_secs(),
+            "seconds": started.elapsed().as_secs(), "notes": notes,
         }));
         assert!(missing_sections.is_empty(), "{id}: missing sections {missing_sections:?}");
     }
