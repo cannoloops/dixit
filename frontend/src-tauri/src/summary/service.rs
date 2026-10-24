@@ -83,6 +83,20 @@ struct EnglishSummaryCache {
     output_language: Option<String>,
 }
 
+/// Dixit: the user's notes as `[mm:ss] text` lines in time order, for `<user_notes>`.
+pub(crate) fn format_user_notes(notes: &[crate::notes::Note]) -> String {
+    let mut notes: Vec<_> = notes.iter().filter(|n| !n.text.trim().is_empty()).collect();
+    notes.sort_by_key(|n| n.offset_ms);
+    notes
+        .iter()
+        .map(|n| {
+            let secs = n.offset_ms.max(0) / 1000;
+            format!("[{:02}:{:02}] {}", secs / 60, secs % 60, n.text.trim())
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 fn stable_text_fingerprint(text: &str) -> String {
     const FNV_OFFSET: u64 = 0xcbf29ce484222325;
     const FNV_PRIME: u64 = 0x100000001b3;
@@ -549,8 +563,13 @@ impl SummaryService {
         } else {
             template_id
         };
-        // ponytail: placeholder for the user's notes (meeting_note_entries, after the W2 merge).
-        let user_notes = String::new();
+        let user_notes = match crate::notes::list(&pool, &meeting_id).await {
+            Ok(notes) => format_user_notes(&notes),
+            Err(e) => {
+                warn!("Could not read notes for {}: {}", meeting_id, e);
+                String::new()
+            }
+        };
 
         let template = match templates::get_template(&template_id) {
             Ok(template) => template,
@@ -844,6 +863,17 @@ mod tests {
             strip_title_if_present("  # Title\n## Section\nbody"),
             "## Section\nbody"
         );
+    }
+
+    #[test]
+    fn user_notes_are_time_ordered_mm_ss_lines() {
+        let notes = [
+            crate::notes::Note::new("  rischio sui tempi  ", 754_900),
+            crate::notes::Note::new("Cliente: Acme", 5_000),
+            crate::notes::Note::new("   ", 9_000),
+        ];
+        assert_eq!(format_user_notes(&notes), "[00:05] Cliente: Acme\n[12:34] rischio sui tempi");
+        assert_eq!(format_user_notes(&[]), "");
     }
 
     fn sample_cache_source() -> SummaryCacheSource {
