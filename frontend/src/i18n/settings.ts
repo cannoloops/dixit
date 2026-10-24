@@ -140,7 +140,7 @@ export const t = makeT({
     // Riassunto
     summaryGenSection: 'Generazione',
     autoSummary: 'Riassunto automatico',
-    autoSummaryDesc: 'Genera il riassunto appena la riunione finisce (allo stop della registrazione).',
+    autoSummaryDesc: 'Genera il riassunto appena è pronta la trascrizione definitiva, con lo schema adatto al tipo di call.',
     summaryModelSection: 'Modello per il riassunto',
     summaryModelDesc: 'Configura il modello di IA che genera i riassunti delle riunioni.',
     modelLoadError: 'Impossibile caricare le impostazioni del modello',
@@ -331,7 +331,7 @@ export const t = makeT({
     // Summary
     summaryGenSection: 'Generation',
     autoSummary: 'Automatic summary',
-    autoSummaryDesc: 'Generate the summary as soon as the meeting ends (when recording stops).',
+    autoSummaryDesc: 'Generate the summary as soon as the final transcript is ready, with the template that fits the call type.',
     summaryModelSection: 'Summary model',
     summaryModelDesc: 'Configure the AI model that generates meeting summaries.',
     modelLoadError: 'Could not load model settings',

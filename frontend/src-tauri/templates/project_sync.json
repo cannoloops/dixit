@@ -1,20 +1,22 @@
 {
   "name": "Project Sync / Status Update",
   "description": "Weekly or bi-weekly project status meeting focusing on milestones and risks.",
+  "name_it": "Allineamento progetto / stato",
+  "description_it": "Riunione periodica di stato del progetto su milestone e rischi.",
   "sections": [
     {
       "title": "Meeting Date & Time",
-      "instruction": "Date, start/end time, facilitator name",
+      "instruction": "Date, time and facilitator only if stated in the transcript, otherwise 'Not stated'",
       "format": "string"
     },
     {
       "title": "Attendees",
-      "instruction": "List attendees and their roles",
+      "instruction": "Names and roles of the people present as they appear in the transcript; generic labels such as 'Speaker A' are not names",
       "format": "list"
     },
     {
       "title": "Milestones & Status",
-      "instruction": "Current milestones with status and estimated completion date",
+      "instruction": "Milestones discussed with status; ETA only if stated, otherwise 'Not stated'",
       "format": "list",
       "item_format": "| **Milestone** | **Status** | **ETA** |\n| --- | --- | --- |"
     },
@@ -31,19 +33,19 @@
     },
     {
       "title": "Key Decisions",
-      "instruction": "Decisions made in this meeting with rationale and timestamp",
+      "instruction": "Decisions explicitly agreed, with the rationale given and the [mm:ss] timestamp of the transcript line",
       "format": "list",
       "item_format": "| **Decision** | **Rationale** | **Timestamp** |\n| --- | --- | --- |"
     },
     {
       "title": "Action Items",
-      "instruction": "Tasks with owners, due dates, priority, and status",
+      "instruction": "Tasks with owner, due date, priority and status; any field not stated in the call is 'Not stated'",
       "format": "list",
       "item_format": "| **Owner** | **Task** | **Due Date** | **Priority** | **Status** |\n| --- | --- | --- | --- | --- |"
     },
     {
       "title": "Related Documents",
-      "instruction": "Links to relevant documents, tickets, or designs discussed",
+      "instruction": "Documents, tickets or designs mentioned by name; URLs only if spelled out in the call",
       "format": "list",
       "item_format": "| **Document Title** | **URL** | **Type** |\n| --- | --- | --- |"
     }

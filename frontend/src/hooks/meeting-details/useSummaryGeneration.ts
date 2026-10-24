@@ -9,6 +9,7 @@ import {
 import { ModelConfig } from '@/components/ModelSettingsModal';
 import { useSidebar } from '@/components/Sidebar/SidebarProvider';
 import { invoke as invokeTauri } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { toast } from 'sonner';
 import Analytics from '@/lib/analytics';
 import { t } from '@/i18n/meeting';
@@ -297,16 +298,34 @@ export function useSummaryGeneration({
       pollingResultRef.current(result, generationId, isRegeneration));
   }, [initialSummary, meeting.id, startSummaryPolling]);
 
+  // Dixit: the backend starts the summary on its own once the final transcript is ready.
+  useEffect(() => {
+    const unlisten = listen<{ meeting_id: string; process_id: string }>('summary-auto-started', ({ payload }) => {
+      if (payload.meeting_id !== meeting.id) return;
+      const generationId = ++generationIdRef.current;
+      activeProcessIdRef.current = payload.process_id;
+      setSummaryStatus('processing');
+      setSummaryError(null);
+      startSummaryPolling(meeting.id, payload.process_id, result =>
+        pollingResultRef.current(result, generationId, false));
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [meeting.id, startSummaryPolling]);
+
   const processSummary = useCallback(async ({
     transcriptText,
     transcriptTexts,
     customPrompt = '',
     isRegeneration = false,
+    templateId = selectedTemplate,
   }: {
     transcriptText: string;
     transcriptTexts?: string[];
     customPrompt?: string;
     isRegeneration?: boolean;
+    templateId?: string;
   }) => {
     const previousAttempt = trackedAttemptRef.current;
     if (previousAttempt && !previousAttempt.finished) {
@@ -362,7 +381,7 @@ export function useSummaryGeneration({
         chunkSize: 40000,
         overlap: 1000,
         customPrompt,
-        templateId: selectedTemplate,
+        templateId,
         summaryLanguage,
       });
       const processId = result.process_id;
@@ -437,7 +456,8 @@ export function useSummaryGeneration({
 
     return {
       transcriptText: allTranscripts
-        .map((transcript) => `${formatTime(transcript.audio_start_time, transcript.timestamp)} ${transcript.text}`)
+        // Same shape as the automatic summary (summary::auto::transcript_text): speakers name action owners.
+        .map((transcript) => `${formatTime(transcript.audio_start_time, transcript.timestamp)} ${transcript.speaker ? `${transcript.speaker}: ` : ''}${transcript.text}`)
         .join('\n'),
       transcriptTexts: allTranscripts.map((transcript) => transcript.text),
     };
@@ -449,7 +469,7 @@ export function useSummaryGeneration({
     toast.error(message);
   }, []);
 
-  const handleGenerateSummary = useCallback(async (customPrompt: string = '') => {
+  const handleGenerateSummary = useCallback(async (customPrompt: string = '', templateId?: string) => {
     if (isModelConfigLoading) {
       toast.info(t('loadingModelWait'));
       return;
@@ -495,6 +515,7 @@ export function useSummaryGeneration({
     await processSummary({
       ...buildSummaryTranscriptPayload(allTranscripts),
       customPrompt,
+      templateId,
     });
   }, [
     buildSummaryTranscriptPayload,

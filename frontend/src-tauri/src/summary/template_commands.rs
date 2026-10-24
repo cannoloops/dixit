@@ -14,6 +14,10 @@ pub struct TemplateInfo {
 
     /// Brief description of the template's purpose
     pub description: String,
+
+    /// Dixit: Italian name and description, when the template has them
+    pub name_it: Option<String>,
+    pub description_it: Option<String>,
 }
 
 /// Detailed template structure for preview/debugging
@@ -49,10 +53,12 @@ pub async fn api_list_templates<R: Runtime>(
 
     let template_infos: Vec<TemplateInfo> = templates
         .into_iter()
-        .map(|(id, name, description)| TemplateInfo {
+        .map(|(id, t)| TemplateInfo {
             id,
-            name,
-            description,
+            name: t.name,
+            description: t.description,
+            name_it: t.name_it,
+            description_it: t.description_it,
         })
         .collect();
 

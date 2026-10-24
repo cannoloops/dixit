@@ -162,10 +162,15 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const [isAutoSummary, setisAutoSummary] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('isAutoSummary');
-      return saved !== null ? saved === 'true' : false
+      return saved !== null ? saved === 'true' : true
     }
-    return false;
+    return true;
   });
+
+  // Dixit: the backend starts the summary after the final transcript, so it needs this setting.
+  useEffect(() => {
+    invoke('api_set_auto_summary', { enabled: isAutoSummary }).catch(console.error);
+  }, [isAutoSummary]);
 
   // Beta features state (localStorage)
   const [betaFeatures, setBetaFeatures] = useState<BetaFeatures>(() => {

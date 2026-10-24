@@ -1,0 +1,46 @@
+{
+  "name": "Analysis session",
+  "description": "Structured document of an analysis call: context, topics, requirements and rules, decisions, open questions.",
+  "name_it": "Sessione di analisi",
+  "description_it": "Documento strutturato di una call di analisi: contesto, temi, requisiti e regole, decisioni, domande aperte.",
+  "sections": [
+    {
+      "title": "Context",
+      "instruction": "One paragraph: the goal of the session, the system, process or problem under analysis and the starting situation described in the call",
+      "format": "paragraph"
+    },
+    {
+      "title": "Participants",
+      "instruction": "Names of the people present, as they appear in the transcript. Generic labels such as 'Speaker A' or 'Parlante B' are not names: if no real name appears, write 'Not stated'",
+      "format": "list"
+    },
+    {
+      "title": "Topics Discussed",
+      "instruction": "One bullet per topic: a bold short title followed by 1-3 sentences on what was explained, the positions that emerged and any example given",
+      "format": "list"
+    },
+    {
+      "title": "Requirements and Rules",
+      "instruction": "Requirements, business rules and constraints that emerged. Type is one of: Functional, Non-functional, Business rule, Constraint. Source is who stated it, only if clear from the transcript, otherwise 'Not stated'",
+      "format": "list",
+      "item_format": "| **Requirement / Rule** | **Type** | **Source** |\n| --- | --- | --- |"
+    },
+    {
+      "title": "Decisions",
+      "instruction": "Only design or scope choices on which the participants explicitly agreed. Hypotheses still to verify go in Open Questions",
+      "format": "list"
+    },
+    {
+      "title": "Open Questions",
+      "instruction": "Doubts, missing information and points to clarify. 'Who answers' only if stated, otherwise 'Not stated'",
+      "format": "list",
+      "item_format": "| **Question** | **Who answers** |\n| --- | --- |"
+    },
+    {
+      "title": "Next Steps",
+      "instruction": "Agreed follow-ups. 'Who' and 'By when' only if stated in the call, otherwise 'Not stated'",
+      "format": "list",
+      "item_format": "| **Who** | **What** | **By when** |\n| --- | --- | --- |"
+    }
+  ]
+}

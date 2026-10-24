@@ -1,6 +1,7 @@
 use crate::database::repositories::{
     meeting::MeetingsRepository, setting::SettingsRepository, summary::SummaryProcessesRepository,
 };
+use crate::summary::classification::{classify_meeting, MeetingKind, AUTO_TEMPLATE_ID};
 use crate::summary::llm_client::LLMProvider;
 use crate::summary::language_detection::detect_summary_language;
 use crate::summary::metadata::read_detected_summary_language_from_metadata;
@@ -265,7 +266,7 @@ impl SummaryService {
         }
     }
 
-    async fn read_detected_summary_language(
+    pub(crate) async fn read_detected_summary_language(
         pool: &SqlitePool,
         meeting_id: &str,
     ) -> Option<String> {
@@ -300,7 +301,7 @@ impl SummaryService {
         }
     }
 
-    fn detect_summary_language_from_text(text: &str) -> Option<String> {
+    pub(crate) fn detect_summary_language_from_text(text: &str) -> Option<String> {
         let transcript_texts = [text.to_string()];
         let detection = detect_summary_language(&transcript_texts);
         match &detection.language {
@@ -315,6 +316,49 @@ impl SummaryService {
             }
         }
         detection.language
+    }
+
+    /// Stored meeting type, or a classification pass saved on the meeting.
+    /// A failed model call falls back to `altro` for this run without saving it.
+    #[allow(clippy::too_many_arguments)]
+    async fn meeting_kind(
+        pool: &SqlitePool,
+        meeting_id: &str,
+        client: &reqwest::Client,
+        provider: &LLMProvider,
+        model_name: &str,
+        api_key: &str,
+        text: &str,
+        ollama_endpoint: Option<&str>,
+        custom_openai_endpoint: Option<&str>,
+        app_data_dir: Option<&std::path::PathBuf>,
+        cancellation_token: &CancellationToken,
+    ) -> MeetingKind {
+        if let Ok(Some((stored, _))) = MeetingsRepository::get_meeting_type(pool, meeting_id).await {
+            if let Some(kind) = MeetingKind::from_id(&stored) {
+                return kind;
+            }
+        }
+        match classify_meeting(
+            client, provider, model_name, api_key, text, ollama_endpoint, custom_openai_endpoint,
+            app_data_dir, Some(cancellation_token),
+        )
+        .await
+        {
+            Ok(c) => {
+                info!("Meeting {} classified as {}: {}", meeting_id, c.kind.id(), c.reason);
+                if let Err(e) =
+                    MeetingsRepository::set_meeting_type(pool, meeting_id, c.kind.id(), Some(&c.reason)).await
+                {
+                    warn!("Could not save meeting type for {}: {}", meeting_id, e);
+                }
+                c.kind
+            }
+            Err(e) => {
+                warn!("Meeting classification failed for {}: {}; using altro", meeting_id, e);
+                MeetingKind::Altro
+            }
+        }
     }
 
     /// Processes transcript in the background and generates summary
@@ -491,6 +535,23 @@ impl SummaryService {
             info!("📝 Detected transcript summary language: {}", code);
         }
 
+        let client = reqwest::Client::new();
+        // Dixit: "auto" picks the template from the meeting type (stored, or classified now).
+        let template_id = if template_id == AUTO_TEMPLATE_ID {
+            Self::meeting_kind(
+                &pool, &meeting_id, &client, &provider, &model_name, &final_api_key, &text,
+                ollama_endpoint.as_deref(), custom_openai_endpoint.as_deref(),
+                app_data_dir.as_ref(), &cancellation_token,
+            )
+            .await
+            .template_id()
+            .to_string()
+        } else {
+            template_id
+        };
+        // ponytail: placeholder for the user's notes (meeting_note_entries, after the W2 merge).
+        let user_notes = String::new();
+
         let template = match templates::get_template(&template_id) {
             Ok(template) => template,
             Err(e) => {
@@ -503,7 +564,7 @@ impl SummaryService {
 
         let cache_source = build_summary_cache_source(
             &text,
-            &custom_prompt,
+            &format!("{custom_prompt}{user_notes}"),
             &template_id,
             &template_fingerprint,
             token_threshold,
@@ -543,7 +604,6 @@ impl SummaryService {
             }),
         };
 
-        let client = reqwest::Client::new();
         let result = generate_meeting_summary(
             &client,
             &provider,
@@ -551,6 +611,7 @@ impl SummaryService {
             &final_api_key,
             &text,
             &custom_prompt,
+            &user_notes,
             &template_id,
             &template,
             token_threshold,
@@ -807,6 +868,8 @@ mod tests {
         Template {
             name: "Test".to_string(),
             description: "Test template".to_string(),
+            name_it: None,
+            description_it: None,
             sections: vec![crate::summary::templates::TemplateSection {
                 title: section_title.to_string(),
                 instruction: "Summarize this section".to_string(),

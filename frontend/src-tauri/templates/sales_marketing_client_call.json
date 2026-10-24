@@ -1,44 +1,46 @@
 {
-      "name": "Client / Sales Meeting",
-      "description": "Capture client goals, deliverables, and next steps.",
-      "sections": [
-        {
-          "title": "Meeting Metadata",
-          "instruction": "Date, time, location/modality, account manager",
-          "format": "string"
-        },
-        {
-          "title": "Attendees",
-          "instruction": "Client and vendor attendees with roles",
-          "format": "list"
-        },
-        {
-          "title": "Client Goals & Success Criteria",
-          "instruction": "What the client wants to achieve and how success will be measured",
-          "format": "paragraph"
-        },
-        {
-          "title": "Agreed Deliverables",
-          "instruction": "Deliverables, owners, and due dates",
-          "format": "list",
-          "item_format": "| **Deliverable** | **Owner** | **Due Date** |\n| --- | --- | --- |"
-        },
-        {
-          "title": "Commercial Terms Discussed",
-          "instruction": "Pricing, SLAs, payment terms or contract items discussed",
-          "format": "paragraph"
-        },
-        {
-          "title": "Risks & Concerns",
-          "instruction": "Client concerns, blockers, or escalation items",
-          "format": "list",
-          "item_format": "| **Concern** | **Impact** | **Owner** |\n| --- | --- | --- |"
-        },
-        {
-          "title": "Next Steps",
-          "instruction": "Actions, owners, and due dates",
-          "format": "list",
-          "item_format": "| **Owner** | **Action** | **Due Date** |\n| --- | --- | --- |"
-        }
-      ]
+  "name": "Client / Sales Meeting",
+  "description": "Capture client goals, deliverables, and next steps.",
+  "name_it": "Cliente / commerciale",
+  "description_it": "Obiettivi del cliente, deliverable e prossimi passi.",
+  "sections": [
+    {
+      "title": "Meeting Metadata",
+      "instruction": "Date, time, modality and account manager only if stated, otherwise 'Not stated'",
+      "format": "string"
+    },
+    {
+      "title": "Attendees",
+      "instruction": "Client and vendor attendees with roles",
+      "format": "list"
+    },
+    {
+      "title": "Client Goals & Success Criteria",
+      "instruction": "What the client wants to achieve and how success will be measured",
+      "format": "paragraph"
+    },
+    {
+      "title": "Agreed Deliverables",
+      "instruction": "Deliverables, owners, and due dates",
+      "format": "list",
+      "item_format": "| **Deliverable** | **Owner** | **Due Date** |\n| --- | --- | --- |"
+    },
+    {
+      "title": "Commercial Terms Discussed",
+      "instruction": "Pricing, SLAs, payment terms or contract items exactly as discussed; never estimate or round figures",
+      "format": "paragraph"
+    },
+    {
+      "title": "Risks & Concerns",
+      "instruction": "Client concerns, blockers, or escalation items",
+      "format": "list",
+      "item_format": "| **Concern** | **Impact** | **Owner** |\n| --- | --- | --- |"
+    },
+    {
+      "title": "Next Steps",
+      "instruction": "Actions, owners, and due dates",
+      "format": "list",
+      "item_format": "| **Owner** | **Action** | **Due Date** |\n| --- | --- | --- |"
     }
+  ]
+}

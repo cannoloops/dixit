@@ -74,10 +74,10 @@ mod tests {
         let templates = list_templates();
         assert!(!templates.is_empty());
 
-        for (id, name, description) in templates {
+        for (id, template) in templates {
             assert!(!id.is_empty());
-            assert!(!name.is_empty());
-            assert!(!description.is_empty());
+            assert!(!template.name.is_empty());
+            assert!(!template.description.is_empty());
         }
     }
 }

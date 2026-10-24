@@ -1,0 +1,63 @@
+{
+  "name": "SAL + Analysis",
+  "description": "Status meeting minutes plus an analysis section, for calls that cover both progress and new requirements.",
+  "name_it": "SAL + Analisi",
+  "description_it": "Minuta di avanzamento con una sezione di analisi, per call che trattano sia lo stato dei lavori sia nuovi requisiti.",
+  "sections": [
+    {
+      "title": "Summary",
+      "instruction": "3-5 sentences: why the call took place, the overall state of the work, the main analysis topics and the outcome",
+      "format": "paragraph"
+    },
+    {
+      "title": "Participants",
+      "instruction": "Names of the people present, as they appear in the transcript. Generic labels such as 'Speaker A' or 'Parlante B' are not names: if no real name appears, write 'Not stated'",
+      "format": "list"
+    },
+    {
+      "title": "Activity Status",
+      "instruction": "One row per activity, phase or deliverable explicitly discussed. Status is one of: Done, In progress, Blocked, Not started. Notes hold what was said about it (percentages, estimates, dates) only if stated",
+      "format": "list",
+      "item_format": "| **Activity / Phase** | **Status** | **Notes** |\n| --- | --- | --- |"
+    },
+    {
+      "title": "Risks and Blockers",
+      "instruction": "Risks, delays, dependencies or blockers that were raised, with impact and mitigation only if discussed",
+      "format": "list",
+      "item_format": "| **Risk / Blocker** | **Impact** | **Mitigation** |\n| --- | --- | --- |"
+    },
+    {
+      "title": "Analysis: Topics Discussed",
+      "instruction": "One bullet per analysis topic: a bold short title followed by 1-3 sentences on what was explained and the positions that emerged",
+      "format": "list"
+    },
+    {
+      "title": "Analysis: Requirements and Rules",
+      "instruction": "Requirements, business rules and constraints that emerged. Type is one of: Functional, Non-functional, Business rule, Constraint. Source is who stated it, only if clear, otherwise 'Not stated'",
+      "format": "list",
+      "item_format": "| **Requirement / Rule** | **Type** | **Source** |\n| --- | --- | --- |"
+    },
+    {
+      "title": "Analysis: Open Questions",
+      "instruction": "Doubts, missing information and points to clarify. 'Who answers' only if stated, otherwise 'Not stated'",
+      "format": "list",
+      "item_format": "| **Question** | **Who answers** |\n| --- | --- |"
+    },
+    {
+      "title": "Decisions",
+      "instruction": "Only points on which the participants explicitly agreed, on progress or on analysis. Proposals still to evaluate are not decisions",
+      "format": "list"
+    },
+    {
+      "title": "Action Items",
+      "instruction": "Every task someone took on. 'Who' and 'By when' only if stated in the call, otherwise 'Not stated'",
+      "format": "list",
+      "item_format": "| **Who** | **What** | **By when** |\n| --- | --- | --- |"
+    },
+    {
+      "title": "Next Steps",
+      "instruction": "What happens after this call, including follow-up meetings or deadlines with their date only if stated",
+      "format": "list"
+    }
+  ]
+}
