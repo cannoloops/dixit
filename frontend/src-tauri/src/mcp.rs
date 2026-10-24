@@ -14,6 +14,11 @@ use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 
 pub const ADDR: &str = "127.0.0.1:7337";
+
+/// `DIXIT_MCP_ADDR` overrides the address (a second instance, tests with a real client).
+fn addr() -> String {
+    std::env::var("DIXIT_MCP_ADDR").unwrap_or_else(|_| ADDR.to_string())
+}
 /// Upper bound on what one request may send (headers + body).
 const MAX_REQUEST: u64 = 1 << 20;
 
@@ -44,16 +49,17 @@ pub async fn apply(enabled: bool) {
     if SERVER.lock().unwrap().is_some() {
         return;
     }
-    match TcpListener::bind(ADDR).await {
+    let addr = addr();
+    match TcpListener::bind(&addr).await {
         Ok(listener) => {
             *BIND_ERROR.lock().unwrap() = None;
             let source = POOL_SOURCE.get().cloned().unwrap_or_else(|| Arc::new(|| None));
             *SERVER.lock().unwrap() = Some(tauri::async_runtime::spawn(serve(listener, source)));
-            log::info!("MCP server listening on http://{ADDR}/mcp");
+            log::info!("MCP server listening on http://{addr}/mcp");
         }
         Err(e) => {
-            log::warn!("MCP server not started on {ADDR}: {e}");
-            *BIND_ERROR.lock().unwrap() = Some(format!("{ADDR}: {e}"));
+            log::warn!("MCP server not started on {addr}: {e}");
+            *BIND_ERROR.lock().unwrap() = Some(format!("{addr}: {e}"));
         }
     }
 }

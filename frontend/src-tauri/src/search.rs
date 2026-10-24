@@ -107,7 +107,8 @@ pub fn fts_query(q: &str, any: bool) -> Option<String> {
         if i % 2 == 1 && !words.is_empty() {
             terms.push(format!("\"{}\"", words.join(" ")));
         } else if i % 2 == 0 {
-            terms.extend(words.iter().map(|w| format!("\"{w}\"*")));
+            // Short words stay exact: "di"* would match half the transcript.
+            terms.extend(words.iter().map(|w| if w.chars().count() >= 3 { format!("\"{w}\"*") } else { format!("\"{w}\"") }));
         }
     }
     (!terms.is_empty()).then(|| terms.join(if any { " OR " } else { " AND " }))
@@ -340,7 +341,9 @@ pub fn spawn<R: Runtime>(app: AppHandle<R>) {
                 embedding::unload_if_idle();
             }
             let wake = KICK.get_or_init(Notify::new);
-            let _ = tokio::time::timeout(SYNC_EVERY, wake.notified()).await;
+            // Database not open yet (first launch, import): look again soon.
+            let wait = if app.try_state::<crate::state::AppState>().is_some() { SYNC_EVERY } else { Duration::from_secs(5) };
+            let _ = tokio::time::timeout(wait, wake.notified()).await;
         }
     });
 }
@@ -407,10 +410,10 @@ mod tests {
 
     #[test]
     fn fts_query_handles_phrases_prefixes_and_junk() {
-        assert_eq!(fts_query("problemi di performance", false).unwrap(), r#""problemi"* AND "di"* AND "performance"*"#);
-        assert_eq!(fts_query(r#"il "piano di rilascio" luglio"#, false).unwrap(), r#""il"* AND "piano di rilascio" AND "luglio"*"#);
-        assert_eq!(fts_query("a OR b", true).unwrap(), r#""a"* OR "OR"* OR "b"*"#); // operators are just words
-        assert_eq!(fts_query(r#"x" NEAR(y"#, false).unwrap(), r#""x"* AND "NEAR y""#); // an unclosed quote is a phrase
+        assert_eq!(fts_query("problemi di performance", false).unwrap(), r#""problemi"* AND "di" AND "performance"*"#);
+        assert_eq!(fts_query(r#"il "piano di rilascio" luglio"#, false).unwrap(), r#""il" AND "piano di rilascio" AND "luglio"*"#);
+        assert_eq!(fts_query("a OR b", true).unwrap(), r#""a" OR "OR" OR "b""#); // operators are just words
+        assert_eq!(fts_query(r#"x" NEAR(y"#, false).unwrap(), r#""x" AND "NEAR y""#); // an unclosed quote is a phrase
         assert_eq!(fts_query("  ?! ", false), None);
     }
 
