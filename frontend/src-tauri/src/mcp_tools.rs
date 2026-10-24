@@ -86,10 +86,17 @@ fn parse_bound(field: &str, s: &str, end: bool) -> Result<DateTime<Utc>, String>
     if let Ok(d) = DateTime::parse_from_rfc3339(s) {
         return Ok(d.with_timezone(&Utc));
     }
-    let date = NaiveDate::parse_from_str(s, "%Y-%m-%d").map_err(|_| format!("`{field}` must be an ISO 8601 date or date-time, got '{s}'"))?;
-    let date = if end { date + Duration::days(1) } else { date };
+    // A date-time without offset is local time, as is a bare date (whole day, so `to` is exclusive of the next one).
+    let local = match chrono::NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S%.f") {
+        Ok(dt) => dt,
+        Err(_) => {
+            let date = NaiveDate::parse_from_str(s, "%Y-%m-%d").map_err(|_| format!("`{field}` must be an ISO 8601 date or date-time, got '{s}'"))?;
+            let date = if end { date + Duration::days(1) } else { date };
+            date.and_hms_opt(0, 0, 0).unwrap()
+        }
+    };
     Local
-        .from_local_datetime(&date.and_hms_opt(0, 0, 0).unwrap())
+        .from_local_datetime(&local)
         .earliest()
         .map(|d| d.with_timezone(&Utc))
         .ok_or_else(|| format!("`{field}` is not a valid local time"))
@@ -361,6 +368,14 @@ mod tests {
     use super::*;
     use crate::library::fixtures::*;
     use crate::embedding;
+
+    #[test]
+    fn bounds_accept_offsetless_date_times_as_local() {
+        let naive = parse_bound("from", "2026-10-23T09:30:00", false).unwrap();
+        let day = parse_bound("from", "2026-10-23", false).unwrap();
+        assert_eq!(naive - day, Duration::minutes(570));
+        assert!(parse_bound("from", "ieri", false).is_err());
+    }
 
     async fn fixture() -> SqlitePool {
         let p = pool().await;
