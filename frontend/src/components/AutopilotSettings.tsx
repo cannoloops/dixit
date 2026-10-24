@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Copy, Loader2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { SettingsSection, SettingRow } from '@/components/molecules/form-components/setting-row';
@@ -14,6 +14,31 @@ export interface AutopilotSettingsValue {
   user_display_name: string;
   start_after_secs: number;
   stop_after_secs: number;
+  mcp_enabled: boolean;
+}
+
+const MCP_URL = 'http://127.0.0.1:7337/mcp';
+const CLAUDE_CODE_CMD = `claude mcp add --transport http --scope user dixit ${MCP_URL}`;
+const CLAUDE_DESKTOP_JSON = JSON.stringify(
+  { mcpServers: { dixit: { command: 'npx', args: ['-y', 'mcp-remote', MCP_URL] } } },
+  null,
+  2,
+);
+
+/** A snippet to paste elsewhere, with a copy button. */
+function CopyBlock({ text }: { text: string }) {
+  const copy = async () => {
+    await navigator.clipboard.writeText(text);
+    toast.success(t('copied'));
+  };
+  return (
+    <div className="flex items-start gap-2">
+      <pre className="min-w-0 flex-1 overflow-x-auto rounded-md bg-muted p-2.5 font-mono text-xs">{text}</pre>
+      <Button variant="outline" size="sm" onClick={copy} aria-label={t('copy')}>
+        <Copy />
+      </Button>
+    </div>
+  );
 }
 
 /** Trascrivi: automatic start/stop on calls, Teams integration, speaker name. */
@@ -21,6 +46,12 @@ export function AutopilotSettings() {
   const [settings, setSettings] = useState<AutopilotSettingsValue | null>(null);
   const [trusted, setTrusted] = useState<boolean | null>(null);
   const [dumping, setDumping] = useState(false);
+  // true = listening, false = off, string = why it could not start
+  const [mcp, setMcp] = useState<boolean | string>(false);
+
+  const refreshMcp = useCallback(async () => {
+    setMcp(await invoke<boolean>('mcp_status').catch((e) => String(e)));
+  }, []);
 
   const refreshTrust = useCallback(async () => {
     setTrusted(await invoke<boolean>('autopilot_request_accessibility', { prompt: false }));
@@ -29,7 +60,8 @@ export function AutopilotSettings() {
   useEffect(() => {
     invoke<AutopilotSettingsValue>('autopilot_get_settings').then(setSettings).catch(console.error);
     refreshTrust().catch(console.error);
-  }, [refreshTrust]);
+    refreshMcp();
+  }, [refreshTrust, refreshMcp]);
 
   const save = async (patch: Partial<AutopilotSettingsValue>) => {
     if (!settings) return;
@@ -40,6 +72,7 @@ export function AutopilotSettings() {
     } catch (error) {
       toast.error(t('settingsNotSaved'), { description: String(error) });
     }
+    refreshMcp();
   };
 
   const requestAccessibility = async () => {
@@ -134,6 +167,42 @@ export function AutopilotSettings() {
             {dumping ? t('savingDiagnostics') : t('saveDiagnostics')}
           </Button>
         </SettingRow>
+      </SettingsSection>
+
+      <SettingsSection title={t('agentsSection')} description={t('agentsDesc')}>
+        <SettingRow
+          label={t('mcpEnabled')}
+          description={
+            typeof mcp === 'string' ? (
+              <span role="alert" className="text-destructive">{t('mcpError', { error: mcp })}</span>
+            ) : mcp ? (
+              t('mcpListening', { url: MCP_URL })
+            ) : (
+              t('mcpEnabledDesc')
+            )
+          }
+          htmlFor="mcp-enabled"
+        >
+          <Switch id="mcp-enabled" checked={settings.mcp_enabled} onCheckedChange={(v) => save({ mcp_enabled: v })} />
+        </SettingRow>
+        {settings.mcp_enabled && (
+          <div className="space-y-4 py-3 text-sm">
+            <div className="space-y-1.5">
+              <p className="font-medium">{t('mcpClaudeCode')}</p>
+              <p className="text-xs text-muted-foreground">{t('mcpClaudeCodeDesc')}</p>
+              <CopyBlock text={CLAUDE_CODE_CMD} />
+            </div>
+            <div className="space-y-1.5">
+              <p className="font-medium">{t('mcpClaudeDesktop')}</p>
+              <p className="text-xs text-muted-foreground">{t('mcpClaudeDesktopDesc')}</p>
+              <CopyBlock text={CLAUDE_DESKTOP_JSON} />
+            </div>
+            <div className="space-y-1">
+              <p className="font-medium">{t('mcpUsage')}</p>
+              <p className="text-xs text-muted-foreground">{t('mcpUsageDesc')}</p>
+            </div>
+          </div>
+        )}
       </SettingsSection>
     </div>
   );

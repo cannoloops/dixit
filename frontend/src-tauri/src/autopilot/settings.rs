@@ -16,6 +16,8 @@ pub struct AutopilotSettings {
     // ponytail: calibration knobs for the call tracker, tuned on real calls.
     pub start_after_secs: u64,
     pub stop_after_secs: u64,
+    /// Local MCP server for agents (Settings → Automazione → Agenti).
+    pub mcp_enabled: bool,
 }
 
 impl Default for AutopilotSettings {
@@ -26,6 +28,7 @@ impl Default for AutopilotSettings {
             user_display_name: String::new(),
             start_after_secs: 5,
             stop_after_secs: 45,
+            mcp_enabled: false,
         }
     }
 }
@@ -63,7 +66,9 @@ pub async fn autopilot_save_settings<R: Runtime>(
     app: AppHandle<R>,
     settings: AutopilotSettings,
 ) -> Result<(), String> {
-    save(&app, &settings).map_err(|e| e.to_string())
+    save(&app, &settings).map_err(|e| e.to_string())?;
+    crate::mcp::apply(settings.mcp_enabled).await;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -88,5 +93,6 @@ mod tests {
         assert_eq!(s.user_display_name, "");
         assert_eq!(s.start_after_secs, 5);
         assert_eq!(s.stop_after_secs, 45);
+        assert!(!s.mcp_enabled);
     }
 }

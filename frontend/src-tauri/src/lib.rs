@@ -45,6 +45,7 @@ pub mod config;
 pub mod console_utils;
 pub mod database;
 pub mod i18n;
+pub mod mcp;
 pub mod notifications;
 pub mod ollama;
 pub mod onboarding;
@@ -521,6 +522,8 @@ pub fn run() {
             autopilot::spawn(_app.handle().clone());
             speakers::listen_for_stops(_app.handle());
             teams::downloads::spawn(_app.handle().clone());
+            let mcp_enabled = autopilot::settings::load(_app.handle()).mcp_enabled;
+            tauri::async_runtime::spawn(mcp::apply(mcp_enabled));
 
             // Initialize notification system with proper defaults
             log::info!("Initializing notification system...");
@@ -844,6 +847,7 @@ pub fn run() {
             // Trascrivi
             autopilot::settings::autopilot_get_settings,
             autopilot::settings::autopilot_save_settings,
+            mcp::mcp_status,
             autopilot::autopilot_probe,
             autopilot::autopilot_cancel,
             autopilot::banner::autopilot_banner_close,

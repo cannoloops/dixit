@@ -19,6 +19,12 @@ pub const SESSION_FILE: &str = "teams-session.json";
 /// Meeting folders whose Teams session thread is still collecting captions.
 static ACTIVE: Lazy<Mutex<HashSet<PathBuf>>> = Lazy::new(|| Mutex::new(HashSet::new()));
 static NATIVE: Lazy<Mutex<NativeState>> = Lazy::new(|| Mutex::new(NativeState::default()));
+/// Caption turns of the Teams call being recorded (empty when none), read live by the MCP server.
+static LIVE: Lazy<Mutex<captions::CaptionLog>> = Lazy::new(|| Mutex::new(captions::CaptionLog::default()));
+
+pub fn live_captions() -> Vec<Turn> {
+    LIVE.lock().unwrap().turns()
+}
 
 pub fn read_captions(folder: &Path) -> Vec<Turn> {
     std::fs::read_to_string(folder.join(CAPTIONS_FILE))
@@ -106,7 +112,7 @@ fn run_session<R: Runtime>(app: AppHandle<R>, session: u64) {
     ACTIVE.lock().unwrap().insert(folder.clone());
 
     let mut reader = ax::CaptionReader::default();
-    let mut log = captions::CaptionLog::default();
+    *LIVE.lock().unwrap() = captions::CaptionLog::default();
     let mut last_write = Instant::now();
     // Captions/native need the meeting menu, which may appear only after the lobby or when the
     // user expands the compact view: keep checking for the whole call, act once.
@@ -122,13 +128,14 @@ fn run_session<R: Runtime>(app: AppHandle<R>, session: u64) {
                 enable_captions_and_native(&app, session, pid, &folder, rec_start, &alive);
             }
         }
-        log.ingest(rec_start.elapsed().as_secs_f64(), &reader.read(pid));
+        let visible = reader.read(pid);
+        LIVE.lock().unwrap().ingest(rec_start.elapsed().as_secs_f64(), &visible);
         if last_write.elapsed() > Duration::from_secs(10) {
-            write_json(&folder.join(CAPTIONS_FILE), &log.turns());
+            write_json(&folder.join(CAPTIONS_FILE), &live_captions());
             last_write = Instant::now();
         }
     }
-    write_json(&folder.join(CAPTIONS_FILE), &log.turns());
+    write_json(&folder.join(CAPTIONS_FILE), &std::mem::take(&mut *LIVE.lock().unwrap()).turns());
     NATIVE.lock().unwrap().session_ended(session);
     ACTIVE.lock().unwrap().remove(&folder);
 }
