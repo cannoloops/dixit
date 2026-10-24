@@ -180,7 +180,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const isLoadingRef = useRef(false);
 
   // Load Ollama models (uses saved endpoint, re-runs when endpoint changes after config load)
+  // Dixit: only when Ollama is the provider: the CLI fallback of get_ollama_models would launch Ollama.
   useEffect(() => {
+    if (modelConfig.provider !== 'ollama') return;
     const loadModels = async () => {
       try {
         const endpoint = modelConfig.ollamaEndpoint || null;
@@ -193,7 +195,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       }
     };
     loadModels();
-  }, [modelConfig.ollamaEndpoint]);
+  }, [modelConfig.provider, modelConfig.ollamaEndpoint]);
 
   // Load transcript configuration on mount
   useEffect(() => {
