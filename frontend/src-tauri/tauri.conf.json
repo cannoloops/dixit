@@ -1,6 +1,7 @@
 {
     "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
     "productName": "Dixit",
+    "mainBinaryName": "Dixit",
     "version": "0.1.0",
     "identifier": "com.vitomanuguerra.trascrivi",
     "build": {

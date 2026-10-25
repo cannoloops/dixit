@@ -63,8 +63,6 @@ export function About() {
                 )}
             </div>
 
-            <p className="w-full border-t border-border pt-3 text-xs text-muted-foreground">{t('credit')}</p>
-
             {/* Update Dialog */}
             <UpdateDialog
                 open={showUpdateDialog}

@@ -45,7 +45,6 @@ export const t = makeT({
     aboutTitle: 'Informazioni su Dixit',
     version: 'Versione {version}',
     aboutDescription: 'Registra e trascrive le tue riunioni in locale: audio e testo restano sul Mac.',
-    credit: 'Basato su Meetily (open source, MIT)',
     checkUpdates: 'Cerca aggiornamenti',
     checking: 'Ricerca in corso…',
     upToDate: "Hai già l'ultima versione",
@@ -128,7 +127,7 @@ export const t = makeT({
     copied: 'Copiato',
     copyUserId: 'Copia ID utente',
     analyticsLocal: 'Riunioni, trascrizioni e registrazioni restano private, sul tuo Mac.',
-    privacyPolicy: 'Informativa privacy di Meetily',
+    privacyPolicy: 'Informativa privacy',
     adTitle: 'Cosa raccolgono le statistiche',
     adPrivacyBody:
       'Le statistiche sono spente per impostazione predefinita. Se le attivi raccogliamo solo dati d\'uso anonimi: mai contenuti delle riunioni, nomi, percorsi di file o dati personali.',
@@ -202,7 +201,6 @@ export const t = makeT({
     aboutTitle: 'About Dixit',
     version: 'Version {version}',
     aboutDescription: 'Records and transcribes your meetings locally: audio and text stay on your Mac.',
-    credit: 'Based on Meetily (open source, MIT)',
     checkUpdates: 'Check for updates',
     checking: 'Checking…',
     upToDate: 'You have the latest version',
@@ -285,7 +283,7 @@ export const t = makeT({
     copied: 'Copied',
     copyUserId: 'Copy user ID',
     analyticsLocal: 'Meetings, transcripts and recordings stay private, on your Mac.',
-    privacyPolicy: 'Meetily privacy policy',
+    privacyPolicy: 'Privacy policy',
     adTitle: 'What analytics collects',
     adPrivacyBody:
       'Analytics is off by default. If you turn it on we collect anonymous usage data only: never meeting content, names, file paths or personal information.',
