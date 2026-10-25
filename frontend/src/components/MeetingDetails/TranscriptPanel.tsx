@@ -127,7 +127,7 @@ export function TranscriptPanel({
         <span className="text-xs tabular-nums text-muted-foreground">
           {lineCount === 1 ? t('lineCountOne') : t('lineCount', { n: lineCount })}
         </span>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center">
           <TranscriptButtonGroup
             transcriptCount={lineCount}
             onCopyTranscript={onCopyTranscript}
