@@ -188,6 +188,25 @@ export default function PageContent({
     };
   }, [refreshTranscripts]);
 
+  // Dixit: while large-v3 and the speakers are on their way the backend will start the summary.
+  // ponytail: polls every 5 s while pending; an event would avoid it if it ever matters.
+  const [autoSummaryPending, setAutoSummaryPending] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const check = async () => {
+      const pending = await invoke<boolean>('api_auto_summary_pending', { meetingId: meeting.id }).catch(() => false);
+      if (cancelled) return;
+      setAutoSummaryPending(pending);
+      if (pending) timer = setTimeout(check, 5000);
+    };
+    void check();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [meeting.id]);
+
   const handleSelectTurn = useCallback((lineId: string) => {
     manuallySelectedTabMeetingIdsRef.current.add(meeting.id);
     setActiveTab('transcript');
@@ -261,6 +280,7 @@ export default function PageContent({
               hasSummary={hasVisibleSummaryContent(meetingData.aiSummary)}
               hasTranscripts={meetingData.transcripts.length > 0}
               isModelConfigLoading={isModelConfigLoading}
+              autoPending={autoSummaryPending}
               onGenerate={() => void summaryGeneration.handleGenerateSummary(customPrompt)}
               onStop={summaryGeneration.handleStopGeneration}
             />

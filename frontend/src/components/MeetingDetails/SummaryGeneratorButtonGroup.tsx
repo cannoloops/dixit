@@ -28,6 +28,8 @@ interface GenerateSummaryButtonProps {
   hasSummary: boolean;
   hasTranscripts: boolean;
   isModelConfigLoading: boolean;
+  /** Dixit: the backend will start the summary after large-v3 and speaker attribution. */
+  autoPending?: boolean;
   onGenerate: () => void;
   onStop: () => void;
 }
@@ -38,6 +40,7 @@ export function GenerateSummaryButton({
   hasSummary,
   hasTranscripts,
   isModelConfigLoading,
+  autoPending = false,
   onGenerate,
   onStop,
 }: GenerateSummaryButtonProps) {
@@ -55,6 +58,15 @@ export function GenerateSummaryButton({
       >
         <Loader2 className="animate-spin" />
         {t('stop')}
+      </Button>
+    );
+  }
+
+  if (autoPending && !hasSummary) {
+    return (
+      <Button variant="outline" disabled title={t('autoPendingTitle')}>
+        <Loader2 className="animate-spin" />
+        {t('autoPending')}
       </Button>
     );
   }

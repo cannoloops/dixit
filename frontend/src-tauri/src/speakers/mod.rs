@@ -112,13 +112,16 @@ pub fn listen_for_stops<R: Runtime>(app: &AppHandle<R>) {
             return;
         }
         let app = handle.clone();
+        let stopped_at = chrono::Utc::now();
+        let pending = crate::summary::auto::Pending::start(&folder);
         tauri::async_runtime::spawn(async move {
+            let _pending = pending; // the view shows "automatic summary on its way" until this ends
             crate::audio::retranscription::final_pass(&app, &folder).await;
             if let Err(e) = process_meeting(app.clone(), folder.clone(), true).await {
                 log::error!("Speaker attribution failed: {e:#}");
             }
             // Dixit: the summary starts only on the final, attributed transcript.
-            crate::summary::auto::after_final_transcript(&app, &folder).await;
+            crate::summary::auto::after_final_transcript(&app, &folder, stopped_at).await;
         });
     });
 }

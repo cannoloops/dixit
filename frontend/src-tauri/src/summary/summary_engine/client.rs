@@ -168,16 +168,6 @@ pub async fn generate_with_builtin(
         global_manager.clone().unwrap()
     };
 
-    // Ensure sidecar is running with this model
-    manager.ensure_running(model_path.clone()).await?;
-
-    // Check cancellation after sidecar startup
-    if let Some(token) = cancellation_token {
-        if token.is_cancelled() {
-            return Err(anyhow!("Generation cancelled during sidecar startup"));
-        }
-    }
-
     // Prepare generation request with model-specific sampling parameters
     let sampling = model_def.sampling.sanitize_for_llama_helper();
     let request = Request::Generate {
@@ -201,25 +191,8 @@ pub async fn generate_with_builtin(
     let timeout = Duration::from_secs(models::GENERATION_TIMEOUT_SECS);
 
     log::info!("Sending generation request to sidecar");
-
-    // Race between send_request and cancellation token
-    let response_json = if let Some(token) = cancellation_token {
-        tokio::select! {
-            result = manager.send_request(request_json, timeout) => {
-                result?
-            }
-            _ = token.cancelled() => {
-                log::warn!("Generation cancelled by user, shutting down sidecar");
-                // Shutdown sidecar to stop generation immediately
-                if let Err(e) = manager.shutdown().await {
-                    log::error!("Failed to shutdown sidecar during cancellation: {}", e);
-                }
-                return Err(anyhow!("Generation cancelled by user"));
-            }
-        }
-    } else {
-        manager.send_request(request_json, timeout).await?
-    };
+    let response_json =
+        run_generation(&manager, model_path, request_json, timeout, cancellation_token).await?;
 
     // Check cancellation before parsing response
     if let Some(token) = cancellation_token {
@@ -242,6 +215,48 @@ pub async fn generate_with_builtin(
             }
         }
         Response::Error { message } => Err(anyhow!("Sidecar error: {}", message)),
+    }
+}
+
+/// Dixit: one generation at a time. llama-helper answers one request per line, and a cancelled
+/// request shuts the sidecar down: holding the turn through that shutdown keeps the next request
+/// from writing to a dying sidecar (it finds it stopped and respawns it).
+static GENERATION_TURN: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
+
+async fn run_generation(
+    manager: &SidecarManager,
+    model_path: PathBuf,
+    request_json: String,
+    timeout: Duration,
+    cancellation_token: Option<&CancellationToken>,
+) -> Result<String> {
+    let _turn = GENERATION_TURN.lock().await;
+
+    // Ensure sidecar is running with this model
+    manager.ensure_running(model_path).await?;
+
+    // Check cancellation after sidecar startup
+    if let Some(token) = cancellation_token {
+        if token.is_cancelled() {
+            return Err(anyhow!("Generation cancelled during sidecar startup"));
+        }
+    }
+
+    // Race between send_request and cancellation token
+    if let Some(token) = cancellation_token {
+        tokio::select! {
+            result = manager.send_request(request_json, timeout) => result,
+            _ = token.cancelled() => {
+                log::warn!("Generation cancelled by user, shutting down sidecar");
+                // Shutdown sidecar to stop generation immediately
+                if let Err(e) = manager.shutdown().await {
+                    log::error!("Failed to shutdown sidecar during cancellation: {}", e);
+                }
+                Err(anyhow!("Generation cancelled by user"))
+            }
+        }
+    } else {
+        manager.send_request(request_json, timeout).await
     }
 }
 
@@ -300,6 +315,50 @@ pub async fn is_sidecar_healthy() -> bool {
 
 #[cfg(test)]
 mod tests {
+    /// Fake llama-helper: answers a generate request with its prompt after a second.
+    fn fake_helper(dir: &std::path::Path) -> PathBuf {
+        let path = dir.join("fake-llama-helper");
+        let script = r#"#!/bin/sh
+while IFS= read -r line; do
+  case "$line" in
+    *'"generate"'*) p=$(echo "$line" | sed 's/.*"prompt":"\([^"]*\)".*/\1/'); sleep 1; echo "{\"type\":\"response\",\"text\":\"$p\"}";;
+    *'"ping"'*) echo '{"type":"pong"}';;
+    *'"shutdown"'*) exit 0;;
+  esac
+done
+"#;
+        std::fs::write(&path, script).unwrap();
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        path
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn request_after_a_cancelled_one_gets_a_live_sidecar() {
+        let dir = tempfile::tempdir().unwrap();
+        std::env::set_var("MEETILY_LLAMA_HELPER", fake_helper(dir.path()));
+        let manager = Arc::new(SidecarManager::new(dir.path().to_path_buf()).unwrap());
+        let model = dir.path().join("model.gguf");
+        let generate = |p: &str| format!(r#"{{"type":"generate","prompt":"{p}"}}"#);
+        let timeout = Duration::from_secs(10);
+
+        let token = CancellationToken::new();
+        let first = {
+            let (manager, model, token, req) = (manager.clone(), model.clone(), token.clone(), generate("A"));
+            tokio::spawn(async move { run_generation(&manager, model, req, timeout, Some(&token)).await })
+        };
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        token.cancel();
+        // The automatic summary starts right after the cancellation, as in the 25/10 log.
+        let second = run_generation(&manager, model, generate("B"), timeout, None).await;
+
+        assert!(first.await.unwrap().is_err());
+        let second = second.expect("second request must not hit the dying sidecar");
+        assert!(second.contains(r#""text":"B""#), "{second}");
+        manager.shutdown().await.unwrap();
+    }
+
     use super::*;
 
     #[test]
