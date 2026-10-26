@@ -127,7 +127,7 @@ Usa i dati in `…/com.vitomanuguerra.trascrivi.dev/` (copia il DB reale con `sq
 - **Eventi:** il Rust emette (`app.emit("transcript-update", …)`, `speakers-updated`, …) e il frontend ascolta con `listen`.
 - **Stato condiviso:** `Arc<RwLock<T>>` tra task async, `Arc<AtomicBool>` per i flag.
 - **Pipeline audio** (`audio/pipeline.rs`): mic e sistema vengono mixati per la registrazione (ducking RMS) e, in parallelo, filtrati con VAD per la trascrizione. Si aspetta 48 kHz; il ricampionamento avviene in cattura.
-- **Dispositivi audio:** `audio/devices/` (discovery, microfono, speaker, piattaforma). Su macOS l'audio di sistema passa da ScreenCaptureKit (`audio/capture/core_audio.rs`) e servono i permessi microfono e registrazione schermo.
+- **Dispositivi audio:** `audio/devices/` (discovery, microfono, speaker, piattaforma). Su macOS (14.4 o superiore) l’audio di sistema passa da ScreenCaptureKit (`audio/capture/core_audio.rs`) e servono i permessi microfono e registrazione schermo.
 - **Log nei punti caldi:** `perf_debug!` e `perf_trace!` spariscono in release.
 - **File e percorsi:** usa le API di percorso di Tauri, mai percorsi scritti a mano.
 
