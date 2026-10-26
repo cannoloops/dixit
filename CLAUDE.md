@@ -1,409 +1,144 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guida per lavorare su questo repository con Claude Code.
 
-## Project Overview
+## Cos'è Dixit
 
-**Meetily** is a privacy-first AI meeting assistant that captures, transcribes, and summarizes meetings entirely on local infrastructure. The supported application is the Tauri desktop app with a Rust core.
+**Dixit** (repo `trascrivi-app`) è un'app desktop macOS che registra, trascrive e riassume le riunioni interamente in locale. È un fork di [Meetily](https://github.com/Zackriya-Solutions/meeting-minutes) (MIT, attribuzione in `LICENSE.md`): l'app supportata è Tauri 2 + Next.js 14, con il core in Rust. La usano Vito e i colleghi, solo su Mac (Apple Silicon).
 
-1. **Frontend**: Tauri-based desktop application (Rust + Next.js + TypeScript)
-2. **Rust Backend**: Tauri commands, audio capture, transcription, storage, and summarization orchestration
-3. **Legacy Backend Archive**: the old Python/FastAPI, Docker, and standalone whisper-server backend under `backend/` is archived and unsupported
+- **Nessuna dipendenza esterna:** trascrizione e riassunto girano su modelli inclusi nel pacchetto `.app`. Ollama e i provider cloud restano solo come opzioni da esperto.
+- **Interfaccia bilingue:** italiano e inglese (`frontend/src/i18n/`).
+- **Design system:** `DESIGN.md` (Dixit). Prodotto e scelte: `PRODUCT.md`.
+- **Archivio legacy:** `backend/` (Python/FastAPI, Docker, whisper-server) non è supportato. Non usarlo e non aggiungerci endpoint.
 
-### Key Technology Stack
-- **Desktop App**: Tauri 2.x (Rust) + Next.js 14 + React 18
-- **Audio Processing**: Rust (cpal, whisper-rs, professional audio mixing)
-- **Transcription**: Whisper.cpp / whisper-rs and Parakeet paths in the Tauri app
-- **App API Surface**: Tauri commands and events, not a separate FastAPI service
-- **LLM Integration**: Ollama (local), Claude, Groq, OpenRouter
+## Cosa fa
 
-## Essential Development Commands
+| Funzione | Dove vive |
+|---|---|
+| Avvio e stop automatici quando inizia o finisce una call Teams, Zoom, Meet | `src-tauri/src/autopilot/` |
+| Nomi dei parlanti e sottotitoli da Teams; trascrizione nativa Teams | `src-tauri/src/teams/`, `src-tauri/src/speakers/` |
+| Trascrizione live con Parakeet, definitiva con Whisper large-v3 a fine registrazione | `src-tauri/src/parakeet_engine/`, `src-tauri/src/whisper_engine/`, `audio/transcription/` |
+| Attribuzione dei parlanti (wespeaker) | `src-tauri/src/speakers/` |
+| Note personali durante la registrazione, con l'istante | `src-tauri/src/notes.rs`, `frontend/src/components/RecordingNoteInput.tsx` |
+| Riassunto automatico per tipo di call (SAL, analisi, mix, altro) | `src-tauri/src/summary/` (`auto.rs`, `classification.rs`) |
+| Server MCP locale per gli agenti (trascrizione live, riunioni, ricerca) | `src-tauri/src/mcp.rs`, `mcp_tools.rs`, `library.rs`, `search.rs`, `embedding.rs` |
+| Cartella per riunione in `~/Documents/Dixit/` | `src-tauri/src/audio/` (salvataggio), `notes.rs` |
 
-### Frontend Development (Tauri Desktop App)
+## Modelli (configurazione base)
 
-**Location**: `/frontend`
+La configurazione di default è quella di Vito e non va cambiata senza motivo. I modelli sono **dentro il pacchetto** (`Dixit.app/Contents/Resources/models`): solo un utente esperto li cambia, da Impostazioni › Avanzate › Modalità esperto.
+
+| Uso | Modello | File in `models/` |
+|---|---|---|
+| Trascrizione live | Parakeet TDT 0.6B v3 int8 (multilingue) | `parakeet/parakeet-tdt-0.6b-v3-int8/` |
+| Trascrizione definitiva | Whisper large-v3 | `ggml-large-v3.bin` |
+| Parlanti | wespeaker ResNet34 | `speaker/` |
+| Riassunto | Gemma 4 E4B Q4_K_M, motore interno `llama-helper` | `summary/gemma-4-E4B-it-Q4_K_M.gguf` |
+| Ricerca semantica | EmbeddingGemma 300M (ONNX, `ort`) | `embeddinggemma-300m/` |
+
+- **Dove li cerca l'app:** prima nella cartella modelli dei dati utente (`~/Library/Application Support/com.vitomanuguerra.trascrivi/models/`), poi nel pacchetto (`src-tauri/src/bundled_models.rs`). In sviluppo il «pacchetto» è `target/debug/models`, copiato da `frontend/src-tauri/resources/models/`.
+- **Scaricarli:** `frontend/scripts/fetch-models.sh` riempie `frontend/src-tauri/resources/models/` (fuori da git). Se un file è già nei dati utente lo clona (APFS, nessuno spazio in più).
+- **Perché Gemma 4 E4B:** confronto in `docs/confronto-modelli-riassunto.md`. Gemma 4 26B-A4B è migliore ma pesa 16 GB e usa circa 24 GB di RAM: è un'opzione esperto da scaricare, non il default. Qwen 3.5 4B è sconsigliato (inventa dati).
+- Gemma 4 a volte apre la risposta con un canale di pensiero vuoto: il client lo toglie (`strip_gemma4_thought`).
+
+## Riassunto automatico
+
+1. A fine registrazione gira large-v3, poi l'attribuzione dei parlanti (`speakers/mod.rs`), poi `summary::auto::after_final_transcript`.
+2. Un passaggio breve con l'LLM classifica la call: `sal`, `analisi`, `mix`, `altro` (JSON con tipo e motivazione). Testi sotto le 40 parole vanno su `altro` senza chiamare il modello.
+3. Il tipo sceglie il template in `frontend/src-tauri/templates/`: `sal.json`, `analisi.json`, `sal_analisi.json` (mix), `standard_meeting.json` (altro), più `daily_standup`, `project_sync`, `retrospective`, `sales_marketing_client_call`.
+4. Il tipo si salva in `meetings.meeting_type` e `meeting_type_reason`; nella vista riunione si cambia a mano e il riassunto si rigenera.
+5. Le note dell'utente entrano nel prompt come `<user_notes>` (`[mm:ss] testo`) e pesano come segnale forte.
+
+Regole dei template: nomi, date e cifre non presenti nella trascrizione diventano «Non indicato», le sezioni vuote «Non emerso». Le etichette generiche di diarizzazione («Parlante A», «Altri») non arrivano all'LLM.
+
+**Concorrenza:** il riassunto automatico parte una sola volta per riunione, e mentre si aspetta mostra «Riassunto automatico in arrivo» al posto di Genera. Le generazioni sul motore interno passano una alla volta (`GENERATION_TURN` in `summary_engine/client.rs`): un annullamento spegne il sidecar e la richiesta successiva lo rilancia.
+
+## Note durante la registrazione
+
+- Campo note sempre visibile in registrazione; Invio salva la singola nota con `offset_ms` dall'inizio e orario. Tabella `meeting_note_entries`. La vecchia `meeting_notes` (un blocco markdown per riunione) è eredità di Meetily.
+- Le note compaiono dentro la trascrizione al loro istante, si modificano e si eliminano.
+- Nel `.md` della cartella sono intercalate come `> Nota [mm:ss] testo` e salvate anche in `notes.json`.
+- La casella «Includi le mie note» vale per «Copia», ricorda l'ultima scelta ed è attiva di default.
+
+## Server MCP per agenti
+
+Server `dixit`, HTTP streamable su `http://127.0.0.1:7337/mcp`, solo lettura. Si attiva con `autopilot.mcp_enabled` in `trascrivi.json` (dati utente). `DIXIT_MCP_ADDR` cambia indirizzo, utile per una seconda istanza.
+
+| Tool | Cosa restituisce |
+|---|---|
+| `live_transcript` | La trascrizione della registrazione in corso |
+| `list_meetings` | Riunioni, più recenti prima: filtri `from`, `to`, `updated_since` (ingest incrementale), `limit`, `offset` |
+| `get_meeting` | Metadati, tipo di call, partecipanti, riassunto, note, trascrizione. `format: json\|markdown` (pronto per una wiki), `include_notes`, `include_transcript`, `transcript_offset`/`transcript_limit` (pagine di circa 18k caratteri) |
+| `search_transcripts` | `mode: classic` (SQLite FTS5), `smart` (embedding, nessun LLM), `hybrid` (fusione RRF, default). Cerca anche in note e riassunti |
+
+Le date senza fuso orario sono ora locale. I vettori stanno in SQLite e il confronto è a forza bruta: basta fino a migliaia di riunioni, poi sqlite-vec. Per provarli con un client vero:
 
 ```bash
-# macOS Development
-./clean_run.sh              # Clean build and run with info logging
-./clean_run.sh debug        # Run with debug logging
-./clean_build.sh            # Production build
-
-# Windows Development
-clean_run_windows.bat       # Clean build and run
-clean_build_windows.bat     # Production build
-
-# Manual Commands
-pnpm install                # Install dependencies
-pnpm run dev                # Next.js dev server (port 3118)
-pnpm run tauri:dev          # Full Tauri development mode
-pnpm run tauri:build        # Production build
-
-# GPU-Specific Builds (for testing acceleration)
-pnpm run tauri:dev:metal    # macOS Metal GPU
-pnpm run tauri:dev:cuda     # NVIDIA CUDA
-pnpm run tauri:dev:vulkan   # AMD/Intel Vulkan
-pnpm run tauri:dev:cpu      # CPU-only (no GPU)
+claude -p --strict-mcp-config --mcp-config mcp.json --allowedTools "mcp__dixit__list_meetings mcp__dixit__get_meeting mcp__dixit__search_transcripts" "elenca le riunioni"
 ```
 
-### Legacy Backend Archive
+con `mcp.json` = `{"mcpServers":{"dixit":{"type":"http","url":"http://127.0.0.1:7337/mcp"}}}`.
 
-**Location**: `/backend`
+## Dati e cartelle
 
-The Python/FastAPI backend, Docker setup, and standalone whisper-server scripts are archived for historical reference and migration context only. Do not use them for current development, new installs, production deployments, or issue triage for the supported app.
+- **Dati app:** `~/Library/Application Support/com.vitomanuguerra.trascrivi/` (`meeting_minutes.sqlite`, `trascrivi.json`, `models/`). Sono dati reali: per le prove distruttive lavora su copie.
+- **Riunioni:** `~/Documents/Dixit/<AAAA-MM-GG HH.MM Titolo>/` con `audio.mp4`, trascrizione `.md`, `transcripts.json`, `metadata.json`, `diarization.json`, `notes.json`, `captions.json` (solo Teams).
+- **Migrazioni:** `frontend/src-tauri/migrations/` (sqlx). Ogni migrazione deve avere una versione unica: due file con lo stesso prefisso bloccano l'avvio.
+- Alcuni nomi interni restano «meetily» (cartelle di riserva dei modelli, user agent, sorgente audio): non rinominarli, si perderebbero dati già salvati.
 
-The archived FastAPI service had unauthenticated, development-oriented CORS behavior. Treat that behavior as obsolete legacy context, not as a supported production API.
+## Comandi
 
-### Service Endpoints
-- **Frontend Dev**: http://localhost:3118
+Tutti da `frontend/`.
 
-## High-Level Architecture
-
-### Tauri Desktop Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Frontend (Tauri Desktop App)                  │
-│  ┌──────────────────┐  ┌─────────────────┐  ┌────────────────┐ │
-│  │   Next.js UI     │  │  Rust Backend   │  │ Whisper Engine │ │
-│  │  (React/TS)      │←→│  (Audio + IPC)  │←→│  (Local STT)   │ │
-│  └──────────────────┘  └─────────────────┘  └────────────────┘ │
-│         ↑ Tauri Events           ↑ Audio Pipeline               │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-The current app does not require a separate FastAPI tier. Meeting persistence, local transcription, and summary orchestration are handled through the Rust/Tauri core.
-
-### Audio Processing Pipeline (Critical Understanding)
-
-The audio system has **two parallel paths** with different purposes:
-
-```
-Raw Audio (Mic + System)
-         ↓
-┌────────────────────────────────────────────────────────────┐
-│              Audio Pipeline Manager                         │
-│  (frontend/src-tauri/src/audio/pipeline.rs)                │
-└─────────────┬──────────────────────────┬───────────────────┘
-              ↓                          ↓
-    ┌─────────────────┐        ┌─────────────────────┐
-    │ Recording Path  │        │ Transcription Path  │
-    │ (Pre-mixed)     │        │ (VAD-filtered)      │
-    └─────────────────┘        └─────────────────────┘
-              ↓                          ↓
-    RecordingSaver.save()      WhisperEngine.transcribe()
-```
-
-**Key Insight**: The pipeline performs **professional audio mixing** (RMS-based ducking, clipping prevention) for recording, while simultaneously applying **Voice Activity Detection (VAD)** to send only speech segments to Whisper for transcription.
-
-### Audio Device Modularization (Recently Completed)
-
-**Context**: The audio system was refactored from a monolithic 1028-line `core.rs` file into focused modules. See [AUDIO_MODULARIZATION_PLAN.md](AUDIO_MODULARIZATION_PLAN.md) for details.
-
-```
-audio/
-├── devices/                    # Device discovery and configuration
-│   ├── discovery.rs           # list_audio_devices, trigger_audio_permission
-│   ├── microphone.rs          # default_input_device
-│   ├── speakers.rs            # default_output_device
-│   ├── configuration.rs       # AudioDevice types, parsing
-│   └── platform/              # Platform-specific implementations
-│       ├── windows.rs         # WASAPI logic (~200 lines)
-│       ├── macos.rs           # ScreenCaptureKit logic
-│       └── linux.rs           # ALSA/PulseAudio logic
-├── capture/                   # Audio stream capture
-│   ├── microphone.rs          # Microphone capture stream
-│   ├── system.rs              # System audio capture stream
-│   └── core_audio.rs          # macOS ScreenCaptureKit integration
-├── pipeline.rs                # Audio mixing and VAD processing
-├── recording_manager.rs       # High-level recording coordination
-├── recording_commands.rs      # Tauri command interface
-└── recording_saver.rs         # Audio file writing
-```
-
-**When working on audio features**:
-- Device detection issues → `devices/discovery.rs` or `devices/platform/{windows,macos,linux}.rs`
-- Microphone/speaker problems → `devices/microphone.rs` or `devices/speakers.rs`
-- Audio capture issues → `capture/microphone.rs` or `capture/system.rs`
-- Mixing/processing problems → `pipeline.rs`
-- Recording workflow → `recording_manager.rs`
-
-### Rust ↔ Frontend Communication (Tauri Architecture)
-
-**Command Pattern** (Frontend → Rust):
-```typescript
-// Frontend: src/app/page.tsx
-await invoke('start_recording', {
-  mic_device_name: "Built-in Microphone",
-  system_device_name: "BlackHole 2ch",
-  meeting_name: "Team Standup"
-});
-```
-
-```rust
-// Rust: src/lib.rs
-#[tauri::command]
-async fn start_recording<R: Runtime>(
-    app: AppHandle<R>,
-    mic_device_name: Option<String>,
-    system_device_name: Option<String>,
-    meeting_name: Option<String>
-) -> Result<(), String> {
-    // Implementation delegates to audio::recording_commands
-}
-```
-
-**Event Pattern** (Rust → Frontend):
-```rust
-// Rust: Emit transcript updates
-app.emit("transcript-update", TranscriptUpdate {
-    text: "Hello world".to_string(),
-    timestamp: chrono::Utc::now(),
-    // ...
-})?;
-```
-
-```typescript
-// Frontend: Listen for events
-await listen<TranscriptUpdate>('transcript-update', (event) => {
-  setTranscripts(prev => [...prev, event.payload]);
-});
-```
-
-### Whisper Model Management
-
-**Model Storage Locations**:
-- **Development**: `frontend/models/`
-- **Production (macOS)**: `~/Library/Application Support/Meetily/models/`
-- **Production (Windows)**: `%APPDATA%\Meetily\models\`
-
-**Model Loading** (frontend/src-tauri/src/whisper_engine/whisper_engine.rs):
-```rust
-pub async fn load_model(&self, model_name: &str) -> Result<()> {
-    // Automatically detects GPU capabilities (Metal/CUDA/Vulkan)
-    // Falls back to CPU if GPU unavailable
-}
-```
-
-**GPU Acceleration**:
-- **macOS**: Metal + CoreML (automatically enabled)
-- **Windows/Linux**: CUDA (NVIDIA), Vulkan (AMD/Intel), or CPU
-- Configure via Cargo features: `--features cuda`, `--features vulkan`
-
-## Critical Development Patterns
-
-### 1. Audio Buffer Management
-
-**Ring Buffer Mixing** (pipeline.rs):
-- Mic and system audio arrive asynchronously at different rates
-- Ring buffer accumulates samples until both streams have aligned windows (50ms)
-- Professional mixing applies RMS-based ducking to prevent system audio from drowning out microphone
-- Uses `VecDeque` for efficient windowed processing
-
-### 2. Thread Safety and Async Boundaries
-
-**Recording State** (recording_state.rs):
-```rust
-pub struct RecordingState {
-    is_recording: Arc<AtomicBool>,
-    audio_sender: Arc<RwLock<Option<mpsc::UnboundedSender<AudioChunk>>>>,
-    // ...
-}
-```
-
-**Key Pattern**: Use `Arc<RwLock<T>>` for shared state across async tasks, `Arc<AtomicBool>` for simple flags.
-
-### 3. Error Handling and Logging
-
-**Performance-Aware Logging** (lib.rs):
-```rust
-#[cfg(debug_assertions)]
-macro_rules! perf_debug {
-    ($($arg:tt)*) => { log::debug!($($arg)*) };
-}
-
-#[cfg(not(debug_assertions))]
-macro_rules! perf_debug {
-    ($($arg:tt)*) => {};  // Zero overhead in release builds
-}
-```
-
-**Usage**: Use `perf_debug!()` and `perf_trace!()` for hot-path logging that should be eliminated in production.
-
-### 4. Frontend State Management
-
-**Sidebar Context** (components/Sidebar/SidebarProvider.tsx):
-- Global state for meetings list, current meeting, recording status
-- Communicates with the Rust/Tauri core through Tauri commands and events
-- Keeps React state synchronized with native recording, meeting, transcript, and summary state
-
-**Pattern**: Tauri commands update Rust state → Emit events → Frontend listeners update React state → Context propagates to components
-
-## Common Development Tasks
-
-### Adding a New Audio Device Platform
-
-1. Create platform file: `audio/devices/platform/{platform_name}.rs`
-2. Implement device enumeration for the platform
-3. Add platform-specific configuration in `audio/devices/configuration.rs`
-4. Update `audio/devices/platform/mod.rs` to export new platform functions
-5. Test with `cargo check` and platform-specific device tests
-
-### Adding a New Tauri Command
-
-1. Define command in `src/lib.rs`:
-   ```rust
-   #[tauri::command]
-   async fn my_command(arg: String) -> Result<String, String> { /* ... */ }
-   ```
-2. Register in `tauri::Builder`:
-   ```rust
-   .invoke_handler(tauri::generate_handler![
-       start_recording,
-       my_command,  // Add here
-   ])
-   ```
-3. Call from frontend:
-   ```typescript
-   const result = await invoke<string>('my_command', { arg: 'value' });
-   ```
-
-### Modifying Audio Pipeline Behavior
-
-**Location**: `frontend/src-tauri/src/audio/pipeline.rs`
-
-Key components:
-- `AudioMixerRingBuffer`: Manages mic + system audio synchronization
-- `ProfessionalAudioMixer`: RMS-based ducking and mixing
-- `AudioPipelineManager`: Orchestrates VAD, mixing, and distribution
-
-**Testing Audio Changes**:
 ```bash
-# Enable verbose audio logging
-RUST_LOG=app_lib::audio=debug ./clean_run.sh
-
-# Monitor audio metrics in real-time
-# Check Developer Console in the app (Cmd+Shift+I on macOS)
+pnpm install                      # dipendenze
+./scripts/fetch-models.sh         # modelli in src-tauri/resources/models (prima della prima build)
+pnpm run tauri:dev                # sviluppo (rileva la GPU, su Mac usa --features metal)
+pnpm run tauri:build              # .app e .dmg in target/release/bundle/
+cd src-tauri && cargo test --lib  # test Rust (circa 370)
+npx tsc --noEmit                  # controllo dei tipi del frontend
 ```
 
-### Tauri Backend Development
+Log di debug: `RUST_LOG=app_lib=debug pnpm run tauri:dev`. Il confronto tra modelli e la verifica dei riassunti sono test ignorati: `cargo test --lib bench_summary_model -- --ignored` e `cargo test --lib verifica_riassunti -- --ignored --nocapture` (istruzioni in testa ai file).
 
-Current app behavior should be implemented in the Rust/Tauri core, not in the archived Python backend. Add new frontend-facing behavior through Tauri commands/events and existing Rust services under `frontend/src-tauri/src`.
+### Sandbox di prova (accanto alla Dixit installata)
 
-Do not add new endpoints to `backend/app/main.py`; that FastAPI code is legacy archive material only.
-
-## Testing and Debugging
-
-### Frontend Debugging
-
-**Enable Rust Logging**:
 ```bash
-# macOS
-RUST_LOG=debug ./clean_run.sh
-
-# Windows (PowerShell)
-$env:RUST_LOG="debug"; ./clean_run_windows.bat
+DIXIT_MCP_ADDR=127.0.0.1:7338 npx tauri dev --config '{"identifier":"com.vitomanuguerra.trascrivi.dev"}' -- --features metal
 ```
 
-**Developer Tools**:
-- Open DevTools: `Cmd+Shift+I` (macOS) or `Ctrl+Shift+I` (Windows)
-- Console Toggle: Built into app UI (console icon)
-- View Rust logs: Check terminal output
+Usa i dati in `…/com.vitomanuguerra.trascrivi.dev/` (copia il DB reale con `sqlite3 … ".backup …"`; `models` può essere un symlink a quella reale).
 
-### Audio Pipeline Debugging
+- **Da Claude Code** va lanciata fuori dalla sandbox dei comandi: dentro, il processo web della finestra va in crash («Couldn't connect to launchservicesd») e la finestra resta bianca.
+- **`ChunkLoadError … app/layout … timeout`** al primo avvio: Next stava ancora compilando. Quando `curl localhost:3118/_next/static/chunks/app/layout.js` risponde, riavvia.
+- **La finestra è nascosta nella barra dei menu:** riaprila da «Apri Dixit» nel menu dell'icona.
 
-**Key Metrics** (emitted by pipeline):
-- Buffer sizes (mic/system)
-- Mixing window count
-- VAD detection rate
-- Dropped chunk warnings
+### Build e distribuzione
 
-**Monitor via Developer Console**: The app includes real-time metrics display when recording.
+- Il pacchetto pesa circa 8,6 GB; per creare il `.dmg` servono circa 20 GB liberi. Se manca spazio, `bundle_dmg.sh` fallisce con «Spazio esaurito sul dispositivo»: libera gli output di build (`target/` dei worktree), che si rigenerano.
+- Solo il `.dmg`: `npx tauri build --bundles dmg -- --features metal`.
+- L'eseguibile si chiama `Dixit` (`mainBinaryName` e `[[bin]]` in `Cargo.toml`); il package Cargo resta `meetily`.
+- Il pacchetto è firmato ad hoc e non è notarizzato. Sui Mac dei colleghi: tasto destro › Apri, oppure `xattr -dr com.apple.quarantine /Applications/Dixit.app`. Condividilo da Drive o OneDrive.
+- Installare sul proprio Mac: chiudi Dixit, sposta `/Applications/Dixit.app` nel Cestino (reversibile), copia la nuova con `ditto`. Al primo avvio partono le migrazioni; macOS può richiedere di nuovo microfono e registrazione schermo.
 
-## Platform-Specific Notes
+## Architettura (Rust ↔ frontend)
 
-### macOS
-- **Audio Capture**: Uses ScreenCaptureKit for system audio (macOS 13+)
-- **GPU**: Metal + CoreML automatically enabled
-- **Permissions**: Requires microphone + screen recording permissions
-- **System Audio**: Requires virtual audio device (BlackHole) for system capture
+- **Comandi:** il frontend chiama `invoke('nome', {...})`; i comandi sono `#[tauri::command]` registrati in `src-tauri/src/lib.rs` (`generate_handler!`).
+- **Eventi:** il Rust emette (`app.emit("transcript-update", …)`, `speakers-updated`, …) e il frontend ascolta con `listen`.
+- **Stato condiviso:** `Arc<RwLock<T>>` tra task async, `Arc<AtomicBool>` per i flag.
+- **Pipeline audio** (`audio/pipeline.rs`): mic e sistema vengono mixati per la registrazione (ducking RMS) e, in parallelo, filtrati con VAD per la trascrizione. Si aspetta 48 kHz; il ricampionamento avviene in cattura.
+- **Dispositivi audio:** `audio/devices/` (discovery, microfono, speaker, piattaforma). Su macOS l'audio di sistema passa da ScreenCaptureKit (`audio/capture/core_audio.rs`) e servono i permessi microfono e registrazione schermo.
+- **Log nei punti caldi:** `perf_debug!` e `perf_trace!` spariscono in release.
+- **File e percorsi:** usa le API di percorso di Tauri, mai percorsi scritti a mano.
 
-### Windows
-- **Audio Capture**: Uses WASAPI (Windows Audio Session API)
-- **GPU**: CUDA (NVIDIA) or Vulkan (AMD/Intel) via Cargo features
-- **Build Tools**: Requires Visual Studio Build Tools with C++ workload
-- **System Audio**: Uses WASAPI loopback for system capture
+## Convenzioni
 
-### Linux
-- **Audio Capture**: ALSA/PulseAudio
-- **GPU**: CUDA (NVIDIA) or Vulkan via Cargo features
-- **Dependencies**: Requires cmake, llvm, libomp
-
-## Performance Optimization Guidelines
-
-### Audio Processing
-- Use `perf_debug!()` / `perf_trace!()` for hot-path logging (zero cost in release)
-- Batch audio metrics using `AudioMetricsBatcher` (pipeline.rs)
-- Pre-allocate buffers with `AudioBufferPool` (buffer_pool.rs)
-- VAD filtering reduces Whisper load by ~70% (only processes speech)
-
-### Whisper Transcription
-- **Model Selection**: Balance accuracy vs speed
-  - Development: `base` or `small` (fast iteration)
-  - Production: `medium` or `large-v3` (best quality)
-- **GPU Acceleration**: 5-10x faster than CPU
-- **Parallel Processing**: Available in `whisper_engine/parallel_processor.rs` for batch workloads
-
-### Frontend Performance
-- React state updates batched via Sidebar context
-- Transcript rendering virtualized for large meetings
-- Audio level monitoring throttled to 60fps
-
-## Important Constraints and Gotchas
-
-1. **Audio Chunk Size**: Pipeline expects consistent 48kHz sample rate. Resampling happens at capture time.
-
-2. **Platform Audio Quirks**:
-   - macOS: ScreenCaptureKit requires macOS 13+, needs screen recording permission
-   - Windows: WASAPI exclusive mode can conflict with other apps
-   - System audio requires virtual device (BlackHole on macOS, WASAPI loopback on Windows)
-
-3. **Whisper Model Loading**: Models are loaded once and cached. Changing models requires app restart or manual unload/reload.
-
-4. **No Separate Backend Dependency**: Meeting persistence, transcription, and LLM features are handled by the Tauri app. Do not reintroduce the archived FastAPI backend as a supported requirement.
-
-5. **Legacy FastAPI Security Context**: The archived FastAPI/CORS behavior is unsupported legacy code and must not be treated as a supported production API.
-
-6. **File Paths**: Use Tauri's path APIs (`downloadDir`, etc.) for cross-platform compatibility. Never hardcode paths.
-
-7. **Audio Permissions**: Request permissions early. macOS requires both microphone AND screen recording for system audio.
-
-## Repository-Specific Conventions
-
-- **Logging Format**: Rust logs should include enough module context to diagnose app behavior
-- **Error Handling**: Rust uses `anyhow::Result`, frontend uses try-catch with user-friendly messages
-- **Naming**: Audio devices use "microphone" and "system" consistently (not "input"/"output")
-- **Git Branches**:
-  - `main`: Stable releases
-  - `fix/*`: Bug fixes
-  - `enhance/*`: Feature enhancements
-  - Current: `fix/audio-mixing` (working on audio pipeline improvements)
-
-## Key Files Reference
-
-**Core Coordination**:
-- [frontend/src-tauri/src/lib.rs](frontend/src-tauri/src/lib.rs) - Main Tauri entry point, command registration
-- [frontend/src-tauri/src/audio/mod.rs](frontend/src-tauri/src/audio/mod.rs) - Audio module exports
-- [frontend/src-tauri/src/database/mod.rs](frontend/src-tauri/src/database/mod.rs) - Local database module
-
-**Audio System**:
-- [frontend/src-tauri/src/audio/recording_manager.rs](frontend/src-tauri/src/audio/recording_manager.rs) - Recording orchestration
-- [frontend/src-tauri/src/audio/pipeline.rs](frontend/src-tauri/src/audio/pipeline.rs) - Audio mixing and VAD
-- [frontend/src-tauri/src/audio/recording_saver.rs](frontend/src-tauri/src/audio/recording_saver.rs) - Audio file writing
-
-**UI Components**:
-- [frontend/src/app/page.tsx](frontend/src/app/page.tsx) - Main recording interface
-- [frontend/src/components/Sidebar/SidebarProvider.tsx](frontend/src/components/Sidebar/SidebarProvider.tsx) - Global state management
-
-**Whisper Integration**:
-- [frontend/src-tauri/src/whisper_engine/whisper_engine.rs](frontend/src-tauri/src/whisper_engine/whisper_engine.rs) - Whisper model management and transcription
+- **Lingua:** testi dell'interfaccia in italiano e inglese; documentazione del progetto in italiano.
+- **Nomi:** «microphone» e «system» per i dispositivi audio, non «input» e «output».
+- **Errori:** `anyhow::Result` in Rust; try/catch con messaggi comprensibili nel frontend.
+- **Semplificazioni volute:** commenti `ponytail:` con il limite e la strada per superarlo.
+- **Git:**
+  - commit brevi in italiano (`feat:`, `fix:`, `chore:`, `docs:`), senza riferimenti a Claude;
+  - lavoro su branch `enhance/*` e `fix/*`;
+  - il branch di sviluppo attuale è `enhance/mcp-agenti`; `main` è stabile.
+- **Documenti di verifica:** `docs/confronto-modelli-riassunto.md`, `docs/verifica-riassunti.md`.
