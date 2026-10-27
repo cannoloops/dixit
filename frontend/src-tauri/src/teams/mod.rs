@@ -109,6 +109,19 @@ fn run_session<R: Runtime>(app: AppHandle<R>, session: u64) {
     let elapsed = state["recording_duration"].as_f64().unwrap_or(0.0);
     let rec_start = Instant::now() - Duration::from_secs_f64(elapsed);
     let Some(pid) = ax::teams_pid() else { return };
+    if !crate::ax_util::is_trusted(false) {
+        // ponytail: ad-hoc signing pins the grant to the cdhash, every rebuild loses it; a stable signing identity fixes it.
+        log::warn!("Accessibility not granted: no Teams title, captions or speaker names");
+        use crate::i18n::tr;
+        crate::autopilot::notify(
+            &app,
+            tr("Nomi da Teams non disponibili", "Teams names unavailable"),
+            tr(
+                "Riattiva Dixit in Impostazioni di Sistema › Privacy e sicurezza › Accessibilità.",
+                "Re-enable Dixit in System Settings › Privacy & Security › Accessibility.",
+            ),
+        );
+    }
     ACTIVE.lock().unwrap().insert(folder.clone());
 
     let mut reader = ax::CaptionReader::default();

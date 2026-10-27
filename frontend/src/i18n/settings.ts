@@ -185,7 +185,7 @@ export const t = makeT({
     parakeetNote: 'Parakeet supporta solo il rilevamento automatico della lingua. Per sceglierne una a mano usa Whisper.',
     autoWarning: 'Il rilevamento automatico può sbagliare. Per risultati migliori scegli la tua lingua (es. italiano, inglese).',
     translateNote: 'Traduzione attiva: tutto l’audio viene tradotto in inglese. Utile per riunioni multilingue quando serve un testo in inglese.',
-    optimizedFor: 'La trascrizione sarà ottimizzata per {lang}.',
+    optimizedFor: 'La trascrizione definitiva sarà ottimizzata per {lang}; quella live riconosce la lingua da sola e sulle frasi brevi può sbagliare.',
 
     // Beta
     betaSection: 'Funzioni beta',
@@ -381,7 +381,7 @@ export const t = makeT({
     parakeetNote: 'Parakeet only supports automatic language detection. Use Whisper to choose a language manually.',
     autoWarning: 'Auto detect may get it wrong. For best accuracy, choose your language (e.g. Italian, English).',
     translateNote: 'Translation is on: all audio is translated to English. Best for multilingual meetings where you need English output.',
-    optimizedFor: 'Transcription will be optimized for {lang}.',
+    optimizedFor: 'The final transcript will be optimized for {lang}; the live one detects the language on its own and may get short phrases wrong.',
 
     // Beta
     betaSection: 'Beta features',

@@ -536,6 +536,12 @@ impl SummaryService {
         // Get app data directory for BuiltInAI provider
         let app_data_dir = _app.path().app_data_dir().ok();
 
+        // Dixit: no chosen or detected language (short calls) -> the transcription language, not English.
+        let summary_language = summary_language.or_else(|| {
+            crate::get_language_preference_internal()
+                .filter(|code| language_name_from_code(code).is_some()) // skips auto / auto-translate
+        });
+
         if let Some(code) = &summary_language {
             info!("📝 Summary language preference: {}", code);
         }
