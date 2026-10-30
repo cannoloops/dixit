@@ -85,18 +85,19 @@ export class RecordingService {
    * @param micDeviceName - Microphone device name (null for default)
    * @param systemDeviceName - System audio device name (null for default)
    * @param meetingName - Meeting name/title
-   * @returns Promise<void>
+   * @returns The name the recording got: during a call the backend uses the call's title
    */
   async startRecordingWithDevices(
     micDeviceName: string | null,
     systemDeviceName: string | null,
     meetingName: string
-  ): Promise<void> {
-    return withStartTimeout(invoke('start_recording_with_devices_and_meeting', {
+  ): Promise<string> {
+    await withStartTimeout(invoke('start_recording_with_devices_and_meeting', {
       micDeviceName,
       systemDeviceName,
       meetingName
     }));
+    return (await this.getRecordingMeetingName().catch(() => null)) || meetingName;
   }
 
   /**

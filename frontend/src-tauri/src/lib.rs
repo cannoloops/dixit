@@ -383,6 +383,10 @@ async fn start_recording_with_devices_and_meeting<R: Runtime>(
     log_info!("🚀 CALLED start_recording_with_devices_and_meeting - Mic: {:?}, System: {:?}, Meeting: {:?}",
              mic_device_name, system_device_name, meeting_name);
 
+    // Dixit: started during a call → recorded as that call (title, Teams names, stop at the end).
+    let adopted = autopilot::adopt_call().await;
+    let meeting_name = adopted.as_ref().map(|s| s.title.clone()).or(meeting_name);
+
     // Clone meeting_name for notification use later
     let meeting_name_for_notification = meeting_name.clone();
 
@@ -412,6 +416,9 @@ async fn start_recording_with_devices_and_meeting<R: Runtime>(
             .await
         }
     };
+    if let Some(session) = adopted {
+        autopilot::finish_adopt(&app, session, recording_result.is_ok());
+    }
 
     match recording_result {
         Ok(_) => {

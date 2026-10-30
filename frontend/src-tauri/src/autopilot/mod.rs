@@ -30,6 +30,8 @@ static NEXT_SESSION_ID: AtomicU64 = AtomicU64::new(1);
 static CANCELLED_FOLDER: Lazy<Mutex<Option<PathBuf>>> = Lazy::new(|| Mutex::new(None));
 /// "Annulla" pressed while the auto-start was still bringing the recording up.
 static PENDING_CANCEL: AtomicBool = AtomicBool::new(false);
+/// Platform of a call the user started recording by hand; the loop takes it over on its next tick.
+static ADOPTED: Lazy<Mutex<Option<Platform>>> = Lazy::new(|| Mutex::new(None));
 
 /// How often a running (or suppressed) call is checked for having become a different call.
 const IDENTITY_CHECK: Duration = Duration::from_secs(30);
@@ -90,6 +92,12 @@ pub fn spawn<R: Runtime>(app: AppHandle<R>) {
             tokio::time::sleep(Duration::from_secs(2)).await;
             let s = settings::load(&app);
             tracker.set_thresholds(Duration::from_secs(s.start_after_secs), Duration::from_secs(s.stop_after_secs));
+            // A recording the user started during a call is now that call's session (even with auto-start off).
+            if let Some(p) = ADOPTED.lock().unwrap().take() {
+                tracker.adopt(p);
+                seen_recording = true;
+                identity = None; // filled in by the next identity check
+            }
             // Turning auto-start off never orphans a running session: it still stops on its own.
             if !s.auto_start && !tracker.is_auto_session() {
                 continue;
@@ -143,6 +151,8 @@ pub fn spawn<R: Runtime>(app: AppHandle<R>) {
             }
 
             match tracker.observe(Instant::now(), &obs, recording) {
+                // A manual start is adopting this call right now: it becomes the session.
+                Some(Action::Start(_)) if current_session().is_some() => seen_recording = false,
                 Some(Action::Start(p)) => {
                     seen_recording = false;
                     #[cfg(target_os = "macos")]
@@ -225,6 +235,43 @@ async fn start<R: Runtime>(app: &AppHandle<R>, platform: Platform) -> Result<(),
     }
     let _ = app.emit("autopilot-session", serde_json::json!({ "platform": platform, "title": title }));
     Ok(())
+}
+
+/// "Avvia registrazione" during a call: the recording becomes that call's session (call title,
+/// Teams captions and names, automatic stop when the call ends). The session is registered before
+/// the recorder starts, so the folder's metadata names the platform. None when no call is going on.
+pub async fn adopt_call() -> Option<Session> {
+    #[cfg(target_os = "macos")]
+    {
+        if current_session().is_some() {
+            return None; // the autopilot is already starting this call
+        }
+        let (platform, raw) = blocking(|| {
+            let obs = probe::observe(None);
+            obs.mic.or(obs.window).map(|p| (p, probe::title_for(p)))
+        })
+        .await
+        .flatten()?;
+        let id = NEXT_SESSION_ID.fetch_add(1, Ordering::SeqCst);
+        let session = Session { id, platform, title: session_title(raw, platform), started: Instant::now() };
+        log::info!("Autopilot: manual start during a {} call, recording '{}'", platform.label(), session.title);
+        *SESSION.lock().unwrap() = Some(session.clone());
+        Some(session)
+    }
+    #[cfg(not(target_os = "macos"))]
+    None
+}
+
+/// After the adopted recording's start: hand it to the loop and Teams, or forget it if it failed.
+pub fn finish_adopt<R: Runtime>(app: &AppHandle<R>, session: Session, started: bool) {
+    if !started {
+        end_session();
+        return;
+    }
+    *ADOPTED.lock().unwrap() = Some(session.platform);
+    if session.platform == Platform::Teams {
+        crate::teams::on_session_start(app, session.id);
+    }
 }
 
 /// Stops the current recording and throws it away (audio, transcript, folder).

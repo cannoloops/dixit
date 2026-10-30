@@ -79,6 +79,14 @@ impl CallTracker {
         stop
     }
 
+    /// The user started recording during this call: it becomes the session, stopped and split
+    /// like an auto-started one.
+    pub fn adopt(&mut self, p: Platform) {
+        self.session = Some(p);
+        self.suppressed = false;
+        self.expecting_stop = false;
+    }
+
     /// The user stopped the auto-started recording: don't restart until this call ends.
     pub fn manual_stop(&mut self) {
         self.session = None;
@@ -255,6 +263,20 @@ mod tests {
         run(&mut tr, t0, 0, 60, &MIC_TEAMS, false);
         assert_eq!(tr.new_call(), Some(Action::Stop));
         assert_eq!(run(&mut tr, t0, 60, 61, &MIC_TEAMS, false), vec![(60, Action::Start(Platform::Teams))]);
+    }
+
+    #[test]
+    fn adopted_manual_recording_stops_with_the_call() {
+        let (mut tr, t0) = (tracker(), Instant::now());
+        run(&mut tr, t0, 0, 6, &MIC_TEAMS, false);
+        tr.manual_stop(); // earlier recording stopped by hand: suppressed
+        assert!(run(&mut tr, t0, 6, 30, &MIC_TEAMS, true).is_empty()); // "Avvia registrazione"
+        tr.adopt(Platform::Teams);
+        assert!(tr.is_auto_session() && !tr.is_suppressed());
+        assert!(run(&mut tr, t0, 30, 74, &NOTHING, true).is_empty()); // last seen 29
+        assert_eq!(run(&mut tr, t0, 74, 75, &NOTHING, true), vec![(74, Action::Stop)]);
+        assert!(run(&mut tr, t0, 75, 80, &NOTHING, false).is_empty()); // our stop, no suppression
+        assert!(!tr.is_suppressed());
     }
 
     #[test]
