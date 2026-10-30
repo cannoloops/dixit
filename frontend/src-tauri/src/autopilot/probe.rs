@@ -94,7 +94,10 @@ pub fn observe(session: Option<Platform>) -> Observation {
     } else {
         None
     };
-    Observation { mic, window }
+    // Only Accessibility makes "no call controls" a fact rather than a failed look.
+    let call_ended =
+        session == Some(Platform::Teams) && mic.is_none() && window.is_none() && ax_util::is_trusted(false);
+    Observation { mic, window, call_ended }
 }
 
 #[cfg(test)]

@@ -26,7 +26,15 @@ impl Platform {
 pub struct Observation {
     pub mic: Option<Platform>,
     pub window: Option<Platform>,
+    /// The meeting app itself says the call is over (Teams with Accessibility: mic released and
+    /// no call controls on screen), not just a quiet moment.
+    pub call_ended: bool,
 }
+
+// ponytail: seen live on Teams, the mic is released and the call window closes the moment a call
+// ends, while during a call the window may vanish for one 5 s sample but the mic stays: two
+// absences together are the end. Short enough to split a call-back from the same person.
+const CONFIRMED_END: Duration = Duration::from_secs(10);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Action {
@@ -102,9 +110,10 @@ impl CallTracker {
         if obs.mic.is_some() || obs.window.is_some() {
             self.last_seen = Some(now);
         }
+        let gone_after = if obs.call_ended { self.stop_after.min(CONFIRMED_END) } else { self.stop_after };
         let call_gone = self
             .last_seen
-            .map_or(true, |t| now.saturating_duration_since(t) >= self.stop_after);
+            .map_or(true, |t| now.saturating_duration_since(t) >= gone_after);
         if self.suppressed && call_gone {
             self.suppressed = false;
         }
@@ -147,10 +156,11 @@ mod tests {
     use super::*;
     use std::time::{Duration, Instant};
 
-    const MIC_TEAMS: Observation = Observation { mic: Some(Platform::Teams), window: None };
-    const MIC_ZOOM: Observation = Observation { mic: Some(Platform::Zoom), window: None };
-    const WINDOW_TEAMS: Observation = Observation { mic: None, window: Some(Platform::Teams) };
-    const NOTHING: Observation = Observation { mic: None, window: None };
+    const MIC_TEAMS: Observation = Observation { mic: Some(Platform::Teams), window: None, call_ended: false };
+    const MIC_ZOOM: Observation = Observation { mic: Some(Platform::Zoom), window: None, call_ended: false };
+    const WINDOW_TEAMS: Observation = Observation { mic: None, window: Some(Platform::Teams), call_ended: false };
+    const NOTHING: Observation = Observation { mic: None, window: None, call_ended: false };
+    const TEAMS_ENDED: Observation = Observation { mic: None, window: None, call_ended: true };
 
     fn tracker() -> CallTracker {
         CallTracker::new(Duration::from_secs(5), Duration::from_secs(45))
@@ -195,6 +205,24 @@ mod tests {
         assert!(run(&mut tr, t0, 11, 55, &NOTHING, true).is_empty());
         assert_eq!(run(&mut tr, t0, 55, 56, &NOTHING, true), vec![(55, Action::Stop)]);
         assert!(!tr.is_auto_session());
+    }
+
+    #[test]
+    fn teams_confirmed_end_stops_after_ten_seconds() {
+        let (mut tr, t0) = (tracker(), Instant::now());
+        run(&mut tr, t0, 0, 11, &MIC_TEAMS, false); // last seen at t=10
+        assert!(run(&mut tr, t0, 11, 20, &TEAMS_ENDED, true).is_empty());
+        assert_eq!(run(&mut tr, t0, 20, 21, &TEAMS_ENDED, true), vec![(20, Action::Stop)]);
+        // Quick call-back: a new session, not the old one stretched.
+        assert_eq!(run(&mut tr, t0, 30, 36, &MIC_TEAMS, false), vec![(35, Action::Start(Platform::Teams))]);
+    }
+
+    #[test]
+    fn short_teams_dropout_keeps_the_session() {
+        let (mut tr, t0) = (tracker(), Instant::now());
+        run(&mut tr, t0, 0, 11, &MIC_TEAMS, false);
+        assert!(run(&mut tr, t0, 11, 16, &TEAMS_ENDED, true).is_empty()); // 5 s: a flicker, not the end
+        assert!(run(&mut tr, t0, 16, 60, &MIC_TEAMS, true).is_empty());
     }
 
     #[test]
