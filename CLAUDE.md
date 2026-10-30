@@ -19,6 +19,7 @@ Guida per lavorare su questo repository con Claude Code.
 | Nomi dei parlanti e sottotitoli da Teams; trascrizione nativa Teams | `src-tauri/src/teams/`, `src-tauri/src/speakers/` |
 | Trascrizione live con Parakeet, definitiva con Whisper large-v3 a fine registrazione | `src-tauri/src/parakeet_engine/`, `src-tauri/src/whisper_engine/`, `audio/transcription/` |
 | Attribuzione dei parlanti (wespeaker) | `src-tauri/src/speakers/` |
+| Memoria delle voci: una voce già nominata viene riconosciuta nelle riunioni successive (dopo i nomi da Teams, prima di «Parlante X») | `src-tauri/src/speakers/voices.rs`; taratura con `cargo test --lib bench_voice_memory -- --ignored` |
 | Note personali durante la registrazione, con l'istante | `src-tauri/src/notes.rs`, `frontend/src/components/RecordingNoteInput.tsx` |
 | Riassunto automatico per tipo di call (SAL, analisi, mix, altro) | `src-tauri/src/summary/` (`auto.rs`, `classification.rs`) |
 | Server MCP locale per gli agenti (trascrizione live, riunioni, ricerca) | `src-tauri/src/mcp.rs`, `mcp_tools.rs`, `library.rs`, `search.rs`, `embedding.rs` |
@@ -81,7 +82,7 @@ con `mcp.json` = `{"mcpServers":{"dixit":{"type":"http","url":"http://127.0.0.1:
 
 ## Dati e cartelle
 
-- **Dati app:** `~/Library/Application Support/com.vitomanuguerra.trascrivi/` (`meeting_minutes.sqlite`, `trascrivi.json`, `models/`). Sono dati reali: per le prove distruttive lavora su copie.
+- **Dati app:** `~/Library/Application Support/com.vitomanuguerra.trascrivi/` (`meeting_minutes.sqlite`, `trascrivi.json`, `models/`, `voices.json` con le impronte vocali dei colleghi, solo locale). Sono dati reali: per le prove distruttive lavora su copie.
 - **Riunioni:** `~/Documents/Dixit/<AAAA-MM-GG HH.MM Titolo>/` con `audio.mp4`, trascrizione `.md`, `transcripts.json`, `metadata.json`, `diarization.json`, `notes.json`, `captions.json` (solo Teams).
 - **Migrazioni:** `frontend/src-tauri/migrations/` (sqlx). Ogni migrazione deve avere una versione unica: due file con lo stesso prefisso bloccano l'avvio.
 - Alcuni nomi interni restano «meetily» (cartelle di riserva dei modelli, user agent, sorgente audio): non rinominarli, si perderebbero dati già salvati.
