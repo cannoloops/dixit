@@ -128,17 +128,33 @@ fn run_session<R: Runtime>(app: AppHandle<R>, session: u64) {
     *LIVE.lock().unwrap() = captions::CaptionLog::default();
     let mut last_write = Instant::now();
     // Captions/native need the meeting menu, which may appear only after the lobby or when the
-    // user expands the compact view: keep checking for the whole call, act once.
-    let mut menus_done = false;
+    // user expands the compact view: keep checking for the whole call. Native transcription is
+    // tried once (everyone sees it); captions again after a failure (the menu walk can miss a
+    // step when Teams' tree blinks), a few times only, since each try opens menus on screen.
+    let mut native_done = false;
+    let (mut captions_on, mut caption_tries, mut last_caption_try) = (false, 0, None::<Instant>);
     let mut menu_check = captions::SearchThrottle::default();
     while alive() {
         std::thread::sleep(Duration::from_secs(1));
         let now = Instant::now();
-        if !menus_done && menu_check.due(now) {
+        let captions_due = !captions_on
+            && caption_tries < MAX_CAPTION_TRIES
+            && last_caption_try.map_or(true, |t| now.saturating_duration_since(t) >= CAPTION_RETRY_EVERY);
+        if (captions_due || !native_done) && menu_check.due(now) {
             menu_check.mark(now);
             if ax::has_menu(pid) {
-                menus_done = true;
-                enable_captions_and_native(&app, session, pid, &folder, rec_start, &alive);
+                if captions_due {
+                    caption_tries += 1;
+                    last_caption_try = Some(now);
+                    match ax::enable_live_captions(pid) {
+                        Ok(()) => captions_on = true,
+                        Err(e) => log::warn!("Teams live captions not enabled (try {caption_tries}): {e:#}"),
+                    }
+                }
+                if !native_done {
+                    native_done = true;
+                    start_native_transcription(&app, session, pid, &folder, rec_start, &alive);
+                }
             }
         }
         let visible = reader.read(pid);
@@ -153,8 +169,15 @@ fn run_session<R: Runtime>(app: AppHandle<R>, session: u64) {
     ACTIVE.lock().unwrap().remove(&folder);
 }
 
+/// Caption tries per call, a minute apart: a transient miss gets another go, a Teams UI change
+/// does not flash the menus all call long.
 #[cfg(target_os = "macos")]
-fn enable_captions_and_native<R: Runtime>(
+const MAX_CAPTION_TRIES: u32 = 3;
+#[cfg(target_os = "macos")]
+const CAPTION_RETRY_EVERY: Duration = Duration::from_secs(60);
+
+#[cfg(target_os = "macos")]
+fn start_native_transcription<R: Runtime>(
     app: &AppHandle<R>,
     session: u64,
     pid: i32,
@@ -162,9 +185,6 @@ fn enable_captions_and_native<R: Runtime>(
     rec_start: Instant,
     alive: &dyn Fn() -> bool,
 ) {
-    if let Err(e) = ax::enable_live_captions(pid) {
-        log::warn!("Teams live captions not enabled: {e:#}");
-    }
     // Re-check right before a visible action: the user may have cancelled meanwhile.
     if !(crate::autopilot::settings::load(app).native_teams_transcription
         && alive()
