@@ -100,7 +100,7 @@ cd src-tauri && cargo test --lib  # test Rust (circa 370)
 npx tsc --noEmit                  # controllo dei tipi del frontend
 ```
 
-Log di debug: `RUST_LOG=app_lib=debug pnpm run tauri:dev`. Il confronto tra modelli e la verifica dei riassunti sono test ignorati: `cargo test --lib bench_summary_model -- --ignored` e `cargo test --lib verifica_riassunti -- --ignored --nocapture` (istruzioni in testa ai file).
+Log di debug: `RUST_LOG=app_lib=debug pnpm run tauri:dev`. L'app installata scrive in `~/Library/Logs/Dixit/dixit.log` (livello `info`, il precedente diventa `dixit.log.1` oltre 20 MB). Il confronto tra modelli e la verifica dei riassunti sono test ignorati: `cargo test --lib bench_summary_model -- --ignored` e `cargo test --lib verifica_riassunti -- --ignored --nocapture` (istruzioni in testa ai file).
 
 ### Sandbox di prova (accanto alla Dixit installata)
 
