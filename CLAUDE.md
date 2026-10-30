@@ -142,6 +142,7 @@ Usa i dati in `…/com.vitomanuguerra.trascrivi.dev/` (copia il DB reale con `sq
 - **Semplificazioni volute:** commenti `ponytail:` con il limite e la strada per superarlo.
 - **Git:**
   - commit brevi in italiano (`feat:`, `fix:`, `chore:`, `docs:`), senza riferimenti a Claude;
-  - lavoro su branch `enhance/*` e `fix/*`;
-  - il branch di sviluppo attuale è `enhance/mcp-agenti`; `main` è stabile.
+  - `main` è il branch principale: stabile, da qui partono le build da distribuire;
+  - `develop` è il branch di sviluppo: ogni attività nasce da `develop` su un feature branch (`feat/*`, `fix/*`) e ci torna con un merge;
+  - quando `develop` è pronto per una build, si mergia in `main`. Mai commit diretti su `main`.
 - **Documenti di verifica:** `docs/confronto-modelli-riassunto.md`, `docs/verifica-riassunti.md`.
