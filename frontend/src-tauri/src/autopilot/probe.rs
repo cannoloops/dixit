@@ -114,4 +114,19 @@ mod tests {
             super::call_title(super::Platform::Teams)
         );
     }
+
+    /// During a Teams call: is the meeting menu reachable, what the caption reader sees, and the
+    /// AX tree in `$DIXIT_AX_DUMP` if set. `cargo test --lib teams_captions_smoke -- --ignored --nocapture`.
+    #[test]
+    #[ignore]
+    fn teams_captions_smoke() {
+        use crate::teams::ax;
+        let pid = ax::teams_pid().expect("Teams not running");
+        let mut reader = ax::CaptionReader::default();
+        println!("has_menu={} captions={:?}", ax::has_menu(pid), reader.read(pid));
+        if let Ok(path) = std::env::var("DIXIT_AX_DUMP") {
+            std::fs::write(&path, ax::dump_tree(pid, 60).to_string()).unwrap();
+            println!("tree written to {path}");
+        }
+    }
 }
