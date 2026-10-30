@@ -26,11 +26,12 @@ export function PermissionsSettings() {
     invoke<Status>('permissions_status').then(setStatus).catch(console.error);
   }, []);
 
-  // Re-check when the user comes back from System Settings.
+  // ponytail: poll while the section is open (window "focus" doesn't fire in the Tauri webview
+  // when coming back from System Settings); three cheap reads, a Tauri focus event if it ever matters.
   useEffect(() => {
     refresh();
-    window.addEventListener('focus', refresh);
-    return () => window.removeEventListener('focus', refresh);
+    const timer = setInterval(refresh, 2000);
+    return () => clearInterval(timer);
   }, [refresh]);
 
   // Never asked: show the macOS prompt. Denied: only System Settings can change it.
