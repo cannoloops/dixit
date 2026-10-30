@@ -144,6 +144,67 @@ pub async fn trigger_system_audio_permission_command() -> Result<bool, String> {
     .map_err(|e| e.to_string())
 }
 
+/// Real state of the macOS permissions Dixit needs (Settings → Generali → Permessi).
+/// Values match the frontend `PermissionStatus`: "authorized", "denied", "not_determined".
+#[derive(serde::Serialize)]
+pub struct PermissionsStatus {
+    microphone: &'static str,
+    system_audio: &'static str,
+    accessibility: &'static str,
+}
+
+#[cfg(target_os = "macos")]
+fn microphone_status() -> &'static str {
+    use cidre::av;
+    match av::capture::Device::authorization_status_for_media_type(av::MediaType::audio()) {
+        Ok(av::AuthorizationStatus::Authorized) => "authorized",
+        Ok(av::AuthorizationStatus::NotDetermined) => "not_determined",
+        _ => "denied",
+    }
+}
+
+/// System audio (Core Audio tap) has no public status API: ask TCC through its private
+/// preflight, as the open-source AudioCap sample does. 0 = granted, 1 = denied, else not asked yet.
+// ponytail: private SPI; if Apple drops it the row reads "not asked" and its button re-requests.
+#[cfg(target_os = "macos")]
+fn system_audio_status() -> &'static str {
+    use std::ffi::{c_char, c_int, c_void};
+    extern "C" {
+        fn dlopen(path: *const c_char, mode: c_int) -> *mut c_void;
+        fn dlsym(handle: *mut c_void, symbol: *const c_char) -> *mut c_void;
+    }
+    const RTLD_NOW: c_int = 2;
+    type Preflight = unsafe extern "C" fn(*const c_void, *const c_void) -> c_int;
+
+    let service = cidre::cf::String::from_str("kTCCServiceAudioCapture");
+    unsafe {
+        let tcc = dlopen(c"/System/Library/PrivateFrameworks/TCC.framework/Versions/A/TCC".as_ptr(), RTLD_NOW);
+        let sym = if tcc.is_null() { tcc } else { dlsym(tcc, c"TCCAccessPreflight".as_ptr()) };
+        if sym.is_null() {
+            return "not_determined";
+        }
+        let preflight: Preflight = std::mem::transmute(sym);
+        match preflight(&*service as *const cidre::cf::String as *const c_void, std::ptr::null()) {
+            0 => "authorized",
+            1 => "denied",
+            _ => "not_determined",
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn permissions_status() -> PermissionsStatus {
+    #[cfg(target_os = "macos")]
+    return PermissionsStatus {
+        microphone: microphone_status(),
+        system_audio: system_audio_status(),
+        // Not trusted can't be told apart from "never asked": both need System Settings.
+        accessibility: if crate::ax_util::is_trusted(false) { "authorized" } else { "denied" },
+    };
+    #[cfg(not(target_os = "macos"))]
+    PermissionsStatus { microphone: "authorized", system_audio: "authorized", accessibility: "authorized" }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -152,5 +213,14 @@ mod tests {
     fn test_check_permission() {
         let has_permission = check_screen_recording_permission();
         println!("Has Screen Recording permission: {}", has_permission);
+    }
+
+    /// Calls the real APIs (TCC SPI included): must not crash and must speak the frontend's values.
+    #[tokio::test]
+    async fn permissions_status_uses_known_values() {
+        let s = permissions_status().await;
+        for v in [s.microphone, s.system_audio, s.accessibility] {
+            assert!(["authorized", "denied", "not_determined"].contains(&v), "{v}");
+        }
     }
 }

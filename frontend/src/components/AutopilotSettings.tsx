@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Check, Copy, Loader2 } from 'lucide-react';
+import { Copy, Loader2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { SettingsSection, SettingRow } from '@/components/molecules/form-components/setting-row';
@@ -44,7 +44,6 @@ function CopyBlock({ text }: { text: string }) {
 /** Trascrivi: automatic start/stop on calls, Teams integration, speaker name. */
 export function AutopilotSettings() {
   const [settings, setSettings] = useState<AutopilotSettingsValue | null>(null);
-  const [trusted, setTrusted] = useState<boolean | null>(null);
   const [dumping, setDumping] = useState(false);
   // true = listening, false = off, string = why it could not start
   const [mcp, setMcp] = useState<boolean | string>(false);
@@ -53,15 +52,10 @@ export function AutopilotSettings() {
     setMcp(await invoke<boolean>('mcp_status').catch((e) => String(e)));
   }, []);
 
-  const refreshTrust = useCallback(async () => {
-    setTrusted(await invoke<boolean>('autopilot_request_accessibility', { prompt: false }));
-  }, []);
-
   useEffect(() => {
     invoke<AutopilotSettingsValue>('autopilot_get_settings').then(setSettings).catch(console.error);
-    refreshTrust().catch(console.error);
     refreshMcp();
-  }, [refreshTrust, refreshMcp]);
+  }, [refreshMcp]);
 
   const save = async (patch: Partial<AutopilotSettingsValue>) => {
     if (!settings) return;
@@ -73,11 +67,6 @@ export function AutopilotSettings() {
       toast.error(t('settingsNotSaved'), { description: String(error) });
     }
     refreshMcp();
-  };
-
-  const requestAccessibility = async () => {
-    await invoke<boolean>('autopilot_request_accessibility', { prompt: true });
-    setTimeout(() => refreshTrust().catch(console.error), 3000);
   };
 
   const dumpTeams = async () => {
@@ -148,18 +137,6 @@ export function AutopilotSettings() {
             onChange={(e) => setSettings({ ...settings, user_display_name: e.target.value })}
             onBlur={() => save({})}
           />
-        </SettingRow>
-        <SettingRow label={t('accessibility')} description={t('accessibilityDesc')}>
-          {trusted ? (
-            <span className="inline-flex items-center gap-1.5 text-sm text-success">
-              <Check className="h-4 w-4" />
-              {t('granted')}
-            </span>
-          ) : (
-            <Button variant="outline" size="sm" onClick={requestAccessibility}>
-              {t('grant')}
-            </Button>
-          )}
         </SettingRow>
         <SettingRow label={t('diagnostics')} description={t('diagnosticsDesc')}>
           <Button variant="outline" size="sm" onClick={dumpTeams} disabled={dumping}>

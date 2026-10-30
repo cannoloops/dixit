@@ -18,6 +18,10 @@ export const t = makeT({
 
     // Generali
     loadingPreferences: 'Caricamento preferenze…',
+    permissionsSection: 'Permessi',
+    permissionsDesc: 'Cosa macOS concede a Dixit adesso. Se manca qualcosa, il pulsante apre il punto giusto di Impostazioni di Sistema.',
+    accessibilityMissing:
+      'Non attiva: in Privacy e sicurezza › Accessibilità attiva Dixit. Se risulta già attiva, toglila con «–» e aggiungila di nuovo: dopo ogni aggiornamento di Dixit macOS non la riconosce più.',
     notificationsSection: 'Notifiche',
     notificationsLabel: 'Notifiche di inizio e fine riunione',
     notificationsDesc: 'Mostra una notifica quando una riunione inizia e quando finisce.',
@@ -41,10 +45,6 @@ export const t = makeT({
     yourName: 'Il tuo nome',
     yourNameDesc: 'Come appare in Teams (es. Rossi Mario): etichetta i tuoi interventi.',
     yourNamePlaceholder: 'Cognome Nome',
-    accessibility: 'Accessibilità',
-    accessibilityDesc: 'Serve per leggere la finestra di Teams (titolo, sottotitoli, trascrizione nativa).',
-    granted: 'Concessa',
-    grant: 'Concedi',
     diagnostics: 'Diagnostica Teams',
     diagnosticsDesc: 'Durante una call, salva la struttura della finestra di Teams per correggere il riconoscimento dopo un aggiornamento.',
     saveDiagnostics: 'Salva diagnostica',
@@ -214,6 +214,10 @@ export const t = makeT({
 
     // General
     loadingPreferences: 'Loading preferences…',
+    permissionsSection: 'Permissions',
+    permissionsDesc: 'What macOS grants Dixit right now. If something is missing, the button opens the right place in System Settings.',
+    accessibilityMissing:
+      'Off: turn on Dixit in Privacy & Security › Accessibility. If it already looks on, remove it with “–” and add it again: after every Dixit update macOS stops recognising it.',
     notificationsSection: 'Notifications',
     notificationsLabel: 'Meeting start and end notifications',
     notificationsDesc: 'Show a notification when a meeting starts and when it ends.',
@@ -237,10 +241,6 @@ export const t = makeT({
     yourName: 'Your name',
     yourNameDesc: 'As it appears in Teams (e.g. Rossi Mario): labels your turns.',
     yourNamePlaceholder: 'Surname First name',
-    accessibility: 'Accessibility',
-    accessibilityDesc: 'Needed to read the Teams window (title, captions, native transcript).',
-    granted: 'Granted',
-    grant: 'Grant',
     diagnostics: 'Teams diagnostics',
     diagnosticsDesc: 'During a call, saves the structure of the Teams window so recognition can be fixed after an update.',
     saveDiagnostics: 'Save diagnostics',

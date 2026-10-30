@@ -10,6 +10,7 @@ import { PreferenceSettings } from '@/components/PreferenceSettings';
 import { SummaryModelSettings } from '@/components/SummaryModelSettings';
 import { BetaSettings } from '@/components/BetaSettings';
 import { AutopilotSettings } from '@/components/AutopilotSettings';
+import { PermissionsSettings } from '@/components/PermissionsSettings';
 import { useConfig } from '@/contexts/ConfigContext';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -84,7 +85,8 @@ export default function SettingsPage() {
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto py-6">
-          <TabsContent value="general" className="mt-0">
+          <TabsContent value="general" className="mt-0 space-y-8">
+            <PermissionsSettings />
             <PreferenceSettings />
           </TabsContent>
           <TabsContent value="autopilot" className="mt-0">
