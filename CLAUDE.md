@@ -118,7 +118,9 @@ Usa i dati in `…/com.vitomanuguerra.trascrivi.dev/` (copia il DB reale con `sq
 - Il pacchetto pesa circa 8,6 GB; per creare il `.dmg` servono circa 20 GB liberi. Se manca spazio, `bundle_dmg.sh` fallisce con «Spazio esaurito sul dispositivo»: libera gli output di build (`target/` dei worktree), che si rigenerano.
 - Solo il `.dmg`: `npx tauri build --bundles dmg -- --features metal`.
 - L'eseguibile si chiama `Dixit` (`mainBinaryName` e `[[bin]]` in `Cargo.toml`); il package Cargo resta `meetily`.
-- Il pacchetto è firmato ad hoc e non è notarizzato. Sui Mac dei colleghi: tasto destro › Apri, oppure `xattr -dr com.apple.quarantine /Applications/Dixit.app`. Condividilo da Drive o OneDrive.
+- **Firma.** Con `APPLE_SIGNING_IDENTITY="Dixit Local Signing"` (in `~/.zshrc` di Vito) Tauri firma con il certificato autofirmato «Dixit Local Signing» del portachiavi: il requisito designato si basa sul certificato e non sul cdhash, quindi macOS conserva microfono, registrazione schermo e Accessibilità da una build all'altra. Controllo: `codesign -dr - /Applications/Dixit.app` mostra `certificate leaf`, non `cdhash`. Senza la variabile vale `signingIdentity: "-"` di `tauri.conf.json` (firma ad hoc, per i colleghi): a ogni installazione l'Accessibilità va tolta e riaggiunta.
+- Il certificato si crea una volta: Accesso Portachiavi › Assistente certificato › Crea un certificato, «Radice autofirmata», tipo «Firma codice», validità 3650 giorni. Alla prima build firmata codesign chiede l'accesso alla chiave («Consenti sempre») e i permessi vanno ridati una volta.
+- Il pacchetto non è notarizzato. Sui Mac dei colleghi: tasto destro › Apri, oppure `xattr -dr com.apple.quarantine /Applications/Dixit.app`. Condividilo da Drive o OneDrive.
 - Installare sul proprio Mac: chiudi Dixit, sposta `/Applications/Dixit.app` nel Cestino (reversibile), copia la nuova con `ditto`. Al primo avvio partono le migrazioni; macOS può richiedere di nuovo microfono e registrazione schermo.
 
 ## Architettura (Rust ↔ frontend)
