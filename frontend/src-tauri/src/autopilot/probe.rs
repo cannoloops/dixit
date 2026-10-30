@@ -106,5 +106,12 @@ mod tests {
         let obs = super::observe(Some(super::Platform::Teams));
         let title = obs.mic.and_then(super::title_for);
         println!("observation={obs:?} title={title:?} trusted={}", crate::ax_util::is_trusted(false));
+        // Raw signals behind a call boundary: who holds the mic, Teams call controls, call title.
+        println!(
+            "PROBE mic_users={:?} teams_call_window={} call_title={:?}",
+            super::mic_users(),
+            super::teams_call_window(),
+            super::call_title(super::Platform::Teams)
+        );
     }
 }
