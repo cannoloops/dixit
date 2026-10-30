@@ -6,6 +6,7 @@ pub mod fbank;
 pub mod naming;
 pub mod tracks;
 pub mod transcript_io;
+pub mod voices;
 pub mod wav;
 
 /// File-name-safe meeting title: no path/shell-hostile characters, single spaces, max 120 chars.
@@ -30,6 +31,10 @@ fn pool<R: Runtime>(app: &AppHandle<R>) -> sqlx::SqlitePool {
     app.state::<crate::state::AppState>().db_manager.pool().clone()
 }
 
+/// One attribution at a time reads and rewrites the voice memory (a rename can run alongside the
+/// attribution of the call that just ended).
+static VOICES_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 /// Attributes speakers for a finished meeting and updates transcripts.json, the DB and the .md.
 /// Safe to rerun (renames, imported Teams transcript).
 pub async fn process_meeting<R: Runtime>(app: AppHandle<R>, folder: PathBuf, notify: bool) -> anyhow::Result<()> {
@@ -40,8 +45,17 @@ pub async fn process_meeting<R: Runtime>(app: AppHandle<R>, folder: PathBuf, not
     })
     .await?;
 
-    let needs_embedder =
-        !folder.join(attribution::DIARIZATION_FILE).exists() && folder.join(tracks::SYS_TRACK).exists();
+    let diarization = folder.join(attribution::DIARIZATION_FILE);
+    // Also for a meeting clustered before voice prints were kept: they come from its audio.mp4.
+    let needs_embedder = if diarization.exists() {
+        folder.join("audio.mp4").exists()
+            && std::fs::read_to_string(&diarization)
+                .ok()
+                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+                .is_some_and(|v| v["voices"].is_null())
+    } else {
+        folder.join(tracks::SYS_TRACK).exists()
+    };
     let model = if needs_embedder {
         match embedder::ensure_model(&models_dir(&app)?).await {
             Ok(m) => Some(m),
@@ -54,10 +68,19 @@ pub async fn process_meeting<R: Runtime>(app: AppHandle<R>, folder: PathBuf, not
         None
     };
     let me = crate::autopilot::settings::load(&app).me();
+    let voices_path = app.path().app_data_dir()?.join(voices::VOICES_FILE);
     let f = folder.clone();
     let outcome = tokio::task::spawn_blocking(move || {
         let mut emb = model.and_then(|m| embedder::Embedder::new(&m).map_err(|e| log::warn!("{e:#}")).ok());
-        attribution::attribute_folder(&f, &me, emb.as_mut())
+        let _lock = VOICES_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let mut memory = voices::Voices::load(&voices_path);
+        let outcome = attribution::attribute_folder(&f, &me, emb.as_mut(), &memory)?;
+        let meeting = f.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+        memory.learn(&meeting, &outcome.voices);
+        if let Err(e) = memory.save(&voices_path) {
+            log::warn!("Voice memory not saved: {e:#}");
+        }
+        anyhow::Ok(outcome)
     })
     .await??;
 
@@ -126,7 +149,8 @@ pub fn listen_for_stops<R: Runtime>(app: &AppHandle<R>) {
     });
 }
 
-/// Renames a speaker label of a meeting (DB right away; files and .md via a rerun).
+/// Renames a speaker label of a meeting (DB right away; files, .md and voice memory via a rerun in
+/// the background, which for an older meeting first computes its voice prints from audio.mp4).
 #[tauri::command]
 pub async fn speakers_rename<R: Runtime>(app: AppHandle<R>, meeting_id: String, from: String, to: String) -> Result<(), String> {
     let to = to.trim().to_string();
@@ -153,7 +177,12 @@ pub async fn speakers_rename<R: Runtime>(app: AppHandle<R>, meeting_id: String, 
     renames.insert(from, to);
     std::fs::write(&path, serde_json::json!({ "renames": renames }).to_string()).map_err(|e| e.to_string())?;
     if folder.join("transcripts.json").exists() {
-        process_meeting(app, folder, false).await.map_err(|e| e.to_string())?;
+        // The view already shows the new name from the DB; `speakers-updated` follows the rerun.
+        tauri::async_runtime::spawn(async move {
+            if let Err(e) = process_meeting(app, folder, false).await {
+                log::error!("Speaker rerun after rename failed: {e:#}");
+            }
+        });
     }
     Ok(())
 }

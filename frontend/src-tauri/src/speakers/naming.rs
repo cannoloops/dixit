@@ -52,13 +52,19 @@ fn best_overlap(turns: &[Turn], seg: &SegmentInfo) -> Option<String> {
         .map(|(t, _)| t.name.clone())
 }
 
+/// Labels no real person carries ("Parlante A", "Altri"): never learned as a voice.
+pub fn is_generic(name: &str) -> bool {
+    name == "Altri" || name.starts_with("Parlante ")
+}
+
 /// One label per segment. Precedence: the mic is `me`; others take the best-overlapping native
-/// Teams turn, else caption turn, else their cluster's majority name, else "Parlante X"/"Altri".
-/// `renames` (manual, from → to) apply last.
+/// Teams turn, else caption turn, else their cluster's majority name, else the cluster's `known`
+/// voice (voice memory), else "Parlante X"/"Altri". `renames` (manual, from → to) apply last.
 pub fn assign_names(
     segs: &[SegmentInfo],
     native: &[Turn],
     captions: &[Turn],
+    known: &HashMap<u32, String>,
     renames: &HashMap<String, String>,
     me: &str,
 ) -> Vec<String> {
@@ -90,7 +96,7 @@ pub fn assign_names(
         .zip(direct)
         .map(|(s, name)| {
             let label = name
-                .or_else(|| s.cluster.and_then(|c| cluster_name.get(&c).cloned()))
+                .or_else(|| s.cluster.and_then(|c| cluster_name.get(&c).or_else(|| known.get(&c)).cloned()))
                 .unwrap_or_else(|| match s.cluster {
                     Some(c) => format!("Parlante {}", speaker_letter(c)),
                     None => "Altri".to_string(),
@@ -112,7 +118,18 @@ mod tests {
     }
     fn names(segs: &[SegmentInfo], native: &[Turn], captions: &[Turn], renames: &[(&str, &str)]) -> Vec<String> {
         let renames: HashMap<String, String> = renames.iter().map(|(a, b)| (a.to_string(), b.to_string())).collect();
-        assign_names(segs, native, captions, &renames, "Manuguerra Vito")
+        assign_names(segs, native, captions, &HashMap::new(), &renames, "Manuguerra Vito")
+    }
+
+    #[test]
+    fn known_voice_names_a_cluster_teams_did_not() {
+        let segs = [seg(1, 0.0, 2.0, Source::Others, Some(0)), seg(2, 3.0, 5.0, Source::Others, Some(1))];
+        let known = HashMap::from([(0, "Rossi Mario".to_string()), (1, "Verdi Luca".to_string())]);
+        let captions = [turn("Bianchi Anna", 3.0, 5.0)]; // Teams evidence wins over the voice memory
+        let renames = HashMap::from([("Rossi Mario".to_string(), "Rossi Maria".to_string())]);
+        let got = assign_names(&segs, &[], &captions, &known, &renames, "Manuguerra Vito");
+        assert_eq!(got, vec!["Rossi Maria", "Bianchi Anna"]);
+        assert!(is_generic("Parlante B") && is_generic("Altri") && !is_generic("Rossi Mario"));
     }
 
     #[test]

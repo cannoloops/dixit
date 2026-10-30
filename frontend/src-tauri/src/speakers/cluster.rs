@@ -10,9 +10,31 @@ const MIN_CLUSTER_SIZE: usize = 3;
 /// different voice that spoke once or twice stays on its own).
 const MIN_REASSIGN_SIMILARITY: f32 = 0.2;
 
-fn normalized(v: &[f32]) -> Vec<f32> {
+pub fn normalized(v: &[f32]) -> Vec<f32> {
     let n = v.iter().map(|x| x * x).sum::<f32>().sqrt().max(1e-9);
     v.iter().map(|x| x / n).collect()
+}
+
+/// Unit-length mean of a set of embeddings (a voice's print).
+pub fn mean_voice<'a>(embs: impl IntoIterator<Item = &'a Vec<f32>>) -> Option<Vec<f32>> {
+    let mut sum: Option<Vec<f32>> = None;
+    for e in embs {
+        let u = normalized(e);
+        match &mut sum {
+            Some(s) => s.iter_mut().zip(&u).for_each(|(a, b)| *a += b),
+            None => sum = Some(u),
+        }
+    }
+    sum.map(|s| normalized(&s))
+}
+
+/// Unit-length mean embedding per cluster label (labels as returned by [`cluster`]).
+pub fn centroids(embs: &[Vec<f32>], labels: &[u32]) -> std::collections::BTreeMap<u32, Vec<f32>> {
+    let mut by_label: std::collections::BTreeMap<u32, Vec<&Vec<f32>>> = Default::default();
+    for (e, l) in embs.iter().zip(labels) {
+        by_label.entry(*l).or_default().push(e);
+    }
+    by_label.into_iter().filter_map(|(l, es)| mean_voice(es).map(|c| (l, c))).collect()
 }
 
 /// Labels per embedding, numbered by first appearance; merges while best average similarity ≥ threshold.
