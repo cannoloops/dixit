@@ -18,7 +18,7 @@ import { useTranscripts } from '@/contexts/TranscriptContext';
 import { useImportDialog } from '@/contexts/ImportDialogContext';
 import { useConfig } from '@/contexts/ConfigContext';
 import { LiveIndicator, StateStamp } from '@/components/dixit';
-import { cn } from '@/lib/utils';
+import { cn, meetingDisplayTitle } from '@/lib/utils';
 import { locale } from '@/i18n';
 import { t } from '@/i18n/shell';
 import { t as tApp } from '@/i18n/app';
@@ -36,11 +36,6 @@ import { Label } from '@/components/ui/label';
 
 import Logo from '../Logo';
 import Info from '../Info';
-
-/** Automatic titles end with "dd-mm-YYYY HH.MM", already shown by the row's date and time. */
-function railTitle(title: string): string {
-  return title.replace(/\s*\d{2}-\d{2}-\d{4} \d{2}\.\d{2}$/, '') || title;
-}
 
 /** Compact meeting length for the archive: "14 min", "1h19". */
 function formatDuration(seconds: number): string {
@@ -501,7 +496,7 @@ const Sidebar: React.FC = () => {
           )}
         >
           <span className="w-10 shrink-0 text-xs tabular-nums text-rail-muted">{time}</span>
-          <span className="min-w-0 flex-1 truncate" title={meeting.title}>{railTitle(meeting.title)}</span>
+          <span className="min-w-0 flex-1 truncate" title={meeting.title}>{meetingDisplayTitle(meeting.title)}</span>
           {meeting.unnamed_speakers && (
             <span
               className="h-1.5 w-1.5 shrink-0 rounded-full bg-rail-accent"

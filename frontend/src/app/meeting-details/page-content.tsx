@@ -13,6 +13,7 @@ import { GenerateSummaryButton } from '@/components/MeetingDetails/SummaryGenera
 import { EditableTitle } from '@/components/EditableTitle';
 import { ModelConfig } from '@/components/ModelSettingsModal';
 import { hasVisibleSummaryContent } from '@/lib/summary-content';
+import { meetingDisplayTitle } from '@/lib/utils';
 import { locale } from '@/i18n';
 import { t } from '@/i18n/meeting';
 
@@ -263,7 +264,7 @@ export default function PageContent({
         <div className="flex items-start gap-4">
           <div className="min-w-0 flex-1">
             <EditableTitle
-              title={meetingData.meetingTitle}
+              title={isEditingTitle ? meetingData.meetingTitle : meetingDisplayTitle(meetingData.meetingTitle)}
               isEditing={isEditingTitle}
               onStartEditing={handleStartEditingTitle}
               onFinishEditing={handleFinishEditingTitle}

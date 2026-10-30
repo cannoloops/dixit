@@ -211,7 +211,7 @@ impl MeetingsRepository {
         let now = Utc::now().naive_utc();
 
         let rows_affected =
-            sqlx::query("UPDATE meetings SET title = ?, updated_at = ? WHERE id = ?")
+            sqlx::query("UPDATE meetings SET title = ?, base_title = NULL, updated_at = ? WHERE id = ?")
                 .bind(new_title)
                 .bind(now)
                 .bind(meeting_id)
@@ -225,31 +225,38 @@ impl MeetingsRepository {
         Ok(true)
     }
 
+    /// Appends the AI title to the meeting's base name; a later summary replaces it.
     pub async fn update_meeting_name(
         pool: &SqlitePool,
         meeting_id: &str,
-        new_title: &str,
+        ai_title: &str,
     ) -> Result<bool, SqlxError> {
         let mut transaction = pool.begin().await?;
         let now = Utc::now();
 
-        // Update meetings table
-        let meeting_update =
-            sqlx::query("UPDATE meetings SET title = ?, updated_at = ? WHERE id = ?")
-                .bind(new_title)
-                .bind(now)
-                .bind(meeting_id)
-                .execute(&mut *transaction)
-                .await?;
-
-        if meeting_update.rows_affected() == 0 {
-            transaction.rollback().await?;
+        let Some((title, base_title)) = sqlx::query_as::<_, (String, Option<String>)>(
+            "SELECT title, base_title FROM meetings WHERE id = ?",
+        )
+        .bind(meeting_id)
+        .fetch_optional(&mut *transaction)
+        .await?
+        else {
             return Ok(false); // Meeting not found
-        }
+        };
+        let base = base_title.unwrap_or(title);
+        let new_title = with_ai_title(&base, ai_title);
+
+        sqlx::query("UPDATE meetings SET title = ?, base_title = ?, updated_at = ? WHERE id = ?")
+            .bind(&new_title)
+            .bind(&base)
+            .bind(now)
+            .bind(meeting_id)
+            .execute(&mut *transaction)
+            .await?;
 
         // Update transcript_chunks table
         sqlx::query("UPDATE transcript_chunks SET meeting_name = ? WHERE meeting_id = ?")
-            .bind(new_title)
+            .bind(&new_title)
             .bind(meeting_id)
             .execute(&mut *transaction)
             .await?;
@@ -300,4 +307,51 @@ async fn delete_meeting_with_transaction(
         .await?;
 
     Ok(result.rows_affected() > 0)
+}
+
+/// "Teams 29-10-2026 14.43" + "Revisione SAL" → "Teams – Revisione SAL": the trailing date goes,
+/// as in the sidebar (`meetingDisplayTitle`), since the meeting view shows it already.
+fn with_ai_title(base: &str, ai_title: &str) -> String {
+    static DATE: std::sync::LazyLock<regex::Regex> =
+        std::sync::LazyLock::new(|| regex::Regex::new(r"\s*\d{2}-\d{2}-\d{4} \d{2}\.\d{2}$").unwrap());
+    let base = DATE.replace(base.trim(), "");
+    if base.is_empty() || base == ai_title {
+        ai_title.to_string()
+    } else {
+        format!("{base} – {ai_title}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ai_title_goes_after_the_base_name() {
+        assert_eq!(with_ai_title("Teams 29-10-2026 14.43", "Revisione SAL"), "Teams – Revisione SAL");
+        assert_eq!(with_ai_title("MAPO nuova attività", "Stima"), "MAPO nuova attività – Stima");
+        assert_eq!(with_ai_title("29-10-2026 14.43", "Stima"), "Stima");
+    }
+
+    #[tokio::test]
+    async fn new_summary_replaces_the_previous_ai_title() {
+        let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
+        sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+        let now = Utc::now();
+        sqlx::query("INSERT INTO meetings (id, title, created_at, updated_at) VALUES ('m', 'Teams 29-10-2026 14.43', ?, ?)")
+            .bind(now)
+            .bind(now)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let title = || async { sqlx::query_scalar::<_, String>("SELECT title FROM meetings").fetch_one(&pool).await.unwrap() };
+
+        MeetingsRepository::update_meeting_name(&pool, "m", "Primo").await.unwrap();
+        MeetingsRepository::update_meeting_name(&pool, "m", "Secondo").await.unwrap();
+        assert_eq!(title().await, "Teams – Secondo");
+
+        MeetingsRepository::update_meeting_title(&pool, "m", "Cliente X").await.unwrap();
+        MeetingsRepository::update_meeting_name(&pool, "m", "Terzo").await.unwrap();
+        assert_eq!(title().await, "Cliente X – Terzo");
+    }
 }

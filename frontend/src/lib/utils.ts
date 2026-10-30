@@ -30,3 +30,8 @@ export function isOllamaNotInstalledError(errorMessage: string): boolean {
 
   return patterns.some(pattern => lowerError.includes(pattern));
 }
+
+/** Automatic titles end with "dd-mm-YYYY HH.MM": the sidebar row and the meeting view already show the date. */
+export function meetingDisplayTitle(title: string): string {
+  return title.replace(/\s*\d{2}-\d{2}-\d{4} \d{2}\.\d{2}$/, '') || title;
+}
