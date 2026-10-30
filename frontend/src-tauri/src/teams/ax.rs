@@ -98,6 +98,7 @@ fn reveal_and_press(pid: i32, openers: &[&Regex], target: &Regex, done: Option<&
     let _guard = AUTOMATION.lock().unwrap_or_else(|e| e.into_inner());
     let window = call_window(pid).ok_or_else(|| anyhow::anyhow!("no Teams call window"))?;
     let app = ax_util::app(pid);
+    let mut missing = target;
     for i in 0..=openers.len() {
         if let Some(el) = find_pressable(&app, target) {
             ax_util::press(&el);
@@ -111,12 +112,22 @@ fn reveal_and_press(pid: i32, openers: &[&Regex], target: &Regex, done: Option<&
         }
         let Some(opener) = openers.get(i) else { break };
         let root = if i == 0 { &window } else { &app };
-        let Some(el) = find_pressable(root, opener) else { break };
+        let Some(el) = find_pressable(root, opener) else {
+            missing = opener;
+            break;
+        };
         ax_util::press(&el);
         std::thread::sleep(STEP_DELAY);
     }
+    // Name what the open menu offers instead: a Teams rename is then one log line away.
+    let offered: Vec<String> = ax_util::find_all(&app, 4000, &|e| ax_util::role(e) == "AXMenuItem")
+        .iter()
+        .filter_map(|e| ax_util::labels(e).into_iter().next())
+        .take(40)
+        .collect();
+    log::warn!("Teams menu items on screen: {offered:?}");
     escape(pid);
-    anyhow::bail!("Teams menu item {:?} not found", target.as_str())
+    anyhow::bail!("Teams menu item {:?} not found", missing.as_str())
 }
 
 /// The full meeting window has a More/Altro menu; the compact meeting view (seen live) does not,
