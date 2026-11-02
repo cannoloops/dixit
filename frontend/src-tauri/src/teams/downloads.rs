@@ -1,5 +1,6 @@
 //! Picks up native Teams transcripts the user downloads (`~/Downloads`) and links them to the
-//! meeting they belong to, then reruns speaker attribution with them.
+//! meeting they belong to, then reruns speaker attribution with them. A new file is linked only
+//! after the user confirms it.
 
 use chrono::{DateTime, Duration, Utc};
 use std::collections::HashSet;
@@ -74,6 +75,41 @@ async fn meetings<R: Runtime>(app: &AppHandle<R>) -> Vec<MeetingRef> {
         .collect()
 }
 
+fn already_linked(path: &Path, target: &Path) -> bool {
+    matches!((std::fs::read(path), std::fs::read(target)), (Ok(a), Ok(b)) if a == b)
+}
+
+/// Asks before linking. "Ignora" is the default button and anything but an explicit
+/// "Collega" (closing, an error) counts as no.
+async fn confirm<R: Runtime>(app: &AppHandle<R>, file: &str, meeting: &str, replaces: bool) -> bool {
+    use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind, MessageDialogResult};
+    let it = crate::i18n::it();
+    let (title, ignore, link) = if it {
+        ("Collegare la trascrizione Teams?", "Ignora", "Collega")
+    } else {
+        ("Link the Teams transcript?", "Ignore", "Link")
+    };
+    let mut msg = if it {
+        format!("«{file}» in Download verrà usato per i nomi dei parlanti della riunione «{meeting}». Non è possibile verificare da dove arriva il file: collegalo solo se l'hai scaricato tu da Teams.")
+    } else {
+        format!("“{file}” in Downloads will set the speaker names of the meeting “{meeting}”. Its origin cannot be verified: link it only if you downloaded it from Teams yourself.")
+    };
+    if replaces {
+        msg.push_str(if it { " Sostituisce la trascrizione Teams già collegata." } else { " It replaces the Teams transcript already linked." });
+    }
+    let dialog = app
+        .dialog()
+        .message(msg)
+        .title(title)
+        .kind(MessageDialogKind::Warning)
+        .buttons(MessageDialogButtons::OkCancelCustom(ignore.into(), link.into()));
+    let link = link.to_string();
+    tauri::async_runtime::spawn_blocking(move || dialog.blocking_show_with_result())
+        .await
+        .map(|r| r == MessageDialogResult::Custom(link))
+        .unwrap_or(false)
+}
+
 async fn link<R: Runtime>(app: &AppHandle<R>, path: &Path, mtime: DateTime<Utc>) -> anyhow::Result<()> {
     use crate::speakers::{attribution, transcript_io};
     let name = path.file_name().unwrap_or_default().to_string_lossy().to_string();
@@ -92,6 +128,15 @@ async fn link<R: Runtime>(app: &AppHandle<R>, path: &Path, mtime: DateTime<Utc>)
         anyhow::bail!("no matching meeting");
     };
     let target = m.folder.join(if is_docx { attribution::NATIVE_DOCX } else { attribution::NATIVE_VTT });
+    // Anyone can drop a file named like a transcript into Downloads (a web page, a chat
+    // attachment), so a new one is linked only after the user confirms it. A file already
+    // linked byte for byte is re-applied silently, as before.
+    if !already_linked(path, &target) {
+        let replaces = [attribution::NATIVE_DOCX, attribution::NATIVE_VTT].iter().any(|f| m.folder.join(f).exists());
+        if !confirm(app, &name, &m.title, replaces).await {
+            anyhow::bail!("not confirmed by the user");
+        }
+    }
     std::fs::copy(path, &target)?;
     log::info!("Linked Teams transcript {name} to meeting '{}'", m.title);
     crate::speakers::process_meeting(app.clone(), m.folder.clone(), false).await?;
@@ -164,6 +209,18 @@ mod tests {
         let ms = [meeting("a", "Uno", 9, true), meeting("b", "Due", 11, false), meeting("c", "Tre", 10, true)];
         assert_eq!(match_meeting("Trascrizione", at(12), &ms).map(|m| m.id.as_str()), Some("c"));
         assert!(match_meeting("Trascrizione", at(12) + chrono::Duration::days(2), &ms).is_none());
+    }
+
+    #[test]
+    fn already_linked_only_for_identical_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let (a, b) = (dir.path().join("a.vtt"), dir.path().join("b.vtt"));
+        std::fs::write(&a, "WEBVTT").unwrap();
+        assert!(!already_linked(&a, &b));
+        std::fs::write(&b, "WEBVTT x").unwrap();
+        assert!(!already_linked(&a, &b));
+        std::fs::write(&b, "WEBVTT").unwrap();
+        assert!(already_linked(&a, &b));
     }
 
     #[test]
