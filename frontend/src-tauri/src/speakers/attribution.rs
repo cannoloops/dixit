@@ -318,7 +318,7 @@ fn named_voices(infos: &[SegmentInfo], names: &[String], voices: &ClusterVoices,
                 }
             }
             let (name, _) = counts.into_iter().max_by(|a, b| a.1.cmp(&b.1).then(b.0.cmp(a.0)))?;
-            (secs >= MIN_LEARN_SECS && !super::naming::is_generic(name) && name != me)
+            (secs >= MIN_LEARN_SECS && !super::naming::is_generic(name) && !super::naming::is_me(name, me))
                 .then(|| (name.to_string(), print.clone()))
         })
         .collect()
@@ -328,6 +328,14 @@ fn named_voices(infos: &[SegmentInfo], names: &[String], voices: &ClusterVoices,
 mod tests {
     use super::*;
     use crate::speakers::wav::WavWriter;
+
+    #[test]
+    fn my_own_teams_name_is_never_learned() {
+        let infos = [SegmentInfo { seq: 0, start: 0.0, end: 40.0, source: Source::Others, cluster: Some(0) }];
+        let voices = ClusterVoices::from([(0, vec![1.0; 4])]);
+        assert!(named_voices(&infos, &["Manuguerra Vito".into()], &voices, "Manuguerra").is_empty());
+        assert_eq!(named_voices(&infos, &["Rossi Mario".into()], &voices, "Manuguerra").len(), 1);
+    }
 
     fn tone(freq: f32, secs: f32, amp: f32) -> Vec<f32> {
         (0..(16000.0 * secs) as usize)
