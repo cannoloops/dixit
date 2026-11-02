@@ -218,7 +218,7 @@ async fn start<R: Runtime>(app: &AppHandle<R>, platform: Platform) -> Result<(),
     PENDING_CANCEL.store(false, Ordering::SeqCst);
 
     // Banner first: the user can say no while the recorder is still starting.
-    banner::show(app, &title);
+    banner::show(app, &title, offers_teams_transcription(app, platform));
     let (head, body) = if crate::i18n::it() {
         (format!("Trascrizione avviata – {title}"), "Puoi annullarla dal banner o dal menu Dixit.")
     } else {
@@ -271,7 +271,16 @@ pub fn finish_adopt<R: Runtime>(app: &AppHandle<R>, session: Session, started: b
     *ADOPTED.lock().unwrap() = Some(session.platform);
     if session.platform == Platform::Teams {
         crate::teams::on_session_start(app, session.id);
+        // The Teams transcription offer, as on auto-start (only on an explicit click).
+        if offers_teams_transcription(app, session.platform) {
+            banner::show(app, &session.title, true);
+        }
     }
+}
+
+/// Teams' own transcription is offered in the banner (Settings → Automazione), never started alone.
+fn offers_teams_transcription<R: Runtime>(app: &AppHandle<R>, platform: Platform) -> bool {
+    platform == Platform::Teams && settings::load(app).native_teams_transcription
 }
 
 /// Stops the current recording and throws it away (audio, transcript, folder).

@@ -1,4 +1,5 @@
-//! Small always-on-top banner shown on auto-start, with the "Annulla" button.
+//! Small always-on-top banner shown when a call recording starts, with "Annulla" and, for Teams,
+//! the explicit offer to start Teams' own transcription (visible to everyone).
 
 use std::time::Duration;
 use tauri::{AppHandle, Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
@@ -6,14 +7,18 @@ use tauri::{AppHandle, Manager, Runtime, WebviewUrl, WebviewWindowBuilder};
 const LABEL: &str = "banner";
 const WIDTH: f64 = 380.0;
 const HEIGHT: f64 = 96.0;
+/// One more line: the Teams transcription offer and its warning.
+const HEIGHT_TEAMS: f64 = 124.0;
 // ponytail: fixed lifetime; long enough to react, short enough not to linger over the call.
 const LIFETIME: Duration = Duration::from_secs(20);
 
-pub fn show<R: Runtime>(app: &AppHandle<R>, title: &str) {
+pub fn show<R: Runtime>(app: &AppHandle<R>, title: &str, offer_teams: bool) {
     close(app);
     let query: String = url::form_urlencoded::Serializer::new(String::new())
         .append_pair("title", title)
+        .append_pair("teams", if offer_teams { "1" } else { "0" })
         .finish();
+    let height = if offer_teams { HEIGHT_TEAMS } else { HEIGHT };
     let (x, y) = app
         .primary_monitor()
         .ok()
@@ -26,7 +31,7 @@ pub fn show<R: Runtime>(app: &AppHandle<R>, title: &str) {
 
     let built = WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App(format!("banner.html?{query}").into()))
         .title("Dixit")
-        .inner_size(WIDTH, HEIGHT)
+        .inner_size(WIDTH, height)
         .position(x, y)
         .decorations(false)
         .resizable(false)
