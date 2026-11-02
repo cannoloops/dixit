@@ -4,7 +4,7 @@ Guida per lavorare su questo repository con Claude Code.
 
 ## Cos'è Dixit
 
-**Dixit** (repo `trascrivi-app`) è un'app desktop macOS che registra, trascrive e riassume le riunioni interamente in locale. È un fork di [Meetily](https://github.com/Zackriya-Solutions/meeting-minutes) (MIT, attribuzione in `LICENSE.md`): l'app supportata è Tauri 2 + Next.js 14, con il core in Rust. La usano Vito e i colleghi, solo su Mac (Apple Silicon).
+**Dixit** (repo `trascrivi-app`) è un'app desktop macOS che registra, trascrive e riassume le riunioni interamente in locale. È un fork di [Meetily](https://github.com/Zackriya-Solutions/meeting-minutes) (MIT, attribuzione in `LICENSE.md`): l'app supportata è Tauri 2 + Next.js 15, con il core in Rust. La usano Vito e i colleghi, solo su Mac (Apple Silicon).
 
 - **Nessuna dipendenza esterna:** trascrizione e riassunto girano su modelli inclusi nel pacchetto `.app`. Ollama e i provider cloud restano solo come opzioni da esperto.
 - **Interfaccia bilingue:** italiano e inglese (`frontend/src/i18n/`).
