@@ -6,7 +6,7 @@
     "identifier": "com.vitomanuguerra.trascrivi",
     "build": {
         "frontendDist": "../out",
-        "devUrl": "http://localhost:3118",
+        "devUrl": "http://127.0.0.1:3118",
         "beforeDevCommand": "pnpm dev",
         "beforeBuildCommand": "pnpm build"
     },
