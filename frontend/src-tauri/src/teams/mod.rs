@@ -58,13 +58,24 @@ pub fn wait_session_finished(folder: &Path) {
     }
 }
 
-/// Which auto session started the native Teams transcription (only that one may stop it).
+/// Which auto session started the native Teams transcription (only that one may stop it), and
+/// which one the user asked to start it for: it is visible to every participant, so never by
+/// default (banner button "Trascrizione Teams").
 #[derive(Default)]
 pub struct NativeState {
     owner: Option<u64>,
+    requested: Option<u64>,
 }
 
 impl NativeState {
+    pub fn request(&mut self, session: u64) {
+        self.requested = Some(session);
+    }
+
+    pub fn is_requested(&self, session: u64) -> bool {
+        self.requested == Some(session)
+    }
+
     pub fn started_by(&mut self, session: u64) {
         self.owner = Some(session);
     }
@@ -82,7 +93,21 @@ impl NativeState {
         if self.owner == Some(session) {
             self.owner = None;
         }
+        if self.requested == Some(session) {
+            self.requested = None;
+        }
     }
+}
+
+/// Banner button: start Teams' own transcription (visible to everyone) for the running session.
+#[tauri::command]
+pub async fn teams_request_native_transcription() -> Result<(), String> {
+    let session = crate::autopilot::current_session()
+        .filter(|s| s.platform == crate::autopilot::tracker::Platform::Teams)
+        .ok_or("Nessuna call Teams in registrazione")?;
+    log::info!("Teams native transcription requested by the user");
+    NATIVE.lock().unwrap().request(session.id);
+    Ok(())
 }
 
 /// Called when the autopilot starts a Teams session: captions on, native transcription (if
@@ -140,7 +165,8 @@ fn run_session<R: Runtime>(app: AppHandle<R>, session: u64) {
         let captions_due = !captions_on
             && caption_tries < MAX_CAPTION_TRIES
             && last_caption_try.map_or(true, |t| now.saturating_duration_since(t) >= CAPTION_RETRY_EVERY);
-        if (captions_due || !native_done) && menu_check.due(now) {
+        let native_due = !native_done && NATIVE.lock().unwrap().is_requested(session);
+        if (captions_due || native_due) && menu_check.due(now) {
             menu_check.mark(now);
             if ax::has_menu(pid) {
                 if captions_due {
@@ -151,7 +177,7 @@ fn run_session<R: Runtime>(app: AppHandle<R>, session: u64) {
                         Err(e) => log::warn!("Teams live captions not enabled (try {caption_tries}): {e:#}"),
                     }
                 }
-                if !native_done {
+                if native_due {
                     native_done = true;
                     start_native_transcription(&app, session, pid, &folder, rec_start, &alive);
                 }
@@ -186,10 +212,7 @@ fn start_native_transcription<R: Runtime>(
     alive: &dyn Fn() -> bool,
 ) {
     // Re-check right before a visible action: the user may have cancelled meanwhile.
-    if !(crate::autopilot::settings::load(app).native_teams_transcription
-        && alive()
-        && !crate::autopilot::is_cancel_pending())
-    {
+    if !(alive() && !crate::autopilot::is_cancel_pending()) {
         return;
     }
     NATIVE.lock().unwrap().started_by(session);
@@ -289,5 +312,15 @@ mod tests {
         n.started_by(2);
         n.session_ended(1); // late cleanup of an old session must not clear the new owner
         assert!(n.take_if_owned(2));
+    }
+
+    #[test]
+    fn native_transcription_only_for_the_session_that_asked() {
+        let mut n = NativeState::default();
+        assert!(!n.is_requested(1)); // never by default: it is visible to everyone
+        n.request(1);
+        assert!(n.is_requested(1) && !n.is_requested(2));
+        n.session_ended(1);
+        assert!(!n.is_requested(1)); // the next call asks again
     }
 }

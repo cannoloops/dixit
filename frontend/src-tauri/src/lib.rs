@@ -876,6 +876,7 @@ pub fn run() {
             autopilot::autopilot_cancel,
             autopilot::banner::autopilot_banner_close,
             teams::teams_dump_ax_tree,
+            teams::teams_request_native_transcription,
             notes::recording_note_add,
             notes::recording_notes_list,
             notes::meeting_notes_list,

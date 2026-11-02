@@ -10,6 +10,7 @@ const STORE_KEY: &str = "autopilot";
 #[serde(default)]
 pub struct AutopilotSettings {
     pub auto_start: bool,
+    /// Offer Teams' own transcription in the call-start banner (it starts only on a click).
     pub native_teams_transcription: bool,
     /// "Cognome Nome" as shown in Teams; label for the microphone speaker.
     pub user_display_name: String,

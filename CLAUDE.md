@@ -16,7 +16,7 @@ Guida per lavorare su questo repository con Claude Code.
 | Funzione | Dove vive |
 |---|---|
 | Avvio e stop automatici quando inizia o finisce una call Teams, Zoom, Meet | `src-tauri/src/autopilot/` |
-| Nomi dei parlanti e sottotitoli da Teams; trascrizione nativa Teams | `src-tauri/src/teams/`, `src-tauri/src/speakers/` |
+| Nomi dei parlanti e sottotitoli da Teams; trascrizione nativa Teams solo se la chiedi dal pulsante del banner (è visibile a tutti) | `src-tauri/src/teams/`, `src-tauri/src/speakers/`, `public/banner.html` |
 | Trascrizione live con Parakeet, definitiva con Whisper large-v3 a fine registrazione | `src-tauri/src/parakeet_engine/`, `src-tauri/src/whisper_engine/`, `audio/transcription/` |
 | Attribuzione dei parlanti (wespeaker) | `src-tauri/src/speakers/` |
 | Memoria delle voci: una voce già nominata viene riconosciuta nelle riunioni successive (dopo i nomi da Teams, prima di «Parlante X») | `src-tauri/src/speakers/voices.rs`; taratura con `cargo test --lib bench_voice_memory -- --ignored` |
