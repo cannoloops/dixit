@@ -106,7 +106,11 @@ impl SidecarManager {
 
     /// Resolve the path to llama-helper binary
     fn resolve_helper_binary() -> Result<PathBuf> {
+        // The helper runs as Dixit's child and inherits its microphone, screen and
+        // Accessibility grants, so in release the launch environment must not pick it:
+        // the env overrides below exist only in debug and test builds.
         // 1. Check environment variable (dev mode or manual override)
+        #[cfg(any(debug_assertions, test))]
         if let Ok(env_path) = std::env::var("MEETILY_LLAMA_HELPER") {
             if !env_path.is_empty() {
                 let path = PathBuf::from(env_path);
@@ -119,7 +123,9 @@ impl SidecarManager {
 
         // In production, Tauri bundles the binary with target triple suffix
         // 2. Check relative to current executable (most reliable for AppImage/bundled apps)
-        if let Ok(exe_path) = std::env::current_exe() {
+        // Tauri's current_exe is canonicalized and refuses symlinked launch paths on macOS,
+        // so the launcher cannot choose the folder searched here.
+        if let Ok(exe_path) = tauri::utils::platform::current_exe() {
             if let Some(exe_dir) = exe_path.parent() {
                 log::info!("Searching for llama-helper relative to executable: {}", exe_dir.display());
                 
@@ -176,6 +182,7 @@ impl SidecarManager {
         }
 
         // 3. Check bundled resources (RESOURCE_DIR) - Fallback
+        #[cfg(any(debug_assertions, test))]
         if let Ok(resource_dir) = std::env::var("RESOURCE_DIR") {
             log::info!("Searching for llama-helper in RESOURCE_DIR: {}", resource_dir);
             let resource_path = PathBuf::from(&resource_dir);
@@ -232,6 +239,7 @@ impl SidecarManager {
         }
 
         // 3. Fallback for dev: try relative paths from workspace (no target triple in dev builds)
+        #[cfg(any(debug_assertions, test))]
         if let Ok(manifest_dir) = std::env::var("CARGO_MANIFEST_DIR") {
             let project_root = PathBuf::from(&manifest_dir)
                 .parent()
@@ -255,7 +263,7 @@ impl SidecarManager {
         }
 
         Err(anyhow!(
-            "llama-helper binary not found. Build with 'cd llama-helper && cargo build --release' or set MEETILY_LLAMA_HELPER env var."
+            "llama-helper binary not found. Build with 'cd llama-helper && cargo build --release' (debug builds also honour MEETILY_LLAMA_HELPER)."
         ))
     }
 
@@ -284,7 +292,7 @@ impl SidecarManager {
         log::info!("Model path: {}", model_path.display());
 
         #[cfg(unix)]
-        let mut command = tokio::process::Command::new("nice");
+        let mut command = tokio::process::Command::new("/usr/bin/nice");
         
         #[cfg(not(unix))]
         let mut command = tokio::process::Command::new(&self.helper_binary_path);
