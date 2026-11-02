@@ -1,126 +1,31 @@
-# Dixit Privacy Policy
+# Privacy di Dixit
 
-*Last updated: [Current Date]*
+*Ultimo aggiornamento: 2 novembre 2026*
 
-## Our Privacy-First Commitment
+Dixit registra, trascrive e riassume le riunioni **sul tuo Mac**. Con la configurazione di default nessun audio, trascrizione, riassunto o nota esce dal computer.
 
-Dixit is built on the principle that your meeting data should remain private and under your control. This privacy policy explains how we handle data in our open-source meeting assistant.
+## Dove stanno i dati
 
-## Data Processing Philosophy
+- **Riunioni:** `~/Documents/Dixit/<data ora titolo>/` (audio, trascrizione, note, metadati).
+- **Dati dell'app:** `~/Library/Application Support/com.vitomanuguerra.trascrivi/` (database, impostazioni, modelli, `voices.json` con le impronte vocali delle persone già nominate).
 
-### Local-First Processing
-- **Meeting transcription**: Processed entirely on your device using local Whisper models
-- **Audio recordings**: Never transmitted to external servers
-- **Meeting content**: Remains on your infrastructure
-- **AI summaries**: Generated locally or through your chosen LLM provider
+Le impronte vocali servono a riconoscere chi parla nelle riunioni successive e restano sul Mac. Si cancellano eliminando `voices.json`; le riunioni si cancellano dall'app o eliminando la loro cartella.
 
-### Your Data Ownership
-- You own all meeting data, transcripts, and recordings
-- Data is stored locally on your device
-- No vendor lock-in - export your data anytime
-- Complete control over data retention and deletion
+## Cosa esce dal Mac
 
-## Usage Analytics
+Solo quello che scegli tu, e solo in questi casi:
 
-### What We Collect
-Usage analytics is optional and off by default. When you choose to enable it, Dixit collects minimal, anonymized usage data:
+- **Aggiornamenti:** l'app controlla se esiste una nuova versione scaricando un file da GitHub. GitHub vede l'indirizzo IP, non i tuoi dati.
+- **Modelli (modalità esperto):** se scarichi un modello diverso da quelli inclusi, il file arriva da Hugging Face o dal sito del modello.
+- **Provider LLM esterni (modalità esperto):** se scegli OpenAI, Anthropic, Groq, OpenRouter o un endpoint compatibile per i riassunti, la trascrizione della riunione viene inviata a quel servizio, secondo la sua privacy policy. Ollama in locale non invia nulla fuori dal Mac.
+- **Server MCP:** se lo attivi, gli agenti sul tuo Mac (per esempio Claude Code) possono leggere riunioni e trascrizioni tramite `127.0.0.1`. Quello che l'agente fa poi con il testo dipende dall'agente.
 
-**Application Usage:**
-- Feature usage patterns (which tools you use most)
-- Session duration and frequency
-- Performance metrics (transcription success rates, error frequencies)
-- UI interaction patterns (button clicks, navigation flows)
+Dixit non raccoglie statistiche d'uso: il codice di analytics ereditato da Meetily è disattivato e non invia nulla.
 
-**Technical Metrics:**
-- Application version and platform information
-- Error logs and crash reports (anonymized)
-- Performance benchmarks (processing times, resource usage)
+## Registrare gli altri
 
-### What We DON'T Collect
-We never collect:
-- ❌ Meeting content, transcripts, or recordings
-- ❌ Personal information or identifiable data
-- ❌ File names, meeting titles, or metadata
-- ❌ Audio data or voice patterns
-- ❌ Participant names or contact information
-- ❌ LLM conversations or AI-generated content
+Registrare una riunione può richiedere il consenso dei partecipanti, a seconda del paese e del contesto (per esempio il GDPR in Europa). Avvisa chi partecipa prima di registrare: la responsabilità è di chi usa l'app.
 
-### Why We Collect This Data
-When enabled, analytics helps us with:
-- **Product Quality**: Identifying and fixing bugs that impact user experience
-- **Performance Optimization**: Understanding resource usage and system bottlenecks
-- **Security**: Detecting potential security issues and vulnerabilities
-- **Feature Development**: Making data-driven decisions about new features
-- **Open Source Sustainability**: Ensuring the project meets user needs effectively
+## Contatti
 
-### Analytics Implementation
-- **Provider**: PostHog (privacy-focused analytics platform)
-- **Default**: Off by default; analytics starts only after you enable it in settings
-- **Anonymization**: All data linked to generated user IDs only - no personal identification
-- **Data retention**: 12 months maximum, then automatically deleted
-- **Encryption**: All data encrypted in transit using industry-standard protocols
-- **Location**: Data processed in accordance with PostHog's privacy policy
-- **Access Control**: Strictly limited to core development team members
-
-## Third-Party Services
-
-### LLM Providers (Optional)
-If you choose to use external LLM providers:
-- **Anthropic Claude**: Subject to Anthropic's privacy policy
-- **Groq**: Subject to Groq's privacy policy
-- **Local Ollama**: Processed entirely on your device
-
-### Analytics Service (Optional)
-- **PostHog**: Used for usage analytics when enabled
-- **Data**: Only anonymized usage patterns, no meeting content
-- **Control**: Completely optional, off by default, and user-controlled
-
-## Your Privacy Rights
-
-### Data Control
-- **Access**: View all data stored locally on your device
-- **Export**: Export your data in standard formats
-- **Delete**: Remove all data from your device
-
-
-### Analytics Transparency
-- **Open source**: Full analytics implementation available for review in our source code
-- **Opt-in**: New and existing installs have analytics disabled until you turn it on
-- **Questions**: Contact us for any analytics-related concerns
-
-## Data Security
-
-### Local Security
-- Data encrypted at rest using your device's security features
-- No transmission of sensitive meeting data
-- Standard file system permissions protect your data
-
-### Open Source Transparency
-- Full source code available for security review
-- Community-audited privacy implementations
-- No hidden data collection or tracking
-
-## Changes to This Policy
-
-We will notify users of any material changes to this privacy policy through:
-- Updates to this document in our GitHub repository
-- Release notes for application updates
-- In-app notifications for significant privacy changes
-
-## Contact Us
-
-For privacy-related questions or concerns:
-- **GitHub Issues**: [Create an issue](https://github.com/cannoloops/trascrivi/issues)
-- **Community**: [Discord](https://discord.gg/crRymMQBFH)
-
-## Open Source Commitment
-
-As an open-source project under MIT license, you can:
-- Review our complete privacy implementation
-- Modify data handling to meet your requirements
-- Deploy entirely on your own infrastructure
-- Contribute to privacy improvements
-
----
-
-*This privacy policy applies to Dixit. For enterprise deployments, additional privacy controls may be available.*
+Domande sulla privacy: apri una issue su GitHub. Per un problema di sicurezza segui [SECURITY.md](SECURITY.md).
