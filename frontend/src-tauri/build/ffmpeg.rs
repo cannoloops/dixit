@@ -3,14 +3,71 @@
 // ============================================================================
 // Download and bundle FFmpeg binaries at build-time to eliminate runtime download delays
 
+use sha2::{Digest, Sha256};
+
+/// Pinned FFmpeg release asset: the downloaded archive and the binary inside it.
+/// Archive size and SHA-256 match the digests GitHub publishes for release 0.0.1
+/// of Zackriya-Solutions/ffmpeg-binaries; binary size and SHA-256 are those of the
+/// ffmpeg executable inside each verified archive. A new URL needs all four values.
+struct FfmpegRelease {
+    url: &'static str,
+    archive_size: u64,
+    archive_sha256: &'static str,
+    binary_size: u64,
+    binary_sha256: &'static str,
+}
+
+const FFMPEG_WINDOWS: FfmpegRelease = FfmpegRelease {
+    url: "https://github.com/Zackriya-Solutions/ffmpeg-binaries/releases/download/0.0.1/ffmpeg-8.0.1-essentials_build.zip",
+    archive_size: 106_259_850,
+    archive_sha256: "e2aaeaa0fdbc397d4794828086424d4aaa2102cef1fb6874f6ffd29c0b88b673",
+    binary_size: 99_264_000,
+    binary_sha256: "5af82a0d4fe2b9eae211b967332ea97edfc51c6b328ca35b827e73eac560dc0d",
+};
+
+const FFMPEG_MACOS_ARM64: FfmpegRelease = FfmpegRelease {
+    url: "https://github.com/Zackriya-Solutions/ffmpeg-binaries/releases/download/0.0.1/ffmpeg80arm.zip",
+    archive_size: 22_400_365,
+    archive_sha256: "0d4efcaf6a098430a708e0af694a84792938921fa126162787ae98c6151d7a95",
+    binary_size: 51_551_944,
+    binary_sha256: "77d2c853f431318d55ec02676d9b2f185ebfdddb9f7677a251fbe453affe025a",
+};
+
+const FFMPEG_MACOS_X64: FfmpegRelease = FfmpegRelease {
+    url: "https://github.com/Zackriya-Solutions/ffmpeg-binaries/releases/download/0.0.1/ffmpeg-8.0.1.zip",
+    archive_size: 25_809_598,
+    archive_sha256: "470e482f6e290eac92984ac12b2d67bad425b1e5269fd75fb6a3536c16e824e4",
+    binary_size: 80_083_328,
+    binary_sha256: "430d60fbf419dab28daee9b679e7929a31ee9bae53f6e42e8ae26b725584290f",
+};
+
+const FFMPEG_LINUX_ARM64: FfmpegRelease = FfmpegRelease {
+    url: "https://github.com/Zackriya-Solutions/ffmpeg-binaries/releases/download/0.0.1/ffmpeg-release-arm64-static.tar.xz",
+    archive_size: 19_337_412,
+    archive_sha256: "f4149bb2b0784e30e99bdda85471c9b5930d3402014e934a5098b41d0f7201b1",
+    binary_size: 51_134_160,
+    binary_sha256: "6bb182d0d75d23028db82e9e4f723ca69b853d055698486e6984ddb2c06fb8ce",
+};
+
+const FFMPEG_LINUX_AMD64: FfmpegRelease = FfmpegRelease {
+    url: "https://github.com/Zackriya-Solutions/ffmpeg-binaries/releases/download/0.0.1/ffmpeg-release-amd64-static.tar.xz",
+    archive_size: 41_888_096,
+    archive_sha256: "abda8d77ce8309141f83ab8edf0596834087c52467f6badf376a6a2a4c87cf67",
+    binary_size: 79_826_272,
+    binary_sha256: "e7e7fb30477f717e6f55f9180a70386c62677ef8a4d4d1a5d948f4098aa3eb99",
+};
+
 /// Download and bundle FFmpeg binary for current target platform
-/// Checks cache first, downloads only if missing or corrupted
+/// Checks cache first, downloads only if missing, corrupted or not the pinned build
 pub fn ensure_ffmpeg_binary() {
     let target = std::env::var("TARGET")
         .or_else(|_| std::env::var("HOST"))
         .expect("Neither TARGET nor HOST environment variable set");
 
     println!("cargo:warning=🎬 Checking FFmpeg binary for target: {}", target);
+
+    let release = get_ffmpeg_release_for_target(&target)
+        .unwrap_or_else(|e| panic!("⚠️  Failed to download FFmpeg: {}", e));
 
     let binary_name = if target.contains("windows") {
         format!("ffmpeg-{}.exe", target)
@@ -23,10 +80,17 @@ pub fn ensure_ffmpeg_binary() {
     let binaries_dir = std::path::PathBuf::from(&manifest_dir).join("binaries");
     let binary_path = binaries_dir.join(&binary_name);
 
-    // Cache check: Skip download if binary exists and works
+    // Cache check: Skip download if binary exists, matches the pin and works
     if binary_path.exists() {
         println!("cargo:warning=🔍 Found cached FFmpeg binary: {}", binary_name);
-        if verify_ffmpeg_binary(&binary_path) {
+        let pinned = match verify_file(&binary_path, &binary_name, release.binary_size, release.binary_sha256) {
+            Ok(()) => true,
+            Err(e) => {
+                println!("cargo:warning=⚠️  Cached FFmpeg binary is not the pinned build: {}", e);
+                false
+            }
+        };
+        if pinned && verify_ffmpeg_binary(&binary_path) {
             println!("cargo:warning=✅ FFmpeg binary already cached and verified: {}", binary_name);
             return;
         } else {
@@ -44,9 +108,15 @@ pub fn ensure_ffmpeg_binary() {
     }
 
     // Download and extract
-    match download_and_extract_ffmpeg(&target, &binary_path) {
+    match download_and_extract_ffmpeg(&target, release, &binary_path) {
         Ok(()) => {
             println!("cargo:warning=✅ FFmpeg binary downloaded successfully: {}", binary_name);
+
+            // Verify downloaded binary matches the pin before running it
+            if let Err(e) = verify_file(&binary_path, &binary_name, release.binary_size, release.binary_sha256) {
+                let _ = std::fs::remove_file(&binary_path);
+                panic!("⚠️  Downloaded FFmpeg binary verification failed: {}", e);
+            }
 
             // Verify downloaded binary works
             if !verify_ffmpeg_binary(&binary_path) {
@@ -62,14 +132,12 @@ pub fn ensure_ffmpeg_binary() {
 /// Download FFmpeg from platform-specific URL and extract to target location
 fn download_and_extract_ffmpeg(
     target: &str,
+    release: &FfmpegRelease,
     output_path: &std::path::PathBuf,
 ) -> Result<(), String> {
     use std::io::Write;
 
-    println!("cargo:warning=🌐 Fetching FFmpeg download URL for {}", target);
-
-    // Get platform-specific download URL
-    let url = get_ffmpeg_url_for_target(target)?;
+    let url = release.url;
 
     println!("cargo:warning=⬇️  Downloading from: {}", url);
 
@@ -80,7 +148,7 @@ fn download_and_extract_ffmpeg(
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
 
     let response = client
-        .get(&url)
+        .get(url)
         .send()
         .map_err(|e| format!("Failed to download: {}", e))?;
 
@@ -108,10 +176,17 @@ fn download_and_extract_ffmpeg(
     }
 
     println!("cargo:warning=📦 Downloaded to: {:?}", archive_path);
+
+    // Verify archive matches the pin before extracting anything from it
+    if let Err(e) = verify_file(&archive_path, archive_filename, release.archive_size, release.archive_sha256) {
+        let _ = std::fs::remove_file(&archive_path);
+        return Err(e);
+    }
+
     println!("cargo:warning=📂 Extracting FFmpeg binary...");
 
     // Extract binary (platform-specific)
-    extract_ffmpeg_from_archive(&archive_path, target, output_path)?;
+    extract_ffmpeg_from_archive(&archive_path, target, release, output_path)?;
 
     // Cleanup archive
     let _ = std::fs::remove_file(&archive_path);
@@ -121,39 +196,40 @@ fn download_and_extract_ffmpeg(
     Ok(())
 }
 
-/// Get FFmpeg download URL for specific target triple
-fn get_ffmpeg_url_for_target(target: &str) -> Result<String, String> {
-    // Platform-specific URLs
-    let url = if target.contains("windows") {
+/// Get pinned FFmpeg release asset for specific target triple
+fn get_ffmpeg_release_for_target(target: &str) -> Result<&'static FfmpegRelease, String> {
+    // Platform-specific releases
+    let release = if target.contains("windows") {
         // Windows
-        "https://github.com/Zackriya-Solutions/ffmpeg-binaries/releases/download/0.0.1/ffmpeg-8.0.1-essentials_build.zip"
+        &FFMPEG_WINDOWS
     } else if target.contains("apple") {
         if target.contains("aarch64") {
             // Apple Silicon (M1/M2/M3)
-            "https://github.com/Zackriya-Solutions/ffmpeg-binaries/releases/download/0.0.1/ffmpeg80arm.zip"
+            &FFMPEG_MACOS_ARM64
         } else {
             // Intel Mac
-            "https://github.com/Zackriya-Solutions/ffmpeg-binaries/releases/download/0.0.1/ffmpeg-8.0.1.zip"
+            &FFMPEG_MACOS_X64
         }
     } else if target.contains("linux") {
         if target.contains("aarch64") || target.contains("arm") {
             // Linux ARM64
-            "https://github.com/Zackriya-Solutions/ffmpeg-binaries/releases/download/0.0.1/ffmpeg-release-arm64-static.tar.xz"
+            &FFMPEG_LINUX_ARM64
         } else {
             // Linux x86_64
-            "https://github.com/Zackriya-Solutions/ffmpeg-binaries/releases/download/0.0.1/ffmpeg-release-amd64-static.tar.xz"
+            &FFMPEG_LINUX_AMD64
         }
     } else {
         return Err(format!("Unsupported target platform: {}", target));
     };
 
-    Ok(url.to_string())
+    Ok(release)
 }
 
 /// Extract FFmpeg binary from downloaded archive (handles ZIP and TAR.XZ)
 fn extract_ffmpeg_from_archive(
     archive_path: &std::path::Path,
     target: &str,
+    release: &FfmpegRelease,
     output_path: &std::path::PathBuf,
 ) -> Result<(), String> {
     let extract_dir = std::env::temp_dir().join(format!("ffmpeg-extract-{}", target));
@@ -178,6 +254,12 @@ fn extract_ffmpeg_from_archive(
     let ffmpeg_binary = find_ffmpeg_in_extracted_dir(&extract_dir, target)?;
 
     println!("cargo:warning=📋 Found FFmpeg at: {:?}", ffmpeg_binary);
+
+    // Verify extracted binary matches the pin before installing it
+    if let Err(e) = verify_file(&ffmpeg_binary, "extracted FFmpeg binary", release.binary_size, release.binary_sha256) {
+        let _ = std::fs::remove_dir_all(&extract_dir);
+        return Err(e);
+    }
 
     // Copy to target location
     std::fs::copy(&ffmpeg_binary, output_path)
@@ -348,4 +430,46 @@ fn verify_ffmpeg_binary(path: &std::path::PathBuf) -> bool {
         }
         Err(_) => false,
     }
+}
+
+/// Verify a file against its pinned size and SHA-256
+fn verify_file(
+    path: &std::path::Path,
+    name: &str,
+    expected_size: u64,
+    expected_sha256: &str,
+) -> Result<(), String> {
+    use std::io::Read;
+
+    let metadata =
+        std::fs::metadata(path).map_err(|error| format!("failed to inspect {name}: {error}"))?;
+    if metadata.len() != expected_size {
+        return Err(format!(
+            "{name} has size {}, expected {expected_size}",
+            metadata.len()
+        ));
+    }
+
+    let mut file =
+        std::fs::File::open(path).map_err(|error| format!("failed to open {name}: {error}"))?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; 64 * 1024];
+    loop {
+        let read = file
+            .read(&mut buffer)
+            .map_err(|error| format!("failed to hash {name}: {error}"))?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
+
+    let actual_sha256 = format!("{:x}", hasher.finalize());
+    if actual_sha256 != expected_sha256 {
+        return Err(format!(
+            "{name} has SHA-256 {actual_sha256}, expected {expected_sha256}"
+        ));
+    }
+
+    Ok(())
 }
