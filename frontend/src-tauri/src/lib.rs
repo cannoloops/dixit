@@ -534,6 +534,7 @@ pub fn run() {
             // Trascrivi: automatic start/stop on Teams/Zoom/Meet calls, post-call speaker attribution
             autopilot::spawn(_app.handle().clone());
             speakers::listen_for_stops(_app.handle());
+            speakers::resume_interrupted(_app.handle());
             teams::downloads::spawn(_app.handle().clone());
             let mcp_enabled = autopilot::settings::load(_app.handle()).mcp_enabled;
             mcp::set_pool_source(_app.handle().clone());

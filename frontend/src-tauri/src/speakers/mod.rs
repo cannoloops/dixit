@@ -149,6 +149,78 @@ pub fn listen_for_stops<R: Runtime>(app: &AppHandle<R>) {
     });
 }
 
+/// Meetings stopped cleanly whose post-call work never finished (Dixit closed during large-v3,
+/// attribution or the summary): attribution deletes the speaker tracks, so they are still there.
+/// A recording never stopped cleanly (status "recording") is left alone: its audio may be cut.
+fn interrupted_meetings(root: &Path) -> Vec<PathBuf> {
+    let Ok(entries) = std::fs::read_dir(root) else { return Vec::new() };
+    let mut folders: Vec<PathBuf> = entries
+        .flatten()
+        .map(|e| e.path())
+        .filter(|f| f.join(tracks::SYS_TRACK).exists() && f.join("transcripts.json").exists())
+        .filter(|f| {
+            std::fs::read_to_string(f.join("metadata.json"))
+                .ok()
+                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+                .is_some_and(|m| m["status"] == "completed")
+        })
+        .collect();
+    folders.sort();
+    folders
+}
+
+/// At startup, in the background and one meeting at a time, finishes interrupted post-call work:
+/// the final pass if it never ran, then speakers and the automatic summary (which replaces one
+/// written on the live transcript before the interruption).
+pub fn resume_interrupted<R: Runtime>(app: &AppHandle<R>) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        // The database opens after setup (later still on a first launch): wait, or retry next start.
+        let mut ready = false;
+        for _ in 0..60 {
+            if app.try_state::<crate::state::AppState>().is_some() {
+                ready = true;
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        }
+        if !ready {
+            return;
+        }
+        let root = crate::audio::recording_preferences::load_recording_preferences(&app)
+            .await
+            .map(|p| p.save_folder)
+            .unwrap_or_else(|_| crate::audio::recording_preferences::get_default_recordings_folder());
+        for folder in interrupted_meetings(&root) {
+            log::info!("Resuming the post-call work of {}", folder.display());
+            let _pending = crate::summary::auto::Pending::start(&folder);
+            let resumed_at = chrono::Utc::now();
+            if needs_final_pass(&app, &folder).await {
+                crate::audio::retranscription::run_final_pass(&app, &folder).await;
+            }
+            if let Err(e) = process_meeting(app.clone(), folder.clone(), true).await {
+                log::error!("Speaker attribution failed: {e:#}");
+            }
+            crate::summary::auto::after_final_transcript(&app, &folder, resumed_at).await;
+        }
+    });
+}
+
+/// The final pass runs when Whisper is the configured model (live was on Parakeet) and it has not
+/// rewritten this transcript yet (it stamps `retranscribed_at`).
+async fn needs_final_pass<R: Runtime>(app: &AppHandle<R>, folder: &Path) -> bool {
+    let done = std::fs::read_to_string(folder.join("metadata.json"))
+        .ok()
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+        .is_some_and(|m| !m["retranscribed_at"].is_null());
+    !done
+        && crate::api::api::api_get_transcript_config(app.clone(), app.state(), None)
+            .await
+            .ok()
+            .flatten()
+            .is_some_and(|c| c.provider == "localWhisper")
+}
+
 /// Renames a speaker label of a meeting (DB right away; files, .md and voice memory via a rerun in
 /// the background, which for an older meeting first computes its voice prints from audio.mp4).
 #[tauri::command]
@@ -207,6 +279,26 @@ pub async fn speakers_ensure_model<R: Runtime>(app: AppHandle<R>) -> Result<Stri
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_cleanly_stopped_meetings_with_tracks_are_resumed() {
+        let root = tempfile::tempdir().unwrap();
+        let meeting = |name: &str, status: &str, tracks: bool| {
+            let f = root.path().join(name);
+            std::fs::create_dir(&f).unwrap();
+            std::fs::write(f.join("metadata.json"), serde_json::json!({ "status": status }).to_string()).unwrap();
+            std::fs::write(f.join("transcripts.json"), "{}").unwrap();
+            if tracks {
+                std::fs::write(f.join(tracks::SYS_TRACK), "").unwrap();
+            }
+        };
+        meeting("2026-11-02 09.34 Nuove attività", "completed", true); // closed during large-v3
+        meeting("2026-10-30 12.02 Teams", "recording", true); // never stopped cleanly
+        meeting("2026-10-30 15.56 Benè Elena", "completed", false); // done
+        let found = interrupted_meetings(root.path());
+        assert_eq!(found, vec![root.path().join("2026-11-02 09.34 Nuove attività")]);
+        assert!(interrupted_meetings(&root.path().join("missing")).is_empty());
+    }
 
     #[test]
     fn sanitize_title_for_file_cases() {

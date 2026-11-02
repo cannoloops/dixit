@@ -143,6 +143,11 @@ pub async fn final_pass<R: Runtime>(app: &AppHandle<R>, folder: &Path) {
     if !super::transcription::engine::FINAL_PASS.swap(false, Ordering::SeqCst) {
         return;
     }
+    run_final_pass(app, folder).await;
+}
+
+/// The final pass itself, also for a meeting whose final pass was cut short (Dixit closed).
+pub async fn run_final_pass<R: Runtime>(app: &AppHandle<R>, folder: &Path) {
     let pool = app.state::<AppState>().db_manager.pool().clone();
     let folder_str = folder.to_string_lossy().to_string();
     // The frontend saves the meeting right after the stop: wait for its row.
