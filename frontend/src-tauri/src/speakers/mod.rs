@@ -126,8 +126,9 @@ pub async fn apply_saved_speakers(pool: &sqlx::SqlitePool, folder: &Path) {
 
 /// The frontend saves the meeting after the stop, minutes late if macOS suspended its covered or
 /// hidden window (timers stop until an event or the user wakes it): no deadline.
-// ponytail: a meeting never saved keeps this loop until Dixit quits; its speaker tracks are still
-// there, so the next start resumes it.
+// ponytail: a meeting never saved keeps this loop until Dixit quits; the next start does not
+// resume it either (no row: not a meeting of this Dixit), so its folder keeps the audio and the
+// live transcript, ready for an import.
 async fn wait_for_meeting(pool: &sqlx::SqlitePool, folder: &Path) -> String {
     loop {
         if let Ok(Some(id)) = TranscriptsRepository::meeting_for_folder(pool, &folder.to_string_lossy()).await {
@@ -189,6 +190,19 @@ fn interrupted_meetings(root: &Path) -> Vec<PathBuf> {
     folders
 }
 
+/// Folders whose meeting is in this Dixit's database: a sandbox or another install may record into
+/// the same folder, and its meetings (voices, summaries) are not ours to process.
+async fn own_meetings(pool: &sqlx::SqlitePool, folders: Vec<PathBuf>) -> Vec<PathBuf> {
+    let mut own = Vec::new();
+    for folder in folders {
+        match TranscriptsRepository::meeting_for_folder(pool, &folder.to_string_lossy()).await {
+            Ok(Some(_)) => own.push(folder),
+            _ => log::info!("Not resuming {}: not a meeting of this Dixit", folder.display()),
+        }
+    }
+    own
+}
+
 /// At startup, in the background and one meeting at a time, finishes interrupted post-call work:
 /// the final pass if it never ran, then speakers and the automatic summary (which replaces one
 /// written on the live transcript before the interruption).
@@ -211,7 +225,7 @@ pub fn resume_interrupted<R: Runtime>(app: &AppHandle<R>) {
             .await
             .map(|p| p.save_folder)
             .unwrap_or_else(|_| crate::audio::recording_preferences::get_default_recordings_folder());
-        for folder in interrupted_meetings(&root) {
+        for folder in own_meetings(&pool(&app), interrupted_meetings(&root)).await {
             log::info!("Resuming the post-call work of {}", folder.display());
             let _pending = crate::summary::auto::Pending::start(&folder);
             let resumed_at = chrono::Utc::now();
@@ -318,6 +332,15 @@ mod tests {
         let found = interrupted_meetings(root.path());
         assert_eq!(found, vec![root.path().join("2026-11-02 09.34 Nuove attività")]);
         assert!(interrupted_meetings(&root.path().join("missing")).is_empty());
+    }
+
+    #[tokio::test]
+    async fn resumes_only_meetings_of_this_dixit() {
+        let pool = sqlx::sqlite::SqlitePoolOptions::new().max_connections(1).connect("sqlite::memory:").await.unwrap();
+        sqlx::query("CREATE TABLE meetings (id TEXT PRIMARY KEY, folder_path TEXT)").execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO meetings VALUES ('m1', '/rec/ours')").execute(&pool).await.unwrap();
+        let folders = vec![PathBuf::from("/rec/ours"), PathBuf::from("/rec/sandbox")];
+        assert_eq!(own_meetings(&pool, folders).await, vec![PathBuf::from("/rec/ours")]);
     }
 
     #[tokio::test]
