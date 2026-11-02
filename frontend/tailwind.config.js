@@ -9,7 +9,7 @@ module.exports = {
   theme: {
   	extend: {
   		fontFamily: {
-  			// Dixit design system: Open Sans for text, Montserrat for titles and speaker names.
+  			// Design system: Open Sans for text, Montserrat for titles and speaker names.
   			sans: ['var(--font-open-sans)', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
   			display: ['var(--font-montserrat)', 'var(--font-open-sans)', 'sans-serif']
   		},

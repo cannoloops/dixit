@@ -8,8 +8,7 @@ Guida per lavorare su questo repository con Claude Code.
 
 - **Nessuna dipendenza esterna:** trascrizione e riassunto girano su modelli inclusi nel pacchetto `.app`. Ollama e i provider cloud restano solo come opzioni da esperto.
 - **Interfaccia bilingue:** italiano e inglese (`frontend/src/i18n/`).
-- **Design system:** `DESIGN.md` (Dixit). Prodotto e scelte: `PRODUCT.md`.
-- **Archivio legacy:** `backend/` (Python/FastAPI, Docker, whisper-server) non è supportato. Non usarlo e non aggiungerci endpoint.
+- **Design system:** `DESIGN.md`. Prodotto e scelte: `PRODUCT.md`.
 
 ## Cosa fa
 
@@ -145,4 +144,4 @@ Usa i dati in `…/com.vitomanuguerra.trascrivi.dev/` (copia il DB reale con `sq
   - `main` è il branch principale: stabile, da qui partono le build da distribuire;
   - `develop` è il branch di sviluppo: ogni attività nasce da `develop` su un feature branch (`feat/*`, `fix/*`) e ci torna con un merge;
   - quando `develop` è pronto per una build, si mergia in `main`. Mai commit diretti su `main`.
-- **Documenti di verifica:** `docs/confronto-modelli-riassunto.md`, `docs/verifica-riassunti.md`.
+- **Documenti di verifica:** `docs/confronto-modelli-riassunto.md`.

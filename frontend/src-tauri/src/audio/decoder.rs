@@ -22,6 +22,20 @@ use super::ffmpeg::find_ffmpeg_path;
 /// Extensions requiring ffmpeg pre-conversion (Symphonia lacks these demuxers/codecs)
 const FFMPEG_ONLY_EXTENSIONS: &[&str] = &["mkv", "webm", "wma"];
 
+/// Decoding a small crafted file can produce tens of GB of samples (decompression bomb), so
+/// decoded output is bounded by the input's size: any file may decode up to the floor
+/// (1 h of 48 kHz stereo), and beyond it to MAX_SAMPLES_PER_INPUT_BYTE per byte on disk.
+// ponytail: real codecs stay under ~64 samples/byte (6 kbps Opus mono); 256 leaves 4x margin.
+// A legitimate file never hits the limit, a bomb is cut at floor + 256 × its size.
+const DECODE_FLOOR_SAMPLES: u64 = 3600 * 48_000 * 2;
+const MAX_SAMPLES_PER_INPUT_BYTE: u64 = 256;
+/// Rates outside this range are not real audio and would make the 16 kHz resampling blow up.
+const SAMPLE_RATE_RANGE: std::ops::RangeInclusive<u32> = 4_000..=384_000;
+
+fn max_decoded_samples(input_bytes: u64) -> u64 {
+    DECODE_FLOOR_SAMPLES.saturating_add(input_bytes.saturating_mul(MAX_SAMPLES_PER_INPUT_BYTE))
+}
+
 /// Progress callback for long-running operations
 /// Returns current progress (0-100) and a message
 pub type ProgressCallback = Box<dyn Fn(u32, &str) + Send>;
@@ -319,12 +333,15 @@ fn convert_to_wav_with_ffmpeg(
         .to_str()
         .ok_or_else(|| anyhow!("Invalid temp path (non-UTF8)"))?;
 
+    // Same budget as the decode, in bytes of s16 PCM, so a bomb cannot fill the disk.
+    let max_wav_bytes = max_decoded_samples(std::fs::metadata(input_path)?.len()).saturating_mul(2).to_string();
     let mut command = Command::new(&ffmpeg_path);
     command
         .args([
             "-i", input_str,
             "-vn",                  // Strip video tracks
             "-acodec", "pcm_s16le", // Output PCM WAV (Symphonia handles natively)
+            "-fs", &max_wav_bytes,
             "-y",                   // Overwrite without prompt
             output_str,
         ])
@@ -399,6 +416,8 @@ pub fn decode_audio_file_with_progress(
     progress_callback: Option<ProgressCallback>,
 ) -> Result<DecodedAudio> {
     info!("Decoding audio file: {}", path.display());
+    // Budget from the original file, not the ffmpeg WAV, which is uncompressed.
+    let max_samples = max_decoded_samples(std::fs::metadata(path)?.len());
 
     // FFmpeg pre-conversion for unsupported formats (MKV, WebM, WMA).
     // If the file is in a format Symphonia can't decode, use ffmpeg to convert
@@ -537,12 +556,20 @@ pub fn decode_audio_file_with_progress(
                         );
                         sample_rate = actual_rate;
                     }
+                    if !SAMPLE_RATE_RANGE.contains(&sample_rate) {
+                        return Err(anyhow!("Unsupported sample rate: {} Hz", sample_rate));
+                    }
                     sample_buf = Some(SampleBuffer::<f32>::new(duration, spec));
                 }
 
                 // Copy samples to buffer
                 if let Some(ref mut buf) = sample_buf {
                     buf.copy_interleaved_ref(decoded);
+                    if (all_samples.len() + buf.samples().len()) as u64 > max_samples {
+                        return Err(anyhow!(
+                            "Audio decodes to far more data than its file size allows: the file looks corrupted or crafted"
+                        ));
+                    }
                     all_samples.extend_from_slice(buf.samples());
                 }
 
@@ -593,6 +620,43 @@ pub fn decode_audio_file_with_progress(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn write_pcm_wav(path: &Path, rate: u32, frames: u32) {
+        let data = frames * 2;
+        let mut w = Vec::new();
+        w.extend_from_slice(b"RIFF");
+        w.extend_from_slice(&(36 + data).to_le_bytes());
+        w.extend_from_slice(b"WAVEfmt ");
+        w.extend_from_slice(&16u32.to_le_bytes());
+        w.extend_from_slice(&1u16.to_le_bytes()); // PCM
+        w.extend_from_slice(&1u16.to_le_bytes()); // mono
+        w.extend_from_slice(&rate.to_le_bytes());
+        w.extend_from_slice(&(rate * 2).to_le_bytes());
+        w.extend_from_slice(&2u16.to_le_bytes());
+        w.extend_from_slice(&16u16.to_le_bytes());
+        w.extend_from_slice(b"data");
+        w.extend_from_slice(&data.to_le_bytes());
+        w.resize(w.len() + data as usize, 0);
+        std::fs::write(path, w).unwrap();
+    }
+
+    #[test]
+    fn test_decode_budget_grows_with_file_size() {
+        assert_eq!(max_decoded_samples(0), DECODE_FLOOR_SAMPLES);
+        assert_eq!(max_decoded_samples(1_000), DECODE_FLOOR_SAMPLES + 256_000);
+        assert_eq!(max_decoded_samples(u64::MAX), u64::MAX);
+    }
+
+    #[test]
+    fn test_decode_refuses_implausible_sample_rate() {
+        let dir = tempfile::tempdir().unwrap();
+        let (low, ok) = (dir.path().join("low.wav"), dir.path().join("ok.wav"));
+        write_pcm_wav(&low, 1_000, 1_000);
+        write_pcm_wav(&ok, 16_000, 16_000);
+        let err = decode_audio_file(&low).unwrap_err().to_string();
+        assert!(err.contains("Unsupported sample rate"), "{err}");
+        assert_eq!(decode_audio_file(&ok).unwrap().samples.len(), 16_000);
+    }
 
     #[test]
     fn test_decode_he_aac_uses_decoded_rate_not_container_rate() {

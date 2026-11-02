@@ -124,7 +124,7 @@ mod tests {
     fn teams_titles() {
         assert_eq!(meeting_title(Platform::Teams, "Sprint review | Microsoft Teams").as_deref(), Some("Sprint review"));
         assert_eq!(
-            meeting_title(Platform::Teams, "Riunione con Rossi Mario | Dixit | Microsoft Teams").as_deref(),
+            meeting_title(Platform::Teams, "Riunione con Rossi Mario | Acme | Microsoft Teams").as_deref(),
             Some("Riunione con Rossi Mario")
         );
         assert_eq!(meeting_title(Platform::Teams, "Chat | Microsoft Teams"), None);
