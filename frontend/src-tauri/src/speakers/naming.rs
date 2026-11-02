@@ -2,7 +2,7 @@
 
 pub use crate::teams::captions::Turn;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -57,6 +57,15 @@ pub fn is_generic(name: &str) -> bool {
     name == "Altri" || name.starts_with("Parlante ")
 }
 
+/// `name` (from Teams) is the user: it carries every word of `me` ("Manuguerra" in "Manuguerra Vito").
+pub fn is_me(name: &str, me: &str) -> bool {
+    let words = |s: &str| -> HashSet<String> {
+        s.to_lowercase().split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).map(str::to_string).collect()
+    };
+    let me = words(me);
+    !me.is_empty() && me.is_subset(&words(name))
+}
+
 /// One label per segment. Precedence: the mic is `me`; others take the best-overlapping native
 /// Teams turn, else caption turn, else their cluster's majority name, else the cluster's `known`
 /// voice (voice memory), else "Parlante X"/"Altri". `renames` (manual, from → to) apply last.
@@ -72,7 +81,10 @@ pub fn assign_names(
         .iter()
         .map(|s| match s.source {
             Source::Me => Some(me.to_string()),
-            Source::Others => best_overlap(native, s).or_else(|| best_overlap(captions, s)),
+            // Teams names the user's own turns too: on system audio that is crosstalk or caption lag.
+            Source::Others => best_overlap(native, s)
+                .or_else(|| best_overlap(captions, s))
+                .map(|n| if is_me(&n, me) { me.to_string() } else { n }),
         })
         .collect();
 
@@ -136,6 +148,16 @@ mod tests {
     fn me_segments_get_my_name() {
         let segs = [seg(1, 0.0, 2.0, Source::Me, None)];
         assert_eq!(names(&segs, &[], &[turn("Rossi Mario", 0.0, 2.0)], &[]), vec!["Manuguerra Vito"]);
+    }
+
+    #[test]
+    fn my_teams_name_on_system_audio_is_me() {
+        // Gallo call, 2 Nov: Teams captions the user too ("Manuguerra Vito"), settings say "Manuguerra".
+        let segs = [seg(1, 0.0, 2.0, Source::Me, None), seg(2, 3.0, 5.0, Source::Others, Some(0))];
+        let captions = [turn("Manuguerra Vito", 3.0, 5.0)];
+        let got = assign_names(&segs, &[], &captions, &HashMap::new(), &HashMap::new(), "Manuguerra");
+        assert_eq!(got, vec!["Manuguerra", "Manuguerra"]);
+        assert!(is_me("Manuguerra, Vito (Dixit)", "Manuguerra") && !is_me("Rossi Mario", "Manuguerra"));
     }
 
     #[test]
