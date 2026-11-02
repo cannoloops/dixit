@@ -109,7 +109,7 @@ mod tests {
         // Ferri call, 2 Nov: a stranger at 0.73 to a known print, 0.16 clear of the next name.
         let mut m = Voices::default();
         m.learn("2026-10-30 Benè", &[("Elena Benè".into(), voice(0, 7, 0.0))]);
-        m.learn("2026-10-30 Pochi", &[("Conti Marco".into(), voice(3, 7, 0.0))]);
+        m.learn("2026-10-30 Conti", &[("Conti Marco".into(), voice(3, 7, 0.0))]);
         let at = |cos: f32| -> Vec<f32> {
             let mut v = vec![0.0; 8];
             v[0] = cos;

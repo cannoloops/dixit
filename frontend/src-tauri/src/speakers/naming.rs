@@ -157,7 +157,7 @@ mod tests {
         let captions = [turn("Manuguerra Vito", 3.0, 5.0)];
         let got = assign_names(&segs, &[], &captions, &HashMap::new(), &HashMap::new(), "Manuguerra");
         assert_eq!(got, vec!["Manuguerra", "Manuguerra"]);
-        assert!(is_me("Manuguerra, Vito (Dixit)", "Manuguerra") && !is_me("Rossi Mario", "Manuguerra"));
+        assert!(is_me("Bianchi, Anna (Acme)", "Bianchi") && !is_me("Rossi Mario", "Bianchi"));
     }
 
     #[test]

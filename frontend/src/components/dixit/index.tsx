@@ -1,6 +1,6 @@
 'use client';
 
-// Dixit shared components (Dixit design system): speaker names, the recording light,
+// Dixit shared components (design system): speaker names, the recording light,
 // and the fixed meeting-state vocabulary. Use these instead of ad-hoc labels.
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
@@ -22,7 +22,7 @@ export function useMe(): string {
 }
 
 /**
- * CSS color of a speaker: Dixit green for the user, a distinct colour per other person
+ * CSS color of a speaker: green for the user, a distinct colour per other person
  * (by position in `roster`, so a meeting never repeats a colour before the eighth voice),
  * stone grey for "Altri"/unknown.
  */

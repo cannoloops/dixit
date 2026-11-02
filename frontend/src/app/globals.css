@@ -76,19 +76,19 @@
   animation-delay: 150ms;
 }
 
-/* Dixit design tokens: Dixit design system (template Dixit 2023).
-   Antracite #2B2B2D and white, petrolio #1F7E92 for the primary action, Dixit green #8DC928
+/* Dixit design tokens: Dixit design system.
+   Antracite #2B2B2D and white, petrolio #1F7E92 for the primary action, green #8DC928
    for positive states, the blue→green scale for speakers. Montserrat for titles, Open Sans for text.
    Light/dark follow macOS (tailwind darkMode: media). Values are HSL triplets. */
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 240 2% 17%;         /* antracite Dixit */
+    --foreground: 240 2% 17%;         /* antracite */
     --card: 0 0% 100%;
     --card-foreground: 240 2% 17%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 2% 17%;
-    --primary: 190 65% 35%;          /* petrolio Dixit */
+    --primary: 190 65% 35%;          /* petrolio */
     --primary-foreground: 0 0% 100%;
     --secondary: 210 13% 94%;
     --secondary-foreground: 240 2% 17%;
@@ -98,7 +98,7 @@
     --accent-foreground: 240 2% 17%;
     --destructive: 358 56% 49%;
     --destructive-foreground: 0 0% 100%;
-    --success: 93 69% 29%;           /* verde Dixit, versione leggibile su bianco */
+    --success: 93 69% 29%;           /* verde, versione leggibile su bianco */
     --border: 210 12% 90%;
     --input: 210 10% 84%;
     --ring: 190 65% 35%;
@@ -115,12 +115,12 @@
     --live: 358 67% 54%;             /* registrazione in corso */
     --live-foreground: 0 0% 100%;
 
-    --speaker-me: 93 69% 29%;        /* tu: verde Dixit */
+    --speaker-me: 93 69% 29%;        /* tu: verde */
     /* Other speakers, most distinct first (roster = most turns first) */
-    --speaker-1: 202 74% 39%;        /* blu Dixit */
+    --speaker-1: 202 74% 39%;        /* blu */
     --speaker-2: 33 89% 35%;         /* ambra */
     --speaker-3: 313 46% 45%;        /* magenta */
-    --speaker-4: 177 75% 29%;        /* teal Dixit */
+    --speaker-4: 177 75% 29%;        /* teal */
     --speaker-5: 262 37% 50%;        /* viola */
     --speaker-6: 14 68% 40%;         /* ruggine */
     --speaker-7: 233 47% 48%;        /* indaco */
@@ -131,7 +131,7 @@
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --background: 240 2% 17%;      /* antracite Dixit */
+      --background: 240 2% 17%;      /* antracite */
       --foreground: 240 4% 95%;
       --card: 240 3% 21%;
       --card-foreground: 240 4% 95%;
@@ -147,7 +147,7 @@
       --accent-foreground: 240 4% 95%;
       --destructive: 358 82% 68%;
       --destructive-foreground: 240 2% 10%;
-      --success: 82 67% 47%;         /* verde Dixit #8DC928 */
+      --success: 82 67% 47%;         /* verde #8DC928 */
       --border: 228 4% 26%;
       --input: 230 4% 31%;
       --ring: 191 61% 48%;
@@ -205,7 +205,7 @@
   html { color-scheme: light dark; }
   ::selection { background: hsl(var(--primary) / 0.22); }
   body { caret-color: hsl(var(--primary)); }
-  /* Dixit: titles in Montserrat, text in Open Sans */
+  /* Titles in Montserrat, text in Open Sans */
   h1, h2, h3, h4 { font-family: var(--font-montserrat), var(--font-open-sans), sans-serif; }
   :focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
   ::-webkit-scrollbar { width: 8px; height: 8px; }

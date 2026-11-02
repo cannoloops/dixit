@@ -29,7 +29,7 @@ import { ImportDialogProvider } from '@/contexts/ImportDialogContext'
 import { isAudioExtension, getAudioFormatsDisplayList } from '@/constants/audioFormats'
 
 
-// Dixit design system fonts, self-hosted by next/font at build.
+// Design system fonts, self-hosted by next/font at build.
 const montserrat = Montserrat({
   subsets: ['latin'],
   weight: ['600', '700'],
