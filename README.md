@@ -98,7 +98,7 @@ I modelli non sono nel repository: `frontend/scripts/fetch-models.sh` li scarica
 |---|---|---|
 | Whisper large-v3 (formato ggml) | OpenAI, conversione [whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp) | MIT |
 | Parakeet TDT 0.6B v3 (ONNX int8) | [NVIDIA](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) | CC-BY-4.0 (attribuzione: © NVIDIA) |
-| WeSpeaker ResNet34 VoxCeleb (ONNX) | [WeSpeaker](https://github.com/wenet-e2e/wespeaker), via [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | Apache-2.0 |
+| WeSpeaker ResNet34 VoxCeleb (ONNX) | [WeSpeaker](https://github.com/wenet-e2e/wespeaker), via [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | CC-BY-4.0 (attribuzione: WeSpeaker, dataset VoxCeleb) |
 | Gemma 4 E4B Q4_K_M (GGUF) | Google, quantizzazione [unsloth](https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF) | Apache-2.0 |
 | EmbeddingGemma 300M (ONNX) | Google, conversione [onnx-community](https://huggingface.co/onnx-community/embeddinggemma-300m-ONNX) | [Gemma Terms of Use](https://ai.google.dev/gemma/terms) |
 
