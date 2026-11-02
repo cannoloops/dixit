@@ -110,7 +110,7 @@ DIXIT_MCP_ADDR=127.0.0.1:7338 npx tauri dev --config '{"identifier":"com.vitoman
 Usa i dati in `…/com.vitomanuguerra.trascrivi.dev/` (copia il DB reale con `sqlite3 … ".backup …"`; `models` può essere un symlink a quella reale).
 
 - **Da Claude Code** va lanciata fuori dalla sandbox dei comandi: dentro, il processo web della finestra va in crash («Couldn't connect to launchservicesd») e la finestra resta bianca.
-- **`ChunkLoadError … app/layout … timeout`** al primo avvio: Next stava ancora compilando. Quando `curl localhost:3118/_next/static/chunks/app/layout.js` risponde, riavvia.
+- **`ChunkLoadError … app/layout … timeout`** al primo avvio: Next stava ancora compilando. Quando `curl 127.0.0.1:3118/_next/static/chunks/app/layout.js` risponde, riavvia.
 - **La finestra è nascosta nella barra dei menu:** riaprila da «Apri Dixit» nel menu dell'icona.
 
 ### Build e distribuzione
