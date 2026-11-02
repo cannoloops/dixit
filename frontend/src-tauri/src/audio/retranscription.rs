@@ -138,19 +138,13 @@ pub async fn start_retranscription<R: Runtime>(
 }
 
 /// Dixit: after a live on Parakeet, replaces the transcript with the configured Whisper model's.
-/// Runs before speaker attribution, which then labels the new segments.
-pub async fn final_pass<R: Runtime>(app: &AppHandle<R>, folder: &Path) {
-    if !super::transcription::engine::FINAL_PASS.swap(false, Ordering::SeqCst) {
-        return;
-    }
-    run_final_pass(app, folder).await;
-}
-
-/// The final pass itself, also for a meeting whose final pass was cut short (Dixit closed).
+/// Runs before speaker attribution, which then labels the new segments; also for a meeting whose
+/// final pass was cut short (Dixit closed).
 pub async fn run_final_pass<R: Runtime>(app: &AppHandle<R>, folder: &Path) {
     let pool = app.state::<AppState>().db_manager.pool().clone();
     let folder_str = folder.to_string_lossy().to_string();
-    // The frontend saves the meeting right after the stop: wait for its row.
+    // After a stop the row is already there (`speakers::listen_for_stops` waits for it); at
+    // startup the frontend may still be saving it.
     let mut meeting_id = None;
     for _ in 0..120 {
         if let Ok(Some(id)) =
