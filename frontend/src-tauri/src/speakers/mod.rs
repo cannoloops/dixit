@@ -124,6 +124,19 @@ pub async fn apply_saved_speakers(pool: &sqlx::SqlitePool, folder: &Path) {
     }
 }
 
+/// The frontend saves the meeting after the stop, minutes late if macOS suspended its covered or
+/// hidden window (timers stop until an event or the user wakes it): no deadline.
+// ponytail: a meeting never saved keeps this loop until Dixit quits; its speaker tracks are still
+// there, so the next start resumes it.
+async fn wait_for_meeting(pool: &sqlx::SqlitePool, folder: &Path) -> String {
+    loop {
+        if let Ok(Some(id)) = TranscriptsRepository::meeting_for_folder(pool, &folder.to_string_lossy()).await {
+            return id;
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    }
+}
+
 /// Runs post-call attribution whenever a recording stops (except cancelled ones).
 pub fn listen_for_stops<R: Runtime>(app: &AppHandle<R>) {
     use tauri::Listener;
@@ -139,7 +152,14 @@ pub fn listen_for_stops<R: Runtime>(app: &AppHandle<R>) {
         let pending = crate::summary::auto::Pending::start(&folder);
         tauri::async_runtime::spawn(async move {
             let _pending = pending; // the view shows "automatic summary on its way" until this ends
-            crate::audio::retranscription::final_pass(&app, &folder).await;
+            // Taken now: the next recording sets it again.
+            let final_pass =
+                crate::audio::transcription::engine::FINAL_PASS.swap(false, std::sync::atomic::Ordering::SeqCst);
+            // large-v3 and the attribution in the DB need the meeting's row.
+            wait_for_meeting(&pool(&app), &folder).await;
+            if final_pass {
+                crate::audio::retranscription::run_final_pass(&app, &folder).await;
+            }
             if let Err(e) = process_meeting(app.clone(), folder.clone(), true).await {
                 log::error!("Speaker attribution failed: {e:#}");
             }
@@ -298,6 +318,18 @@ mod tests {
         let found = interrupted_meetings(root.path());
         assert_eq!(found, vec![root.path().join("2026-11-02 09.34 Nuove attività")]);
         assert!(interrupted_meetings(&root.path().join("missing")).is_empty());
+    }
+
+    #[tokio::test]
+    async fn waits_for_a_meeting_saved_late() {
+        let pool = sqlx::sqlite::SqlitePoolOptions::new().max_connections(1).connect("sqlite::memory:").await.unwrap();
+        sqlx::query("CREATE TABLE meetings (id TEXT PRIMARY KEY, folder_path TEXT)").execute(&pool).await.unwrap();
+        let frontend = pool.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+            sqlx::query("INSERT INTO meetings VALUES ('m1', '/rec/late')").execute(&frontend).await.unwrap();
+        });
+        assert_eq!(wait_for_meeting(&pool, Path::new("/rec/late")).await, "m1");
     }
 
     #[test]
