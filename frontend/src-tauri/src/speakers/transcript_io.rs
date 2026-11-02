@@ -123,10 +123,26 @@ pub fn write_teams_md(
     Ok(())
 }
 
+/// Cap on the decompressed `word/document.xml`: a Teams transcript of a long meeting is a few MB.
+const MAX_DOCX_XML_BYTES: u64 = 32 * 1024 * 1024;
+
 fn docx_paragraphs(path: &Path) -> Result<Vec<String>> {
     let mut archive = zip::ZipArchive::new(std::fs::File::open(path)?).context("not a .docx (zip) file")?;
+    let entry = archive.by_name("word/document.xml")?;
+    // The file comes from ~/Downloads (zip bomb): only Stored and Deflated, whose decoders write no
+    // more than the caller asks for, so the `take` below really bounds memory (LZMA and the others
+    // can decode a whole dictionary inside one read). The declared size is the attacker's, too.
+    if !matches!(entry.compression(), zip::CompressionMethod::Stored | zip::CompressionMethod::Deflated) {
+        bail!("{}: unsupported compression {}", path.display(), entry.compression());
+    }
+    if entry.size() > MAX_DOCX_XML_BYTES {
+        bail!("{}: document.xml too large ({} bytes)", path.display(), entry.size());
+    }
     let mut xml = String::new();
-    archive.by_name("word/document.xml")?.read_to_string(&mut xml)?;
+    entry.take(MAX_DOCX_XML_BYTES + 1).read_to_string(&mut xml)?;
+    if xml.len() as u64 > MAX_DOCX_XML_BYTES {
+        bail!("{}: document.xml too large", path.display());
+    }
     Ok(xml
         .split("</w:p>")
         .map(|p| {
@@ -269,6 +285,41 @@ mod tests {
         assert!(parse_teams_docx(&path).is_err());
         std::fs::write(dir.path().join("junk.docx"), b"not a zip").unwrap();
         assert!(parse_teams_docx(&dir.path().join("junk.docx")).is_err());
+    }
+
+    fn write_docx_xml(path: &Path, xml: &[u8], method: zip::CompressionMethod) {
+        let mut zip = zip::ZipWriter::new(std::fs::File::create(path).unwrap());
+        zip.start_file("word/document.xml", zip::write::SimpleFileOptions::default().compression_method(method)).unwrap();
+        zip.write_all(xml).unwrap();
+        zip.finish().unwrap();
+    }
+
+    /// Overwrites a field of the single entry's local and central headers, as a crafted zip would.
+    fn patch_headers(path: &Path, local_at: usize, central_at: usize, value: &[u8]) {
+        let mut b = std::fs::read(path).unwrap();
+        let local = b.windows(4).position(|w| w == b"PK\x03\x04").unwrap() + local_at;
+        let central = b.windows(4).rposition(|w| w == b"PK\x01\x02").unwrap() + central_at;
+        b[local..local + value.len()].copy_from_slice(value);
+        b[central..central + value.len()].copy_from_slice(value);
+        std::fs::write(path, b).unwrap();
+    }
+
+    #[test]
+    fn refuses_docx_bombs() {
+        let dir = tempfile::tempdir().unwrap();
+        let err = |p: &Path| format!("{:#}", parse_teams_docx(p).unwrap_err());
+        // Bigger than the cap, as declared.
+        let big = dir.path().join("big.docx");
+        write_docx_xml(&big, &vec![b'a'; MAX_DOCX_XML_BYTES as usize + 1], zip::CompressionMethod::Deflated);
+        assert!(err(&big).contains("too large"), "{}", err(&big));
+        // Bigger than the cap while declaring 1 KB: the read itself stops at the cap.
+        patch_headers(&big, 22, 24, &1024u32.to_le_bytes());
+        assert!(err(&big).contains("too large"), "{}", err(&big));
+        // LZMA (method 14) decodes a whole dictionary in one read: refused before reading.
+        let lzma = dir.path().join("lzma.docx");
+        write_docx_xml(&lzma, b"<w:p></w:p>", zip::CompressionMethod::Stored);
+        patch_headers(&lzma, 8, 10, &14u16.to_le_bytes());
+        assert!(err(&lzma).contains("unsupported compression"), "{}", err(&lzma));
     }
 
     #[test]
