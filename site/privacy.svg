@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" width="960" height="360" role="img" aria-labelledby="t d">
+  <title id="t">Cosa resta sul Mac</title>
+  <desc id="d">Audio, trascrizioni, riassunti, note, impronte vocali e modelli restano sul Mac. Escono solo tre cose: il controllo degli aggiornamenti verso GitHub, il download dei modelli al primo avvio da Hugging Face, e il testo della riunione verso un provider esterno solo se lo attivi in modalità esperto.</desc>
+  <style>
+    .bg { fill: #FFFFFF; }
+    .ink { fill: #2A2A2C; }
+    .soft { fill: #62656A; }
+    .mac { fill: #EEF4F6; stroke: #1F8093; }
+    .chip { fill: #FFFFFF; stroke: #E2E6E9; }
+    .me { fill: #457D17; }
+    .out { stroke: #62656A; }
+    .opt { stroke: #A9610A; }
+    .optt { fill: #A9610A; }
+    text { font-family: Montserrat, "Open Sans", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
+    .h { font-size: 15px; font-weight: 600; }
+    .b { font-size: 13px; font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #2A2A2C; }
+      .ink { fill: #F2F2F3; }
+      .soft { fill: #AAACB1; }
+      .mac { fill: #232325; stroke: #30AAC5; }
+      .chip { fill: #343437; stroke: #404145; }
+      .me { fill: #8DC828; }
+      .out { stroke: #AAACB1; }
+      .opt { stroke: #F2A74A; }
+      .optt { fill: #F2A74A; }
+    }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="context-stroke"/>
+    </marker>
+  </defs>
+  <rect class="bg" width="960" height="360" rx="12"/>
+
+  <!-- the Mac -->
+  <rect class="mac" x="32" y="32" width="480" height="296" rx="12" stroke-width="2"/>
+  <text class="ink h" x="56" y="66">Resta sul tuo Mac</text>
+  <text class="soft b" x="56" y="88">Trascrizione e riassunto girano qui, senza cloud.</text>
+
+  <g class="b">
+    <rect class="chip" x="56" y="112" width="200" height="40" rx="6"/><text class="ink" x="72" y="137">Audio delle riunioni</text>
+    <rect class="chip" x="288" y="112" width="200" height="40" rx="6"/><text class="ink" x="304" y="137">Trascrizioni</text>
+    <rect class="chip" x="56" y="168" width="200" height="40" rx="6"/><text class="ink" x="72" y="193">Riassunti</text>
+    <rect class="chip" x="288" y="168" width="200" height="40" rx="6"/><text class="ink" x="304" y="193">Le tue note</text>
+    <rect class="chip" x="56" y="224" width="200" height="40" rx="6"/><text class="ink" x="72" y="249">Impronte delle voci</text>
+    <rect class="chip" x="288" y="224" width="200" height="40" rx="6"/><text class="ink" x="304" y="249">Modelli di IA</text>
+  </g>
+  <text class="me b" x="56" y="302" font-weight="600">Nessuna statistica d'uso, nessun account.</text>
+
+  <!-- what may leave -->
+  <text class="ink h" x="600" y="66">Esce solo questo</text>
+
+  <line class="out" x1="512" y1="122" x2="584" y2="122" stroke-width="2" marker-end="url(#arrow)"/>
+  <text class="ink h" x="600" y="118">Controllo aggiornamenti</text>
+  <text class="soft b" x="600" y="138">GitHub vede l'indirizzo IP, non i tuoi dati.</text>
+
+  <line class="out" x1="584" y1="196" x2="512" y2="196" stroke-width="2" marker-end="url(#arrow)"/>
+  <text class="ink h" x="600" y="192">Modelli, al primo avvio</text>
+  <text class="soft b" x="600" y="212">Scaricati da Hugging Face, verificati sul Mac.</text>
+
+  <line class="opt" x1="512" y1="270" x2="584" y2="270" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+  <text class="ink h" x="600" y="266">Provider esterni, solo se li attivi</text>
+  <text class="optt b" x="600" y="286">Modalità esperto: il testo va al servizio scelto.</text>
+</svg>

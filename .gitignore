@@ -78,5 +78,4 @@ target/
 
 frontend/src-tauri/binaries/
 # impeccable working files
-.impeccable/review/
-.impeccable/questions/
+.impeccable/
