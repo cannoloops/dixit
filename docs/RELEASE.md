@@ -14,6 +14,15 @@
 
 ## Fare una release
 
+Prima di tutto scrivi il changelog breve in testa a `docs/release-notes.md`, al posto di quello della release precedente:
+
+```markdown
+**Novità in 0.2.4**
+- una riga per novità, scritta per i colleghi (cosa cambia per loro, non come)
+```
+
+Senza quella riga lo script si ferma.
+
 Senza account Apple Developer (oggi):
 
 ```bash
