@@ -21,7 +21,7 @@ Guida per lavorare su questo repository con Claude Code.
 | Memoria delle voci: una voce già nominata viene riconosciuta nelle riunioni successive (dopo i nomi da Teams, prima di «Parlante X») | `src-tauri/src/speakers/voices.rs`; taratura con `cargo test --lib bench_voice_memory -- --ignored` |
 | Note personali durante la registrazione, con l'istante | `src-tauri/src/notes.rs`, `frontend/src/components/RecordingNoteInput.tsx` |
 | Riassunto automatico per tipo di call (SAL, analisi, mix, altro) | `src-tauri/src/summary/` (`auto.rs`, `classification.rs`) |
-| Server MCP locale per gli agenti (trascrizione live, riunioni, ricerca) | `src-tauri/src/mcp.rs`, `mcp_tools.rs`, `library.rs`, `search.rs`, `embedding.rs` |
+| Server MCP locale per gli agenti (trascrizione live, riunioni, ricerca, trascrizione di file audio/video) | `src-tauri/src/mcp.rs`, `mcp_tools.rs`, `library.rs`, `search.rs`, `embedding.rs` |
 | Cartella per riunione in `~/Documents/Dixit/` | `src-tauri/src/audio/` (salvataggio), `notes.rs` |
 
 ## Modelli (configurazione base)
@@ -62,13 +62,15 @@ Regole dei template: nomi, date e cifre non presenti nella trascrizione diventan
 
 ## Server MCP per agenti
 
-Server `dixit`, HTTP streamable su `http://127.0.0.1:7337/mcp`, solo lettura. Si attiva con `autopilot.mcp_enabled` in `trascrivi.json` (dati utente). `DIXIT_MCP_ADDR` cambia indirizzo, utile per una seconda istanza.
+Server `dixit`, HTTP streamable su `http://127.0.0.1:7337/mcp`. Tutti i tool sono in sola lettura tranne `transcribe_file`. Si attiva con `autopilot.mcp_enabled` in `trascrivi.json` (dati utente). `DIXIT_MCP_ADDR` cambia indirizzo, utile per una seconda istanza.
 
 | Tool | Cosa restituisce |
 |---|---|
 | `live_transcript` | La trascrizione della registrazione in corso |
 | `list_meetings` | Riunioni, più recenti prima: filtri `from`, `to`, `updated_since` (ingest incrementale), `limit`, `offset` |
 | `get_meeting` | Metadati, tipo di call, partecipanti, riassunto, note, trascrizione. `format: json\|markdown` (pronto per una wiki), `include_notes`, `include_transcript`, `transcript_offset`/`transcript_limit` (pagine di circa 18k caratteri) |
+| `transcribe_file` | Trascrive un file audio o video del Mac (`path` assoluto, `title`, `language`) in una nuova riunione, con Whisper large-v3 e poi il riassunto automatico. Gira in background, un file alla volta; niente parlanti (una sola traccia mixata) |
+| `transcription_status` | Stato dell'ultimo `transcribe_file`: `running` con fase e percentuale, `done` con `meeting_id`, `failed` con l'errore |
 | `search_transcripts` | `mode: classic` (SQLite FTS5), `smart` (embedding, nessun LLM), `hybrid` (fusione RRF, default). Cerca anche in note e riassunti |
 
 Le date senza fuso orario sono ora locale. I vettori stanno in SQLite e il confronto è a forza bruta: basta fino a migliaia di riunioni, poi sqlite-vec. Per provarli con un client vero:
@@ -115,6 +117,7 @@ Usa i dati in `…/com.vitomanuguerra.trascrivi.dev/` (copia il DB reale con `sq
 ### Build e distribuzione
 
 - **Release pubblica:** `scripts/release.sh <versione>` compila, firma, scrive `latest.json` e pubblica su `cannoloops/dixit` (dettagli in `docs/RELEASE.md`). L'updater legge `releases/latest/download/latest.json` dello stesso repo.
+- **Changelog:** ogni release ha un changelog breve in testa a `docs/release-notes.md` («**Novità in <versione>**», una riga per novità, pensata per i colleghi). Senza, `release.sh` si ferma.
 - Solo il `.dmg`: `npx tauri build --bundles dmg -- --features metal`.
 - L'eseguibile si chiama `Dixit` (`mainBinaryName` e `[[bin]]` in `Cargo.toml`); il package Cargo resta `meetily`.
 - **Firma.** Con `APPLE_SIGNING_IDENTITY="Dixit Local Signing"` (in `~/.zshrc` di Vito) Tauri firma con il certificato autofirmato «Dixit Local Signing» del portachiavi: il requisito designato si basa sul certificato e non sul cdhash, quindi macOS conserva microfono, registrazione schermo e Accessibilità da una build all'altra. Controllo: `codesign -dr - /Applications/Dixit.app` mostra `certificate leaf`, non `cdhash`. Senza la variabile vale `signingIdentity: "-"` di `tauri.conf.json` (firma ad hoc, per i colleghi): a ogni installazione l'Accessibilità va tolta e riaggiunta.
