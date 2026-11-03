@@ -49,6 +49,7 @@ Se un permesso è stato negato, attivalo da **Impostazioni di Sistema › Privac
 - **In automatico:** quando inizia una call su Teams, Zoom o Meet Dixit parte da solo e mostra un banner con **Annulla**. Si ferma quando la call finisce.
 - **A mano:** avvia e ferma la registrazione dalla finestra di Dixit.
 - Mentre registri vedi la trascrizione live e i nomi dei parlanti (da Teams, oppure dalle voci già riconosciute).
+- **Muto su Teams:** quando sei in muto nella call, Dixit non registra né trascrive la tua voce, e accanto al tempo di registrazione compare «Microfono in muto». Su Zoom e Meet il microfono viene registrato anche in muto.
 
 ## Note durante la call
 

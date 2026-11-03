@@ -18,6 +18,7 @@ Dixit si accende da solo quando inizia una call su Teams, Zoom o Meet, trascrive
 - **Avvio e stop automatici:** registra quando inizia una call e si ferma quando finisce. Puoi anche avviare a mano.
 - **Trascrizione in due tempi:** testo live mentre si parla (Parakeet) e trascrizione definitiva, più precisa, a fine call (Whisper large-v3).
 - **Chi ha detto cosa:** nelle call Teams usa i nomi reali; altrimenti riconosce le voci e le distingue.
+- **Muto rispettato su Teams:** se sei in muto nella call, la tua voce non viene registrata né trascritta.
 - **Note durante la call:** scrivi una nota e premi Invio, e resta agganciata all'istante esatto. Le note compaiono dentro la trascrizione e aiutano il riassunto.
 - **Riassunto per tipo di call:** Dixit riconosce da solo il tipo di riunione e sceglie la forma:
   - **SAL:** minuta con l'avanzamento lavori (fatto, in corso, bloccato), decisioni, azioni con chi e quando, rischi.
