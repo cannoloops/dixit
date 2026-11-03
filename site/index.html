@@ -73,6 +73,10 @@ section > .wrap > h2 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
 .kinds { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 40px; }
 .kinds span { border: 1px solid var(--line); border-radius: 9999px; padding: 4px 12px; font-size: 13px; color: var(--soft); }
 .kinds strong { color: var(--fg); font-weight: 600; }
+.demos { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 48px 0 0; }
+.demos figure, .agents figure { margin: 0; }
+.demos img, .agents img { display: block; width: 100%; height: auto; border-radius: 10px; }
+.demos figcaption { color: var(--soft); font-size: 14px; margin-top: 8px; }
 
 /* privacy */
 .privacy { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
@@ -106,7 +110,7 @@ footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--s
 footer a { color: var(--soft); }
 
 @media (max-width: 860px) {
-  .hero, .privacy, .agents { grid-template-columns: 1fr; }
+  .hero, .privacy, .agents, .demos { grid-template-columns: 1fr; }
   .hero { gap: 40px; padding-top: 24px; }
   .mac { border-right: 0; border-bottom: 1px solid var(--line); }
   .steps { grid-template-columns: 1fr; gap: 20px; }
@@ -172,6 +176,10 @@ footer a { color: var(--soft); }
       <span><strong>Analisi</strong>: temi, requisiti, decisioni, domande aperte</span>
       <span><strong>Mix</strong>: le due cose insieme</span>
     </div>
+    <div class="demos">
+      <figure><img src="demo/live.gif" width="680" height="440" loading="lazy" alt="Le battute compaiono con i nomi dei parlanti e una nota scritta durante la call resta agganciata al suo istante"><figcaption>Durante la call: testo live, nomi e note.</figcaption></figure>
+      <figure><img src="demo/riassunto.gif" width="680" height="440" loading="lazy" alt="Trascrizione definitiva, parlanti attribuiti, riunione riconosciuta come SAL e riassunto con fatto, in corso, bloccato e azioni"><figcaption>A fine call: trascrizione definitiva e riassunto.</figcaption></figure>
+    </div>
   </div>
 </section>
 
@@ -223,6 +231,7 @@ footer a { color: var(--soft); }
     <div>
       <p>Per collegarlo a Claude Code:</p>
       <pre><code>claude mcp add --transport http dixit http://127.0.0.1:7337/mcp</code></pre>
+      <figure style="margin-top:20px"><img src="demo/mcp.gif" width="680" height="440" loading="lazy" alt="Claude chiede quando è stata fissata la demo: Dixit cerca nelle trascrizioni, legge il riassunto del SAL e Claude risponde con data e responsabile"></figure>
     </div>
   </div>
 </section>

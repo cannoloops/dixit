@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Dixit, scene demo</title>
+<!-- Scene animate per le GIF del sito e del README: scenes.html?scene=live|riassunto|mcp.
+     render(t) disegna l'istante t (secondi), così record.mjs cattura fotogrammi esatti. -->
+<style>
+@font-face { font-family: Montserrat; src: url(../fonts/montserrat-latin.woff2) format("woff2"); font-weight: 100 900; }
+@font-face { font-family: "Open Sans"; src: url(../fonts/open-sans-latin.woff2) format("woff2"); font-weight: 300 800; }
+:root {
+  --bg: #FFFFFF; --fg: #2A2A2C; --soft: #62656A; --line: #E2E6E9; --muted: #F4F5F6;
+  --primary: #1F8093; --tint: #EEF4F6; --rec: #D93A3A;
+  --me: #457D17; --s1: #1A77AD; --s2: #A9610A;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 680px; height: 440px; overflow: hidden; background: #E9EDEF; }
+body { font: 14px/1.5 "Open Sans", sans-serif; color: var(--fg); padding: 20px; }
+.scene { display: none; height: 100%; }
+.scene.on { display: block; }
+.win { height: 100%; background: var(--bg); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.10); display: flex; flex-direction: column; }
+.bar { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.bar i { width: 11px; height: 11px; border-radius: 50%; background: #E0E2E4; }
+.bar span { flex: 1; text-align: center; color: var(--soft); font: 600 12px Montserrat, sans-serif; margin-right: 50px; }
+.head { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: var(--muted); border-bottom: 1px solid var(--line); }
+.head b { font: 600 15px Montserrat, sans-serif; }
+.head span { color: var(--soft); font-size: 12px; }
+.rec { color: var(--rec) !important; font: 600 12px Montserrat, sans-serif; font-variant-numeric: tabular-nums; }
+.rec::before { content: "●"; margin-right: 6px; }
+.body { flex: 1; padding: 6px 18px; overflow: hidden; }
+.turn { padding: 6px 12px; border-left: 3px solid var(--c); margin: 10px 0; }
+.turn b { color: var(--c); font: 600 13px Montserrat, sans-serif; }
+.turn time { color: var(--soft); font-size: 11px; margin-left: 8px; }
+.turn p { margin: 2px 0 0; min-height: 21px; }
+.note { margin: 6px 0; padding: 6px 10px; background: var(--tint); border-radius: 4px; color: var(--soft); font-size: 13px; }
+.note b { color: var(--fg); font-weight: 600; }
+.input { margin: 0 18px 16px; border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; color: var(--fg); min-height: 42px; }
+.input.focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--tint); }
+.input:empty::before { content: "Scrivi una nota, Invio per salvarla"; color: var(--soft); }
+.caret::after { content: ""; display: inline-block; width: 1.5px; height: 1.1em; background: currentColor; vertical-align: -0.15em; margin-left: 1px; }
+
+.step { display: flex; align-items: center; gap: 10px; margin: 12px 0; color: var(--soft); }
+.step .ok { width: 18px; height: 18px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 11px; display: grid; place-items: center; }
+.step .track { flex: 0 0 140px; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.step .track div { height: 100%; background: var(--primary); }
+.badge { display: inline-block; padding: 1px 10px; border-radius: 9999px; background: var(--primary); color: #fff; font: 600 12px Montserrat, sans-serif; }
+.why { color: var(--soft); font-size: 12px; }
+.sum { border: 1px solid var(--line); border-radius: 8px; background: var(--tint); padding: 12px 16px; margin-top: 14px; }
+.sum > b { font: 600 13px Montserrat, sans-serif; }
+.sum dl { display: grid; grid-template-columns: 82px 1fr; gap: 4px 12px; margin: 8px 0 0; }
+.sum dt { color: var(--soft); font: 600 12px/21px Montserrat, sans-serif; }
+.sum dd { margin: 0; min-height: 21px; }
+
+.term { height: 100%; background: #1F2023; color: #E6E6E8; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,.18); font: 13px/1.6 ui-monospace, "SF Mono", Menlo, monospace; }
+.term .bar { border-color: #333438; }
+.term .bar i { background: #3A3B3F; }
+.term .bar span { color: #8C8E93; }
+.term .out { padding: 14px 18px; }
+.term p { margin: 0 0 8px; white-space: pre-wrap; }
+.prompt { border: 1px solid #3A3B3F; border-radius: 6px; padding: 6px 10px; }
+.prompt::before { content: "> "; color: #8C8E93; }
+.tool b { color: #5BB7EC; font-weight: 600; }
+.tool::before { content: "⏺ "; color: #8DC828; }
+.res { color: #9A9CA1; padding-left: 18px; }
+.ans::before { content: "⏺ "; color: #E6E6E8; }
+
+[data-in] { transition: none; }
+</style>
+</head>
+<body>
+
+<section class="scene" id="live">
+  <div class="win">
+    <div class="bar"><i></i><i></i><i></i><span>Dixit</span></div>
+    <div class="head"><b>Avanzamento progetto Alfa</b><span class="rec" data-clock="12">00:12</span></div>
+    <div class="body">
+      <div class="turn" style="--c: var(--me)" data-in="0.2"><b>Tu</b><time>00:12</time><p data-type="0.4">Partiamo dalla demo di giovedì: a che punto siamo?</p></div>
+      <div class="turn" style="--c: var(--s1)" data-in="2.4"><b>Paola Neri</b><time>00:19</time><p data-type="2.6">La build è pronta, manca solo il test sui permessi.</p></div>
+      <div class="note" data-in="6.1"><b>Nota 00:26</b> · chiedere a Marco i tempi del test</div>
+      <div class="turn" style="--c: var(--s2)" data-in="6.8"><b>Marco Conti</b><time>00:31</time><p data-type="7.0">Lo chiudo entro mercoledì, poi te lo passo.</p></div>
+    </div>
+    <div class="input" data-focus="4.4-6.0" data-type="4.6" data-until="6.0">chiedere a Marco i tempi del test</div>
+  </div>
+</section>
+
+<section class="scene" id="riassunto">
+  <div class="win">
+    <div class="bar"><i></i><i></i><i></i><span>Dixit</span></div>
+    <div class="head"><b>Avanzamento progetto Alfa</b><span>Teams · 32 min · call terminata</span></div>
+    <div class="body">
+      <div class="step" data-in="0.2"><span class="ok" data-in="2.2">✓</span>Trascrizione definitiva con Whisper large-v3<span class="track" data-out="2.2"><div data-bar="0.3-2.1"></div></span></div>
+      <div class="step" data-in="2.5"><span class="ok">✓</span>Chi ha detto cosa: 3 parlanti, nomi da Teams</div>
+      <div class="step" data-in="3.1"><span class="ok">✓</span>Tipo di riunione <span class="badge">SAL</span><span class="why">avanzamento, scadenze e responsabili</span></div>
+      <div class="sum" data-in="3.9">
+        <b>Riassunto · SAL</b>
+        <dl>
+          <dt>Fatto</dt><dd data-type="4.2">Build pronta per la demo di giovedì</dd>
+          <dt>In corso</dt><dd data-type="5.6">Test dei permessi</dd>
+          <dt>Bloccato</dt><dd data-type="6.4">Non emerso</dd>
+          <dt>Azioni</dt><dd data-type="7.0">Marco Conti: chiudere il test entro mercoledì</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="scene" id="mcp">
+  <div class="term">
+    <div class="bar"><i></i><i></i><i></i><span>claude</span></div>
+    <div class="out">
+      <p class="prompt" data-type="0.3">Quando abbiamo fissato la demo, e chi fa il test dei permessi?</p>
+      <p class="tool" data-in="2.9"><b>dixit</b> · search_transcripts (query: "demo test permessi", mode: hybrid)</p>
+      <p class="res" data-in="3.5">⎿ 3 risultati · Avanzamento progetto Alfa, 28 ott</p>
+      <p class="tool" data-in="4.2"><b>dixit</b> · get_meeting (format: markdown)</p>
+      <p class="res" data-in="4.8">⎿ Riassunto SAL, 3 partecipanti, 1 nota</p>
+      <p class="ans" data-type="5.5" data-cps="60">Nel SAL «Avanzamento progetto Alfa» del 28 ottobre: la demo è giovedì e la build è pronta. Il test dei permessi è di Marco Conti, che lo chiude entro mercoledì.</p>
+    </div>
+  </div>
+</section>
+
+<script>
+const DURATIONS = { live: 10.5, riassunto: 10.5, mcp: 11 };
+const scene = new URLSearchParams(location.search).get("scene") || "live";
+const root = document.getElementById(scene);
+root.classList.add("on");
+window.DURATION = DURATIONS[scene];
+
+const span = s => s.split("-").map(Number);
+for (const el of root.querySelectorAll("[data-type]")) el.dataset.text = el.textContent;
+
+// disegna l'istante t: niente stato tra una chiamata e l'altra, i fotogrammi si possono chiedere in qualsiasi ordine
+window.render = t => {
+  for (const el of root.querySelectorAll("[data-in]")) {
+    const k = Math.min(1, Math.max(0, (t - +el.dataset.in) / 0.25));
+    el.style.opacity = k;
+    el.style.transform = `translateY(${(1 - k) * 6}px)`;
+  }
+  for (const el of root.querySelectorAll("[data-out]")) el.style.display = t >= +el.dataset.out ? "none" : "";
+  for (const el of root.querySelectorAll("[data-bar]")) {
+    const [a, b] = span(el.dataset.bar);
+    el.style.width = Math.min(100, Math.max(0, (t - a) / (b - a) * 100)) + "%";
+  }
+  for (const el of root.querySelectorAll("[data-type]")) {
+    const full = el.dataset.text, start = +el.dataset.type, cps = +(el.dataset.cps || 32);
+    const n = Math.max(0, Math.min(full.length, Math.floor((t - start) * cps)));
+    const gone = el.dataset.until && t >= +el.dataset.until;
+    el.textContent = gone ? "" : full.slice(0, n);
+    el.classList.toggle("caret", !gone && t >= start && n < full.length);
+  }
+  for (const el of root.querySelectorAll("[data-focus]")) {
+    const [a, b] = span(el.dataset.focus);
+    el.classList.toggle("focus", t >= a && t < b);
+  }
+  for (const el of root.querySelectorAll("[data-clock]")) {
+    const s = +el.dataset.clock + Math.floor(t * 3); // l'orologio corre il triplo per stare al passo con le battute
+    el.textContent = `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  }
+};
+
+// aperta a mano gira in loop; record.mjs passa ?record e chiama render(t) da sé
+if (!new URLSearchParams(location.search).has("record")) {
+  const t0 = performance.now();
+  (function loop(now) { render(((now - t0) / 1000) % DURATION); requestAnimationFrame(loop); })(t0);
+} else render(0);
+</script>
+</body>
+</html>

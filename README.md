@@ -12,6 +12,9 @@ Dixit si accende da solo quando inizia una call su Teams, Zoom o Meet, trascrive
 
 ## Cosa fa
 
+<p align="center"><img src="site/demo/live.gif" width="680" alt="Trascrizione live: le battute compaiono con i nomi dei parlanti e una nota scritta durante la call resta agganciata al suo istante"></p>
+<p align="center"><img src="site/demo/riassunto.gif" width="680" alt="A fine call: trascrizione definitiva, parlanti attribuiti, riunione riconosciuta come SAL e riassunto con fatto, in corso, bloccato e azioni"></p>
+
 - **Avvio e stop automatici:** registra quando inizia una call e si ferma quando finisce. Puoi anche avviare a mano.
 - **Trascrizione in due tempi:** testo live mentre si parla (Parakeet) e trascrizione definitiva, più precisa, a fine call (Whisper large-v3).
 - **Chi ha detto cosa:** nelle call Teams usa i nomi reali; altrimenti riconosce le voci e le distingue.
@@ -64,6 +67,8 @@ Con l'opzione MCP attiva, Dixit espone un server locale su `http://127.0.0.1:733
 ```bash
 claude mcp add --transport http dixit http://127.0.0.1:7337/mcp
 ```
+
+<p align="center"><img src="site/demo/mcp.gif" width="680" alt="Claude chiede quando è stata fissata la demo: Dixit cerca nelle trascrizioni, legge il riassunto del SAL e Claude risponde con data e responsabile"></p>
 
 | Tool | A cosa serve |
 |---|---|
