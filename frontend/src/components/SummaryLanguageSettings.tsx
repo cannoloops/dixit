@@ -37,7 +37,7 @@ export function SummaryLanguageSettings() {
                   aria-pressed={isPinned}
                   title={isPinned ? t('pinTitleOn') : t('pinTitleOff')}
                   onClick={() => togglePin(code)}
-                  className="flex items-center gap-1.5 py-1 pl-2.5 pr-2 transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
+                  className="flex items-center gap-1.5 py-1 pl-2.5 pr-2 transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
                 >
                   <Pin
                     className={`h-4 w-4 ${isPinned ? 'text-primary' : 'text-muted-foreground'}`}
@@ -49,7 +49,7 @@ export function SummaryLanguageSettings() {
                   type="button"
                   aria-label={t('removeLang', { lang: label })}
                   onClick={() => removeRecent(code)}
-                  className="py-1 pl-0.5 pr-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
+                  className="py-1 pl-0.5 pr-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -62,7 +62,7 @@ export function SummaryLanguageSettings() {
               <button
                 type="button"
                 disabled={recents.length >= 5}
-                className="inline-flex items-center gap-1 rounded-md border border-dashed border-input px-2.5 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-md border border-dashed border-input px-2.5 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Plus className="h-4 w-4" />
                 {t('addLanguage')}

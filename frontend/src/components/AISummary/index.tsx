@@ -668,7 +668,7 @@ export const AISummary = ({ summary, status, error, onSummaryChange, onRegenerat
       {contextMenu.visible && selectedBlocks.length > 0 && (
         <div
           role="menu"
-          className="fixed z-50 min-w-[160px] rounded-md border border-border bg-popover py-1 text-sm text-popover-foreground shadow-[var(--shadow-float)]"
+          className="fixed z-50 min-w-[160px] rounded-md border border-border bg-popover py-1 text-sm text-popover-foreground shadow-(--shadow-float)"
           style={{ 
             left: contextMenu.x, 
             top: contextMenu.y

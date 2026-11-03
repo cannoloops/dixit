@@ -53,7 +53,7 @@ export function OnboardingContainer({
       <div className={cn('flex h-full max-h-screen w-full max-w-xl flex-col px-6 py-8', className)}>
         {/* Steps: primary colour for the current one, hairlines for the others */}
         {step && !hideProgress && (
-          <div className="mb-8 flex flex-shrink-0 items-center gap-2">
+          <div className="mb-8 flex shrink-0 items-center gap-2">
             {showNavigation && (
               <Button
                 variant="ghost"
@@ -85,7 +85,7 @@ export function OnboardingContainer({
         )}
 
         {!hideHeader && (
-          <div className="mb-6 flex-shrink-0 space-y-1">
+          <div className="mb-6 shrink-0 space-y-1">
             <h1 className="text-xl font-semibold">{title}</h1>
             {description && <p className="text-sm text-muted-foreground">{description}</p>}
           </div>

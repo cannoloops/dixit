@@ -64,7 +64,7 @@ export const Section: React.FC<SectionProps> = ({
           <button
             type="button"
             onClick={() => onSectionDelete(sectionKey)}
-            className="rounded-sm px-1.5 text-xs text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="rounded-sm px-1.5 text-xs text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-destructive focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           >
             {t('delete')}
           </button>

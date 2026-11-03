@@ -7,7 +7,7 @@ import { useRecentLanguages } from "@/hooks/useRecentLanguages";
 import { t } from "@/i18n/settings";
 
 const OPTION_CLASS =
-  "flex w-full items-center justify-between px-3 py-1.5 text-left text-sm transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none";
+  "flex w-full items-center justify-between px-3 py-1.5 text-left text-sm transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-hidden";
 const GROUP_LABEL_CLASS = "px-3 pb-1 pt-1 text-xs font-medium text-muted-foreground";
 
 interface LanguagePickerPopoverProps {
@@ -87,7 +87,7 @@ export function LanguagePickerPopover({
   return (
     <div
       ref={containerRef}
-      className="w-72 overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-[var(--shadow-float)]"
+      className="w-72 overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-(--shadow-float)"
       role="dialog"
       aria-label={t("pickerLabel")}
     >
@@ -100,7 +100,7 @@ export function LanguagePickerPopover({
           onChange={(e) => setQuery(e.target.value)}
           placeholder={t("searchLanguage")}
           aria-label={t("searchLanguage")}
-          className="flex-1 border-none bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          className="flex-1 border-none bg-transparent text-sm text-foreground outline-hidden placeholder:text-muted-foreground"
         />
       </div>
 

@@ -118,7 +118,7 @@ export function AudioBackendSelector({
                 checked={currentBackend === backend.id}
                 onChange={() => handleBackendChange(backend.id)}
                 disabled={isDisabled}
-                className="mt-0.5 h-4 w-4 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="mt-0.5 h-4 w-4 accent-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
               />
               <div className="flex-1">
                 <div className="flex items-center justify-between">

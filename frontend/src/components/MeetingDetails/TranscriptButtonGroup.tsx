@@ -55,7 +55,7 @@ export function TranscriptButtonGroup({
             checked={includeNotes}
             onChange={(e) => onIncludeNotesChange(e.target.checked)}
           />
-          <span className="hidden @[28rem]:inline">{t('includeNotes')}</span>
+          <span className="hidden @md:inline">{t('includeNotes')}</span>
         </label>
       )}
       <ButtonGroup>
@@ -70,7 +70,7 @@ export function TranscriptButtonGroup({
           title={transcriptCount === 0 ? t('noTranscript') : t('copyTranscript')}
         >
           <Copy />
-          <span className="hidden @[28rem]:inline">{t('copy')}</span>
+          <span className="hidden @md:inline">{t('copy')}</span>
         </Button>
 
         <Button
@@ -83,7 +83,7 @@ export function TranscriptButtonGroup({
           title={t('openFolder')}
         >
           <FolderOpen />
-          <span className="hidden @[28rem]:inline">{t('folder')}</span>
+          <span className="hidden @md:inline">{t('folder')}</span>
         </Button>
 
         {canRetranscribe && (
@@ -97,7 +97,7 @@ export function TranscriptButtonGroup({
             title={t('retranscribeTitle')}
           >
             <RefreshCw />
-            <span className="hidden @[28rem]:inline">{t('retranscribe')}</span>
+            <span className="hidden @md:inline">{t('retranscribe')}</span>
           </Button>
         )}
       </ButtonGroup>

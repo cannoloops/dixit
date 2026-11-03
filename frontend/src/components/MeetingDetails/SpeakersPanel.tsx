@@ -104,7 +104,7 @@ function SpeakerItem({
           <button
             type="button"
             title={count === 1 ? t('turnTitle') : t('turnsTitle', { n: count })}
-            className="flex h-7 max-w-[16rem] items-center gap-1.5 rounded-sm px-1.5 transition-colors duration-150 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-accent"
+            className="flex h-7 max-w-64 items-center gap-1.5 rounded-sm px-1.5 transition-colors duration-150 hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-accent"
           >
             <span
               aria-hidden
