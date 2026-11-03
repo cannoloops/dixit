@@ -12,6 +12,9 @@ Dixit si accende da solo quando inizia una call su Teams, Zoom o Meet, trascrive
 
 ## Cosa fa
 
+<p align="center"><img src="site/demo/live.gif" width="680" alt="Trascrizione live: le battute compaiono con i nomi dei parlanti e una nota scritta durante la call resta agganciata al suo istante"></p>
+<p align="center"><img src="site/demo/riassunto.gif" width="680" alt="A fine call: trascrizione definitiva, parlanti attribuiti, riunione riconosciuta come SAL e riassunto con fatto, in corso, bloccato e azioni"></p>
+
 - **Avvio e stop automatici:** registra quando inizia una call e si ferma quando finisce. Puoi anche avviare a mano.
 - **Trascrizione in due tempi:** testo live mentre si parla (Parakeet) e trascrizione definitiva, più precisa, a fine call (Whisper large-v3).
 - **Chi ha detto cosa:** nelle call Teams usa i nomi reali; altrimenti riconosce le voci e le distingue.
@@ -31,7 +34,12 @@ Dixit si accende da solo quando inizia una call su Teams, Zoom o Meet, trascrive
 Serve un Mac con Apple Silicon (M1 o successivo), macOS 14.4 o superiore, circa 10 GB liberi e almeno 16 GB di RAM.
 
 1. Scarica il `.dmg` dall'[ultima versione](https://github.com/cannoloops/dixit/releases/latest), aprilo e trascina **Dixit** in **Applicazioni**.
-2. L'app non è notarizzata da Apple, quindi la prima volta macOS la blocca. Aprila con **tasto destro › Apri**, oppure da Terminale:
+2. L'app non è notarizzata da Apple, quindi la prima volta macOS la blocca con l'avviso *«Apple non è in grado di verificare…»* (sul `.dmg`, sull'app o su entrambi). Da macOS 15 «tasto destro › Apri» non basta più:
+   - nell'avviso premi **Fine**, non «Sposta nel Cestino»;
+   - apri **Impostazioni di Sistema › Privacy e sicurezza**, scorri fino a **Sicurezza** e premi **Apri comunque**;
+   - riapri il file e nel nuovo avviso premi di nuovo **Apri comunque**.
+
+   In alternativa, dal Terminale:
 
    ```bash
    xattr -dr com.apple.quarantine /Applications/Dixit.app
@@ -42,6 +50,8 @@ Serve un Mac con Apple Silicon (M1 o successivo), macOS 14.4 o superiore, circa 
    - **Accessibilità:** per leggere i nomi dei partecipanti da Teams.
 
 Gli aggiornamenti arrivano da soli; riunioni, impostazioni e modelli restano.
+
+La [guida di utilizzo](docs/GUIDA.md) spiega installazione, registrazione, note e riassunti passo per passo.
 
 ## Modelli
 
@@ -64,6 +74,8 @@ Con l'opzione MCP attiva, Dixit espone un server locale su `http://127.0.0.1:733
 ```bash
 claude mcp add --transport http dixit http://127.0.0.1:7337/mcp
 ```
+
+<p align="center"><img src="site/demo/mcp.gif" width="680" alt="Claude chiede quando è stata fissata la demo: Dixit cerca nelle trascrizioni, legge il riassunto del SAL e Claude risponde con data e responsabile"></p>
 
 | Tool | A cosa serve |
 |---|---|

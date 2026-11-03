@@ -50,7 +50,7 @@ Fai il commit del cambio di versione.
 ## Installazione
 
 1. Scarica il `.dmg` dall'ultima release di `cannoloops/dixit` e trascina Dixit in Applicazioni.
-2. La prima volta aprilo con tasto destro › Apri (non è notarizzato).
+2. Sblocco al primo avvio (non è notarizzato): Fine nell'avviso, poi Impostazioni di Sistema › Privacy e sicurezza › Apri comunque, oppure `xattr -dr com.apple.quarantine /Applications/Dixit.app`. Da macOS 15 «tasto destro › Apri» non basta più; dettagli in [GUIDA.md](GUIDA.md).
 3. Al primo avvio scarica i modelli (circa 9 GB), poi l'onboarding chiede i permessi di Microfono, Audio di sistema e Accessibilità.
 4. In Teams imposta la lingua parlata su italiano.
 5. Gli aggiornamenti successivi arrivano da soli.

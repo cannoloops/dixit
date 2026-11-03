@@ -1,4 +1,3 @@
-use posthog_rs::{Client, Event};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -75,8 +74,9 @@ impl UserSession {
     }
 }
 
+// ponytail: Dixit non invia analytics (chiave PostHog sempre vuota): gli eventi sono no-op e posthog-rs
+// è stato tolto. Per riattivarli servirebbe un client HTTP verso un endpoint scelto dall'utente.
 pub struct AnalyticsClient {
-    client: Option<Arc<Client>>,
     config: AnalyticsConfig,
     user_id: Arc<Mutex<Option<String>>>,
     current_session: Arc<Mutex<Option<UserSession>>>,
@@ -84,87 +84,19 @@ pub struct AnalyticsClient {
 
 impl AnalyticsClient {
     pub async fn new(config: AnalyticsConfig) -> Self {
-        let client = if config.enabled && !config.api_key.is_empty() {
-            Some(Arc::new(posthog_rs::client(config.api_key.as_str()).await))
-        } else {
-            None
-        };
-
         Self {
-            client,
             config,
             user_id: Arc::new(Mutex::new(None)),
             current_session: Arc::new(Mutex::new(None)),
         }
     }
 
-    pub async fn identify(&self, user_id: String, properties: Option<HashMap<String, String>>) -> Result<(), String> {
-        let client = match &self.client {
-            Some(client) => Arc::clone(client),
-            None => return Ok(()),
-        };
-
-        // Store user ID for future events
-        *self.user_id.lock().await = Some(user_id.clone());
-
-        let properties = sanitize_analytics_properties(properties.unwrap_or_default());
-        
-        let mut event = Event::new("$identify", &user_id);
-        
-        // Add user properties
-        for (key, value) in properties {
-            if let Err(e) = event.insert_prop(&key, value) {
-                eprintln!("Failed to add property {}: {}", key, e);
-            }
-        }
-        
-        if let Err(e) = client.capture(event).await {
-            eprintln!("Failed to identify user: {}", e);
-        }
-        
+    pub async fn identify(&self, user_id: String, _properties: Option<HashMap<String, String>>) -> Result<(), String> {
+        *self.user_id.lock().await = Some(user_id);
         Ok(())
     }
 
-    pub async fn track_event(&self, event_name: &str, properties: Option<HashMap<String, String>>) -> Result<(), String> {
-        let client = match &self.client {
-            Some(client) => Arc::clone(client),
-            None => return Ok(()),
-        };
-
-        let user_id = match self.user_id.lock().await.clone() {
-            Some(id) => id,
-            None => {
-                // Don't create anonymous users, wait for proper identification
-                log::warn!("Attempted to track event '{}' before user identification", event_name);
-                return Ok(());
-            }
-        };
-
-        let event_name = event_name.to_string();
-        let mut properties = sanitize_analytics_properties(properties.unwrap_or_default());
-
-        // Add app version to all events
-        properties.insert("app_version".to_string(), env!("CARGO_PKG_VERSION").to_string());
-
-        // Add session information to all events
-        if let Some(session) = self.current_session.lock().await.as_ref() {
-            properties.insert("session_id".to_string(), session.session_id.clone());
-            properties.insert("session_duration".to_string(), session.duration_seconds().to_string());
-        }
-        
-        let mut event = Event::new(&event_name, &user_id);
-        
-        // Add event properties
-        for (key, value) in properties {
-            if let Err(e) = event.insert_prop(&key, value) {
-                log::warn!("Failed to add property {}: {}", key, e);
-            }
-        }
-        
-        if let Err(e) = client.capture(event).await {
-            log::warn!("Failed to track event {}: {}", event_name, e);
-        }
-        
+    pub async fn track_event(&self, _event_name: &str, _properties: Option<HashMap<String, String>>) -> Result<(), String> {
         Ok(())
     }
 
@@ -420,37 +352,10 @@ impl AnalyticsClient {
     }
 
     pub fn is_enabled(&self) -> bool {
-        self.config.enabled && self.client.is_some()
+        false
     }
 
-    pub async fn set_user_properties(&self, properties: HashMap<String, String>) -> Result<(), String> {
-        let client = match &self.client {
-            Some(client) => Arc::clone(client),
-            None => return Ok(()),
-        };
-
-        let user_id = match self.user_id.lock().await.clone() {
-            Some(id) => id,
-            None => {
-                eprintln!("Warning: Attempted to set user properties before user identification");
-                return Ok(());
-            }
-        };
-        
-        let properties = sanitize_analytics_properties(properties);
-        let mut event = Event::new("$set", &user_id);
-        
-        // Add user properties
-        for (key, value) in properties {
-            if let Err(e) = event.insert_prop(&key, value) {
-                eprintln!("Failed to add property {}: {}", key, e);
-            }
-        }
-        
-        if let Err(e) = client.capture(event).await {
-            eprintln!("Failed to set user properties: {}", e);
-        }
-        
+    pub async fn set_user_properties(&self, _properties: HashMap<String, String>) -> Result<(), String> {
         Ok(())
     }
 }
@@ -463,11 +368,6 @@ pub async fn create_analytics_client(config: AnalyticsConfig) -> AnalyticsClient
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::{
-        io::{AsyncReadExt, AsyncWriteExt},
-        net::TcpListener,
-        time::{timeout, Duration},
-    };
 
 
     #[test]
@@ -517,48 +417,6 @@ mod tests {
         assert_eq!(sanitized.get("segments_count"), Some(&"42".to_string()));
         assert_eq!(sanitized.get("model_name"), Some(&"parakeet".to_string()));
         assert_eq!(sanitized.get("platform"), Some(&"Windows".to_string()));
-    }
-
-    #[tokio::test]
-    async fn ending_session_completes_and_emits_an_event() {
-        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let endpoint = format!("http://{}", listener.local_addr().unwrap());
-        let capture_server = tokio::spawn(async move {
-            let (mut stream, _) = listener.accept().await.unwrap();
-            let mut request = [0; 4096];
-            let bytes_read = stream.read(&mut request).await.unwrap();
-            assert!(String::from_utf8_lossy(&request[..bytes_read]).contains("session_ended"));
-            stream
-                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
-                .await
-                .unwrap();
-        });
-        let analytics = AnalyticsClient {
-            client: Some(Arc::new(
-                posthog_rs::client(
-                    posthog_rs::ClientOptionsBuilder::default()
-                        .api_key("test".to_string())
-                        .api_endpoint(endpoint.clone())
-                        .request_timeout_seconds(1)
-                        .build()
-                        .unwrap(),
-                )
-                .await,
-            )),
-            config: AnalyticsConfig {
-                api_key: "test".to_string(),
-                host: Some(endpoint),
-                enabled: true,
-            },
-            user_id: Arc::new(Mutex::new(Some("user".to_string()))),
-            current_session: Arc::new(Mutex::new(Some(UserSession::new("user".to_string())))),
-        };
-
-        timeout(Duration::from_secs(1), analytics.end_session())
-            .await
-            .expect("ending a session must not wait on its own session mutex")
-            .unwrap();
-        capture_server.await.unwrap();
     }
 
     #[test]
