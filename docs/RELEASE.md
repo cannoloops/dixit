@@ -62,7 +62,7 @@ Dixit convive con Meetily: dati in `~/Library/Application Support/com.vitomanugu
 Queste prove richiedono call vere e non sono automatizzate.
 
 - [ ] **Riunione Teams in calendario:**
-  - parte entro circa 10 s, compare il banner con **Annulla** e arriva la notifica;
+  - parte entro circa 10 s e compare il banner con **Annulla** (nessuna notifica di sistema);
   - si ferma entro 60 s dalla chiusura;
   - arriva la notifica "Trascrizione salvata".
 - [ ] **Chiamata Teams 1:1:** stesso comportamento.
