@@ -1,14 +1,36 @@
 version: 2
+# Major a mano: Dependabot apre solo minor e patch, una PR per ecosistema, verso develop.
 updates:
   - package-ecosystem: cargo
     directory: /
+    target-branch: develop
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      cargo:
+        patterns: ["*"]
   - package-ecosystem: npm
     directory: /frontend
+    target-branch: develop
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      npm:
+        patterns: ["*"]
   - package-ecosystem: github-actions
     directory: /
+    target-branch: develop
     schedule:
       interval: weekly
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      actions:
+        patterns: ["*"]
