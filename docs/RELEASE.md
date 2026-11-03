@@ -6,17 +6,21 @@
    - in Xcode → Settings → Accounts, crea un certificato *Developer ID Application*;
    - controlla che compaia con `security find-identity -v -p codesigning`.
 2. **Password per app** per la notarizzazione: appleid.apple.com → Accesso e sicurezza → Password per le app.
-3. **Repo pubblico delle sole release**:
-   ```bash
-   gh repo create cannoloops/trascrivi-releases --public --description "Dixit releases"
-   ```
-   Il codice resta nel repo privato. L'updater legge
-   `https://github.com/cannoloops/trascrivi-releases/releases/latest/download/latest.json`.
+3. **Release:** vanno su `cannoloops/dixit`. L'updater legge
+   `https://github.com/cannoloops/dixit/releases/latest/download/latest.json`.
 4. **Chiave dell'updater**:
    - privata in `~/.tauri/trascrivi.key`, senza password. Va fatto un backup: se si perde, i colleghi devono reinstallare a mano;
    - pubblica già inserita in `frontend/src-tauri/tauri.conf.json`.
 
 ## Fare una release
+
+Senza account Apple Developer (oggi):
+
+```bash
+scripts/release.sh 0.2.0    # firma con APPLE_SIGNING_IDENTITY di ~/.zshrc, non notarizzata
+```
+
+Con il Developer ID, per una release notarizzata:
 
 ```bash
 export APPLE_SIGNING_IDENTITY="Developer ID Application: Vito Manuguerra (TEAMID)"
@@ -29,13 +33,13 @@ scripts/release.sh 0.2.0
 Lo script:
 1. aggiorna la versione in `tauri.conf.json`, `package.json` e `Cargo.toml`;
 2. compila il sidecar `llama-helper`;
-3. lancia `tauri build` (app e dmg, firmati e notarizzati);
+3. lancia `tauri build` (app e dmg, senza modelli: si scaricano al primo avvio);
 4. scrive `latest.json`;
-5. pubblica la release `v0.2.0` su `cannoloops/trascrivi-releases` con dmg, `.app.tar.gz`, `.sig` e `latest.json`.
+5. pubblica la release `v0.2.0` su `cannoloops/dixit` con dmg, `.app.tar.gz`, `.sig` e `latest.json`, con le note di `docs/release-notes.md`.
 
 Fai il commit del cambio di versione.
 
-`scripts/release.sh 0.1.0 --dry-run` fa la stessa build con firma ad-hoc, senza notarizzazione e senza pubblicare. Serve a verificare il bundle in locale.
+`scripts/release.sh 0.2.0 --dry-run` fa la stessa build senza notarizzazione e senza pubblicare. Serve a verificare il bundle in locale.
 
 ### Note di build su questo Mac
 
@@ -43,15 +47,13 @@ Fai il commit del cambio di versione.
 - `SDKROOT` punta all'SDK di Xcode, perché quello dei Command Line Tools non linka;
 - `CMAKE_DISABLE_FIND_PACKAGE_OpenSSL`, perché llama.cpp non compila con OpenSSL 3.6 di Homebrew.
 
-## Installazione (colleghi)
+## Installazione
 
-1. Scarica il `.dmg` dall'ultima release di `cannoloops/trascrivi-releases` e trascina Dixit in Applicazioni.
-2. Al primo avvio l'onboarding:
-   - chiede i permessi di Microfono, Audio di sistema e Accessibilità;
-   - chiede il tuo nome come appare in Teams;
-   - scarica i modelli.
-3. In Teams imposta la lingua parlata su italiano.
-4. Gli aggiornamenti successivi arrivano da soli.
+1. Scarica il `.dmg` dall'ultima release di `cannoloops/dixit` e trascina Dixit in Applicazioni.
+2. La prima volta aprilo con tasto destro › Apri (non è notarizzato).
+3. Al primo avvio scarica i modelli (circa 9 GB), poi l'onboarding chiede i permessi di Microfono, Audio di sistema e Accessibilità.
+4. In Teams imposta la lingua parlata su italiano.
+5. Gli aggiornamenti successivi arrivano da soli.
 
 Dixit convive con Meetily: dati in `~/Library/Application Support/com.vitomanuguerra.trascrivi`, registrazioni in `~/Documents/Dixit` (una cartella per riunione: `AAAA-MM-GG HH.MM titolo`).
 

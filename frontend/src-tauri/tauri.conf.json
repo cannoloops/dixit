@@ -2,7 +2,7 @@
     "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
     "productName": "Dixit",
     "mainBinaryName": "Dixit",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "identifier": "com.vitomanuguerra.trascrivi",
     "build": {
         "frontendDist": "../out",
@@ -70,8 +70,7 @@
             "icons/app_icon.ico"
         ],
         "resources": {
-            "templates/*.json": "templates/",
-            "resources/models/": "models/"
+            "templates/*.json": "templates/"
         },
         "externalBin": [
             "binaries/llama-helper",
@@ -91,7 +90,7 @@
         "updater": {
             "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEUzOUJDNDJCMEQyNEYwRDUKUldUVjhDUU5LOFNiNDlFanFIZTlPY3ZuY3pMejB4bS92U3VuV0JXM2k0M01HRzJuRml5N1M2VngK",
             "endpoints": [
-                "https://github.com/cannoloops/trascrivi-releases/releases/latest/download/latest.json"
+                "https://github.com/cannoloops/dixit/releases/latest/download/latest.json"
             ]
         }
     }

@@ -4,7 +4,11 @@
   <p><b>Registra, trascrive e riassume le tue riunioni. Tutto sul tuo Mac.</b></p>
 </div>
 
-Dixit si accende da solo quando inizia una call su Teams, Zoom o Meet, trascrive sul Mac, riconosce chi parla e a fine call scrive il riassunto adatto al tipo di riunione. Nessun dato esce dal computer: i modelli sono già dentro l'app e non serve Ollama né un servizio cloud.
+Dixit si accende da solo quando inizia una call su Teams, Zoom o Meet, trascrive sul Mac, riconosce chi parla e a fine call scrive il riassunto adatto al tipo di riunione. Nessun dato esce dal computer: i modelli girano sul Mac e non serve Ollama né un servizio cloud.
+
+**Sito:** [cannoloops.github.io/dixit](https://cannoloops.github.io/dixit/) · **Download:** [ultima versione](https://github.com/cannoloops/dixit/releases/latest)
+
+<p align="center"><img src="site/come-funziona.svg" width="860" alt="Come funziona: la call inizia e Dixit si accende, trascrizione live, trascrizione definitiva, chi ha detto cosa, riassunto per tipo di call. Alla fine una cartella per riunione."></p>
 
 ## Cosa fa
 
@@ -24,24 +28,24 @@ Dixit si accende da solo quando inizia una call su Teams, Zoom o Meet, trascrive
 
 ## Installazione
 
-Serve un Mac con Apple Silicon (M1 o successivo), macOS 14.4 o superiore, circa 9 GB liberi e almeno 16 GB di RAM.
+Serve un Mac con Apple Silicon (M1 o successivo), macOS 14.4 o superiore, circa 10 GB liberi e almeno 16 GB di RAM.
 
-1. Apri `Dixit_0.1.0_aarch64.dmg` e trascina **Dixit** in **Applicazioni**.
+1. Scarica il `.dmg` dall'[ultima versione](https://github.com/cannoloops/dixit/releases/latest), aprilo e trascina **Dixit** in **Applicazioni**.
 2. L'app non è notarizzata da Apple, quindi la prima volta macOS la blocca. Aprila con **tasto destro › Apri**, oppure da Terminale:
 
    ```bash
    xattr -dr com.apple.quarantine /Applications/Dixit.app
    ```
-3. Al primo avvio Dixit chiede tre permessi di macOS:
+3. Al primo avvio Dixit scarica i modelli (circa 9 GB, da Hugging Face, con verifica dell'integrità; se si interrompe riparte da dove era arrivato). Poi chiede tre permessi di macOS:
    - **Microfono:** per la tua voce;
    - **Registrazione schermo e audio di sistema:** per l'audio degli altri partecipanti;
    - **Accessibilità:** per leggere i nomi dei partecipanti da Teams.
 
-Per aggiornare, chiudi Dixit e sostituisci l'app in Applicazioni: riunioni e impostazioni restano.
+Gli aggiornamenti arrivano da soli; riunioni, impostazioni e modelli restano.
 
 ## Modelli
 
-I modelli sono inclusi nell'app e vanno bene così per quasi tutti. Solo chi sa cosa sta facendo li cambia, da **Impostazioni › Avanzate › Modalità esperto**.
+I modelli si scaricano al primo avvio e vanno bene così per quasi tutti. Solo chi sa cosa sta facendo li cambia, da **Impostazioni › Avanzate › Modalità esperto**.
 
 | Uso | Modello |
 |---|---|
@@ -70,6 +74,8 @@ claude mcp add --transport http dixit http://127.0.0.1:7337/mcp
 
 ## Privacy
 
+<p align="center"><img src="site/privacy.svg" width="860" alt="Audio, trascrizioni, riassunti, note, impronte delle voci e modelli restano sul Mac. Escono solo il controllo degli aggiornamenti, il download dei modelli al primo avvio e, se li attivi, il testo verso un provider esterno."></p>
+
 - Audio, trascrizioni, riassunti e note restano sul Mac: dati dell'app in `~/Library/Application Support/com.vitomanuguerra.trascrivi/`, riunioni in `~/Documents/Dixit/`.
 - La trascrizione e il riassunto girano in locale. I provider cloud ci sono solo come opzione esperto, e se li attivi il testo della riunione va a quel provider.
 - Nessuna statistica d'uso esce dal Mac. Dettagli in [PRIVACY_POLICY.md](PRIVACY_POLICY.md); per segnalare un problema di sicurezza, [SECURITY.md](SECURITY.md).
@@ -81,7 +87,6 @@ L'app è Tauri 2 con un core in Rust e un'interfaccia Next.js. Comandi, architet
 
 ```bash
 pnpm install
-./scripts/fetch-models.sh   # modelli da includere nell'app
 pnpm run tauri:dev          # sviluppo
 pnpm run tauri:build        # Dixit.app e .dmg in target/release/bundle/
 ```
@@ -90,9 +95,9 @@ pnpm run tauri:build        # Dixit.app e .dmg in target/release/bundle/
 
 Dixit è un fork di [Meetily](https://github.com/Zackriya-Solutions/meeting-minutes) di Zackriya Solutions, distribuito con licenza MIT ([LICENSE.md](LICENSE.md)). Grazie anche a [whisper.cpp](https://github.com/ggerganov/whisper.cpp), [llama.cpp](https://github.com/ggml-org/llama.cpp), Parakeet di NVIDIA e Gemma di Google.
 
-### Modelli inclusi nel pacchetto
+### Modelli scaricati al primo avvio
 
-I modelli non sono nel repository: `frontend/scripts/fetch-models.sh` li scarica dalle loro fonti. Ognuno ha la sua licenza.
+I modelli non sono nel repository né nel pacchetto: l'app li scarica dalle loro fonti (`frontend/src-tauri/src/base_models.rs`). Ognuno ha la sua licenza.
 
 | Modello | Fonte | Licenza |
 |---|---|---|
