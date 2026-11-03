@@ -80,8 +80,10 @@ pub fn mic_platform(users: &[AppKind], meet_window: bool, session: Option<Platfo
 pub fn meeting_title(platform: Platform, window_title: &str) -> Option<String> {
     let title = match platform {
         Platform::Teams => {
-            // The compact meeting view prefixes its own name: the meeting comes next.
-            const VIEWS: &[&str] = &["Visualizzazione compatta delle riunioni", "Compact meeting view"];
+            // The compact meeting view and the pre-join screen (which already holds the mic, seen
+            // live) prefix their own name: the meeting, if any, comes next.
+            const VIEWS: &[&str] =
+                &["Visualizzazione compatta delle riunioni", "Compact meeting view", "Partecipazione alla riunione"];
             let mut parts = window_title.split(" | ").map(str::trim);
             let mut first = parts.next()?;
             if VIEWS.iter().any(|v| first.eq_ignore_ascii_case(v)) {
@@ -122,12 +124,17 @@ mod tests {
     fn teams_titles() {
         assert_eq!(meeting_title(Platform::Teams, "Sprint review | Microsoft Teams").as_deref(), Some("Sprint review"));
         assert_eq!(
-            meeting_title(Platform::Teams, "Riunione con Rossi Mario | Dixit | Microsoft Teams").as_deref(),
+            meeting_title(Platform::Teams, "Riunione con Rossi Mario | Acme | Microsoft Teams").as_deref(),
             Some("Riunione con Rossi Mario")
         );
         assert_eq!(meeting_title(Platform::Teams, "Chat | Microsoft Teams"), None);
         assert_eq!(meeting_title(Platform::Teams, "Calendario | Microsoft Teams"), None);
         assert_eq!(meeting_title(Platform::Teams, "Microsoft Teams"), None);
+        assert_eq!(meeting_title(Platform::Teams, "Partecipazione alla riunione | Microsoft Teams"), None);
+        assert_eq!(
+            meeting_title(Platform::Teams, "Partecipazione alla riunione | Debrief progetto Alfa | Acme S.p.A.").as_deref(),
+            Some("Debrief progetto Alfa")
+        );
         // New Teams compact meeting view (seen live): view name first, then the meeting.
         assert_eq!(
             meeting_title(

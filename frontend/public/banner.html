@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <title>Dixit</title>
 <style>
-  /* Call-start banner (autopilot/banner.rs): 380×96, transparent window, top right.
+  /* Call-start banner (autopilot/banner.rs): 380×96 (380×124 with the Teams offer), transparent
+     window, top right.
      Dixit design system, tokens copied from src/app/globals.css: popover surface, live red only
      for the recording light, destructive outline for Annulla, petrolio for OK.
      Fonts self-hosted (Google Fonts, Latin subset, variable weight). */
@@ -70,6 +71,10 @@
     font: 600 15px/20px 'Montserrat', 'Open Sans', sans-serif;
   }
   .foot { display: flex; align-items: center; gap: 8px; }
+  .ask { font-size: 12px; color: hsl(var(--muted-foreground)); }
+  .teams { flex: 1; background: transparent; color: hsl(var(--popover-foreground)); border-color: hsl(var(--border)); }
+  .teams:hover:not(:disabled) { background: hsl(var(--border) / 0.5); }
+  [hidden] { display: none !important; }
   .sub { flex: 1; min-width: 0; font-size: 12px; color: hsl(var(--muted-foreground)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   button {
     font: 600 13px/1 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -91,8 +96,10 @@
     <span class="live" role="img" id="live"><span></span><span></span></span>
     <div class="title" id="title"></div>
   </div>
+  <div class="ask" id="ask" hidden></div>
   <div class="foot">
     <div class="sub" id="sub"></div>
+    <button class="teams" id="teams" hidden></button>
     <button class="cancel" id="cancel"></button>
     <button class="ok" id="ok">OK</button>
   </div>
@@ -100,10 +107,13 @@
 <script>
   const it = (navigator.language || '').toLowerCase().startsWith('it');
   const s = it
-    ? { started: 'Registrazione avviata', sub: 'Dixit sta registrando questa call.', live: 'In registrazione', cancel: 'Annulla', cancelling: 'Annullo…' }
-    : { started: 'Recording started', sub: 'Dixit is recording this call.', live: 'Recording', cancel: 'Cancel', cancelling: 'Cancelling…' };
+    ? { started: 'Registrazione avviata', sub: 'Dixit sta registrando questa call.', live: 'In registrazione', cancel: 'Annulla', cancelling: 'Annullo…',
+        ask: 'La trascrizione di Teams è visibile a tutti i partecipanti.', teams: 'Trascrizione Teams', unavailable: 'Non disponibile' }
+    : { started: 'Recording started', sub: 'Dixit is recording this call.', live: 'Recording', cancel: 'Cancel', cancelling: 'Cancelling…',
+        ask: 'Teams transcription is visible to every participant.', teams: 'Teams transcription', unavailable: 'Unavailable' };
   document.documentElement.lang = it ? 'it' : 'en';
-  const meeting = (new URLSearchParams(location.search).get('title') || '').trim() || s.started;
+  const params = new URLSearchParams(location.search);
+  const meeting = (params.get('title') || '').trim() || s.started;
   const title = document.getElementById('title');
   title.textContent = meeting;
   title.title = meeting;
@@ -119,6 +129,25 @@
     try { await invoke('autopilot_cancel'); } finally { invoke('autopilot_banner_close'); }
   };
   document.getElementById('ok').onclick = () => invoke('autopilot_banner_close');
+
+  // Teams' own transcription is visible to everyone: only on this explicit click.
+  if (params.get('teams') === '1') {
+    const teams = document.getElementById('teams');
+    document.getElementById('ask').textContent = s.ask;
+    document.getElementById('ask').hidden = false;
+    document.getElementById('sub').hidden = true;
+    teams.textContent = s.teams;
+    teams.hidden = false;
+    teams.onclick = async () => {
+      teams.disabled = true;
+      try {
+        await invoke('teams_request_native_transcription');
+        invoke('autopilot_banner_close');
+      } catch {
+        teams.textContent = s.unavailable;
+      }
+    };
+  }
 </script>
 </body>
 </html>

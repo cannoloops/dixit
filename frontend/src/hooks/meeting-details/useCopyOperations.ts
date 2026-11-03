@@ -16,7 +16,7 @@ interface UseCopyOperationsProps {
   transcripts: Transcript[];
   meetingTitle: string;
   aiSummary: MeetingSummary | null;
-  blockNoteSummaryRef: RefObject<BlockNoteSummaryViewRef>;
+  blockNoteSummaryRef: RefObject<BlockNoteSummaryViewRef | null>;
 }
 
 export function useCopyOperations({

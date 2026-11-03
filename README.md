@@ -72,7 +72,8 @@ claude mcp add --transport http dixit http://127.0.0.1:7337/mcp
 
 - Audio, trascrizioni, riassunti e note restano sul Mac: dati dell'app in `~/Library/Application Support/com.vitomanuguerra.trascrivi/`, riunioni in `~/Documents/Dixit/`.
 - La trascrizione e il riassunto girano in locale. I provider cloud ci sono solo come opzione esperto, e se li attivi il testo della riunione va a quel provider.
-- Le statistiche d'uso sono disattivate di default. Dettagli in [PRIVACY_POLICY.md](PRIVACY_POLICY.md).
+- Nessuna statistica d'uso esce dal Mac. Dettagli in [PRIVACY_POLICY.md](PRIVACY_POLICY.md); per segnalare un problema di sicurezza, [SECURITY.md](SECURITY.md).
+- Registrare una riunione può richiedere il consenso dei partecipanti: avvisali prima.
 
 ## Per chi sviluppa
 
@@ -88,3 +89,17 @@ pnpm run tauri:build        # Dixit.app e .dmg in target/release/bundle/
 ## Licenza e crediti
 
 Dixit è un fork di [Meetily](https://github.com/Zackriya-Solutions/meeting-minutes) di Zackriya Solutions, distribuito con licenza MIT ([LICENSE.md](LICENSE.md)). Grazie anche a [whisper.cpp](https://github.com/ggerganov/whisper.cpp), [llama.cpp](https://github.com/ggml-org/llama.cpp), Parakeet di NVIDIA e Gemma di Google.
+
+### Modelli inclusi nel pacchetto
+
+I modelli non sono nel repository: `frontend/scripts/fetch-models.sh` li scarica dalle loro fonti. Ognuno ha la sua licenza.
+
+| Modello | Fonte | Licenza |
+|---|---|---|
+| Whisper large-v3 (formato ggml) | OpenAI, conversione [whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp) | MIT |
+| Parakeet TDT 0.6B v3 (ONNX int8) | [NVIDIA](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) | CC-BY-4.0 (attribuzione: © NVIDIA) |
+| WeSpeaker ResNet34 VoxCeleb (ONNX) | [WeSpeaker](https://github.com/wenet-e2e/wespeaker), via [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | CC-BY-4.0 (attribuzione: WeSpeaker, dataset VoxCeleb) |
+| Gemma 4 E4B Q4_K_M (GGUF) | Google, quantizzazione [unsloth](https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF) | Apache-2.0 |
+| EmbeddingGemma 300M (ONNX) | Google, conversione [onnx-community](https://huggingface.co/onnx-community/embeddinggemma-300m-ONNX) | [Gemma Terms of Use](https://ai.google.dev/gemma/terms) |
+
+EmbeddingGemma è fornito secondo i Gemma Terms of Use (ai.google.dev/gemma/terms), compresa la [Prohibited Use Policy](https://ai.google.dev/gemma/prohibited_use_policy), che valgono anche per chi lo ridistribuisce dentro Dixit.

@@ -36,16 +36,16 @@ pub fn has_call_controls(pid: i32) -> bool {
 
 static MORE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)^(more|more actions|altro|altre azioni)$|showMoreBtn").unwrap());
-static LANGUAGE_SPEECH: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)^(language and speech|lingua e voce)").unwrap());
+static LANGUAGE_SPEECH: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)^(language and speech|lingua e (voce|riconoscimento vocale))").unwrap());
 static CAPTIONS_ON: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)^(turn on|show|attiva|mostra)\b.*(captions|sottotitoli)|^(live captions|sottotitoli in tempo reale)$").unwrap()
 });
 static CAPTIONS_ALREADY_ON: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)^(turn off|hide|disattiva|nascondi)\b.*(captions|sottotitoli)").unwrap());
 static RECORD_TRANSCRIBE: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)^(record and transcribe|registra e trascrivi)").unwrap());
-static START_TRANSCRIPTION: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)^(start transcription|avvia trascrizione)").unwrap());
+static START_TRANSCRIPTION: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)^(start transcription|avvia (la )?trascrizione)").unwrap());
 static STOP_TRANSCRIPTION: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"(?i)^(stop transcription|interrompi trascrizione|arresta trascrizione)").unwrap());
+    Lazy::new(|| Regex::new(r"(?i)^(stop transcription|(interrompi|arresta) (la )?trascrizione)").unwrap());
 static CONFIRM: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)^(confirm|conferma|start|avvia|stop|interrompi|arresta)$").unwrap());
 /// Live-caption container (aria-label / DOM id / class of Teams' captions region).
 static CAPTIONS_REGION: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)caption|sottotitol").unwrap());
@@ -98,6 +98,7 @@ fn reveal_and_press(pid: i32, openers: &[&Regex], target: &Regex, done: Option<&
     let _guard = AUTOMATION.lock().unwrap_or_else(|e| e.into_inner());
     let window = call_window(pid).ok_or_else(|| anyhow::anyhow!("no Teams call window"))?;
     let app = ax_util::app(pid);
+    let mut missing = target;
     for i in 0..=openers.len() {
         if let Some(el) = find_pressable(&app, target) {
             ax_util::press(&el);
@@ -111,12 +112,22 @@ fn reveal_and_press(pid: i32, openers: &[&Regex], target: &Regex, done: Option<&
         }
         let Some(opener) = openers.get(i) else { break };
         let root = if i == 0 { &window } else { &app };
-        let Some(el) = find_pressable(root, opener) else { break };
+        let Some(el) = find_pressable(root, opener) else {
+            missing = opener;
+            break;
+        };
         ax_util::press(&el);
         std::thread::sleep(STEP_DELAY);
     }
+    // Name what the open menu offers instead: a Teams rename is then one log line away.
+    let offered: Vec<String> = ax_util::find_all(&app, 4000, &|e| ax_util::role(e) == "AXMenuItem")
+        .iter()
+        .filter_map(|e| ax_util::labels(e).into_iter().next())
+        .take(40)
+        .collect();
+    log::warn!("Teams menu items on screen: {offered:?}");
     escape(pid);
-    anyhow::bail!("Teams menu item {:?} not found", target.as_str())
+    anyhow::bail!("Teams menu item {:?} not found", missing.as_str())
 }
 
 /// The full meeting window has a More/Altro menu; the compact meeting view (seen live) does not,
@@ -229,6 +240,20 @@ pub fn dump_tree(pid: i32, depth: usize) -> serde_json::Value {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    /// Menu labels of the Italian Teams client as logged live (Nov 2026), plus the older ones.
+    #[test]
+    fn menu_patterns_match_current_teams_labels() {
+        assert!(LANGUAGE_SPEECH.is_match("Lingua e riconoscimento vocale"));
+        assert!(LANGUAGE_SPEECH.is_match("Lingua e voce") && LANGUAGE_SPEECH.is_match("Language and speech"));
+        assert!(RECORD_TRANSCRIBE.is_match("Registra e trascrivi"));
+        assert!(START_TRANSCRIPTION.is_match("Avvia la trascrizione") && START_TRANSCRIPTION.is_match("Avvia trascrizione"));
+        assert!(!START_TRANSCRIPTION.is_match("Avvia registrazione"));
+        assert!(STOP_TRANSCRIPTION.is_match("Interrompi la trascrizione") && STOP_TRANSCRIPTION.is_match("Stop transcription"));
+        assert!(MORE.is_match("Altro"));
+    }
+
     /// Live diagnostics while a Teams call is on screen:
     /// `TRASCRIVI_AX_OUT=/tmp/teams.json cargo test --lib dump_teams_tree -- --ignored --nocapture`
     #[test]

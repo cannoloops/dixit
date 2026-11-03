@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use anyhow::{Result, anyhow};
 use log::{info, warn, error};
 use super::encode::encode_single_audio;
@@ -6,6 +6,12 @@ use super::recording_state::AudioChunk;
 use serde::{Serialize, Deserialize};
 
 use super::ffmpeg::find_ffmpeg_path;
+
+/// One `file` line of an FFmpeg concat list. The path goes inside single quotes, so every `'`
+/// in it (a meeting title like "Kick-off dell'anno") becomes `'\''`: close, escaped quote, reopen.
+fn concat_list_line(path: &Path) -> String {
+    format!("file '{}'\n", path.display().to_string().replace('\'', "'\\''"))
+}
 
 /// Audio data without device type (we only store mixed audio)
 #[derive(Clone)]
@@ -164,7 +170,7 @@ impl IncrementalAudioSaver {
 
             // Use absolute path for FFmpeg (required for safe mode)
             let abs_path = checkpoint_path.canonicalize()?;
-            list_content.push_str(&format!("file '{}'\n", abs_path.display()));
+            list_content.push_str(&concat_list_line(&abs_path));
         }
 
         std::fs::write(&list_file, list_content)?;
@@ -294,7 +300,7 @@ pub async fn recover_audio_from_checkpoints(
     for entry in &checkpoint_files {
         let path = entry.path().canonicalize()
             .map_err(|e| format!("Failed to canonicalize path: {}", e))?;
-        concat_content.push_str(&format!("file '{}'\n", path.display()));
+        concat_content.push_str(&concat_list_line(&path));
     }
 
     std::fs::write(&concat_file_path, concat_content)
@@ -453,6 +459,57 @@ mod tests {
 
         // Verify checkpoints directory deleted
         assert!(!meeting_folder.join(".checkpoints").exists());
+    }
+
+    #[test]
+    fn concat_list_line_escapes_single_quotes() {
+        assert_eq!(
+            concat_list_line(Path::new("/a/Kick-off dell'anno/x.mp4")),
+            "file '/a/Kick-off dell'\\''anno/x.mp4'\n"
+        );
+        assert_eq!(concat_list_line(Path::new("/a/b c/x.mp4")), "file '/a/b c/x.mp4'\n");
+    }
+
+    fn add_half_seconds(saver: &mut IncrementalAudioSaver, count: usize) {
+        for i in 0..count {
+            let chunk = AudioChunk {
+                data: vec![0.5f32; 24000],
+                sample_rate: 48000,
+                timestamp: i as f64 * 0.5,
+                chunk_id: i as u64,
+                device_type: DeviceType::Microphone,
+            };
+            saver.add_chunk(chunk).unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn test_merge_with_apostrophe_in_folder() {
+        let temp_dir = tempdir().unwrap();
+        let meeting_folder = temp_dir.path().join("2026-11-02 10.00 Kick-off dell'anno");
+        std::fs::create_dir_all(meeting_folder.join(".checkpoints")).unwrap();
+
+        let mut saver = IncrementalAudioSaver::new(meeting_folder.clone(), 48000).unwrap();
+        add_half_seconds(&mut saver, 61); // 30.5s: one full checkpoint plus a final one
+
+        let final_path = saver.finalize().await.unwrap();
+        assert!(final_path.exists());
+    }
+
+    #[tokio::test]
+    async fn test_recover_with_apostrophe_in_folder() {
+        let temp_dir = tempdir().unwrap();
+        let meeting_folder = temp_dir.path().join("2026-11-02 10.00 Kick-off dell'anno");
+        std::fs::create_dir_all(meeting_folder.join(".checkpoints")).unwrap();
+
+        let mut saver = IncrementalAudioSaver::new(meeting_folder.clone(), 48000).unwrap();
+        add_half_seconds(&mut saver, 60); // 30s: one checkpoint on disk, as after a crash
+
+        let status = recover_audio_from_checkpoints(meeting_folder.to_string_lossy().into_owned(), 48000)
+            .await
+            .unwrap();
+        assert_eq!(status.status, "success", "{}", status.message);
+        assert!(meeting_folder.join("audio.mp4").exists());
     }
 
     #[tokio::test]

@@ -124,6 +124,20 @@ pub async fn apply_saved_speakers(pool: &sqlx::SqlitePool, folder: &Path) {
     }
 }
 
+/// The frontend saves the meeting after the stop, minutes late if macOS suspended its covered or
+/// hidden window (timers stop until an event or the user wakes it): no deadline.
+// ponytail: a meeting never saved keeps this loop until Dixit quits; the next start does not
+// resume it either (no row: not a meeting of this Dixit), so its folder keeps the audio and the
+// live transcript, ready for an import.
+async fn wait_for_meeting(pool: &sqlx::SqlitePool, folder: &Path) -> String {
+    loop {
+        if let Ok(Some(id)) = TranscriptsRepository::meeting_for_folder(pool, &folder.to_string_lossy()).await {
+            return id;
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    }
+}
+
 /// Runs post-call attribution whenever a recording stops (except cancelled ones).
 pub fn listen_for_stops<R: Runtime>(app: &AppHandle<R>) {
     use tauri::Listener;
@@ -139,7 +153,14 @@ pub fn listen_for_stops<R: Runtime>(app: &AppHandle<R>) {
         let pending = crate::summary::auto::Pending::start(&folder);
         tauri::async_runtime::spawn(async move {
             let _pending = pending; // the view shows "automatic summary on its way" until this ends
-            crate::audio::retranscription::final_pass(&app, &folder).await;
+            // Taken now: the next recording sets it again.
+            let final_pass =
+                crate::audio::transcription::engine::FINAL_PASS.swap(false, std::sync::atomic::Ordering::SeqCst);
+            // large-v3 and the attribution in the DB need the meeting's row.
+            wait_for_meeting(&pool(&app), &folder).await;
+            if final_pass {
+                crate::audio::retranscription::run_final_pass(&app, &folder).await;
+            }
             if let Err(e) = process_meeting(app.clone(), folder.clone(), true).await {
                 log::error!("Speaker attribution failed: {e:#}");
             }
@@ -147,6 +168,91 @@ pub fn listen_for_stops<R: Runtime>(app: &AppHandle<R>) {
             crate::summary::auto::after_final_transcript(&app, &folder, stopped_at).await;
         });
     });
+}
+
+/// Meetings stopped cleanly whose post-call work never finished (Dixit closed during large-v3,
+/// attribution or the summary): attribution deletes the speaker tracks, so they are still there.
+/// A recording never stopped cleanly (status "recording") is left alone: its audio may be cut.
+fn interrupted_meetings(root: &Path) -> Vec<PathBuf> {
+    let Ok(entries) = std::fs::read_dir(root) else { return Vec::new() };
+    let mut folders: Vec<PathBuf> = entries
+        .flatten()
+        .map(|e| e.path())
+        .filter(|f| f.join(tracks::SYS_TRACK).exists() && f.join("transcripts.json").exists())
+        .filter(|f| {
+            std::fs::read_to_string(f.join("metadata.json"))
+                .ok()
+                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+                .is_some_and(|m| m["status"] == "completed")
+        })
+        .collect();
+    folders.sort();
+    folders
+}
+
+/// Folders whose meeting is in this Dixit's database: a sandbox or another install may record into
+/// the same folder, and its meetings (voices, summaries) are not ours to process.
+async fn own_meetings(pool: &sqlx::SqlitePool, folders: Vec<PathBuf>) -> Vec<PathBuf> {
+    let mut own = Vec::new();
+    for folder in folders {
+        match TranscriptsRepository::meeting_for_folder(pool, &folder.to_string_lossy()).await {
+            Ok(Some(_)) => own.push(folder),
+            _ => log::info!("Not resuming {}: not a meeting of this Dixit", folder.display()),
+        }
+    }
+    own
+}
+
+/// At startup, in the background and one meeting at a time, finishes interrupted post-call work:
+/// the final pass if it never ran, then speakers and the automatic summary (which replaces one
+/// written on the live transcript before the interruption).
+pub fn resume_interrupted<R: Runtime>(app: &AppHandle<R>) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        // The database opens after setup (later still on a first launch): wait, or retry next start.
+        let mut ready = false;
+        for _ in 0..60 {
+            if app.try_state::<crate::state::AppState>().is_some() {
+                ready = true;
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        }
+        if !ready {
+            return;
+        }
+        let root = crate::audio::recording_preferences::load_recording_preferences(&app)
+            .await
+            .map(|p| p.save_folder)
+            .unwrap_or_else(|_| crate::audio::recording_preferences::get_default_recordings_folder());
+        for folder in own_meetings(&pool(&app), interrupted_meetings(&root)).await {
+            log::info!("Resuming the post-call work of {}", folder.display());
+            let _pending = crate::summary::auto::Pending::start(&folder);
+            let resumed_at = chrono::Utc::now();
+            if needs_final_pass(&app, &folder).await {
+                crate::audio::retranscription::run_final_pass(&app, &folder).await;
+            }
+            if let Err(e) = process_meeting(app.clone(), folder.clone(), true).await {
+                log::error!("Speaker attribution failed: {e:#}");
+            }
+            crate::summary::auto::after_final_transcript(&app, &folder, resumed_at).await;
+        }
+    });
+}
+
+/// The final pass runs when Whisper is the configured model (live was on Parakeet) and it has not
+/// rewritten this transcript yet (it stamps `retranscribed_at`).
+async fn needs_final_pass<R: Runtime>(app: &AppHandle<R>, folder: &Path) -> bool {
+    let done = std::fs::read_to_string(folder.join("metadata.json"))
+        .ok()
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+        .is_some_and(|m| !m["retranscribed_at"].is_null());
+    !done
+        && crate::api::api::api_get_transcript_config(app.clone(), app.state(), None)
+            .await
+            .ok()
+            .flatten()
+            .is_some_and(|c| c.provider == "localWhisper")
 }
 
 /// Renames a speaker label of a meeting (DB right away; files, .md and voice memory via a rerun in
@@ -207,6 +313,47 @@ pub async fn speakers_ensure_model<R: Runtime>(app: AppHandle<R>) -> Result<Stri
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_cleanly_stopped_meetings_with_tracks_are_resumed() {
+        let root = tempfile::tempdir().unwrap();
+        let meeting = |name: &str, status: &str, tracks: bool| {
+            let f = root.path().join(name);
+            std::fs::create_dir(&f).unwrap();
+            std::fs::write(f.join("metadata.json"), serde_json::json!({ "status": status }).to_string()).unwrap();
+            std::fs::write(f.join("transcripts.json"), "{}").unwrap();
+            if tracks {
+                std::fs::write(f.join(tracks::SYS_TRACK), "").unwrap();
+            }
+        };
+        meeting("2026-11-02 09.34 Nuove attività", "completed", true); // closed during large-v3
+        meeting("2026-10-30 12.02 Teams", "recording", true); // never stopped cleanly
+        meeting("2026-10-30 15.56 Benè Elena", "completed", false); // done
+        let found = interrupted_meetings(root.path());
+        assert_eq!(found, vec![root.path().join("2026-11-02 09.34 Nuove attività")]);
+        assert!(interrupted_meetings(&root.path().join("missing")).is_empty());
+    }
+
+    #[tokio::test]
+    async fn resumes_only_meetings_of_this_dixit() {
+        let pool = sqlx::sqlite::SqlitePoolOptions::new().max_connections(1).connect("sqlite::memory:").await.unwrap();
+        sqlx::query("CREATE TABLE meetings (id TEXT PRIMARY KEY, folder_path TEXT)").execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO meetings VALUES ('m1', '/rec/ours')").execute(&pool).await.unwrap();
+        let folders = vec![PathBuf::from("/rec/ours"), PathBuf::from("/rec/sandbox")];
+        assert_eq!(own_meetings(&pool, folders).await, vec![PathBuf::from("/rec/ours")]);
+    }
+
+    #[tokio::test]
+    async fn waits_for_a_meeting_saved_late() {
+        let pool = sqlx::sqlite::SqlitePoolOptions::new().max_connections(1).connect("sqlite::memory:").await.unwrap();
+        sqlx::query("CREATE TABLE meetings (id TEXT PRIMARY KEY, folder_path TEXT)").execute(&pool).await.unwrap();
+        let frontend = pool.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+            sqlx::query("INSERT INTO meetings VALUES ('m1', '/rec/late')").execute(&frontend).await.unwrap();
+        });
+        assert_eq!(wait_for_meeting(&pool, Path::new("/rec/late")).await, "m1");
+    }
 
     #[test]
     fn sanitize_title_for_file_cases() {

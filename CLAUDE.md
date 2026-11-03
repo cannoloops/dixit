@@ -4,19 +4,18 @@ Guida per lavorare su questo repository con Claude Code.
 
 ## Cos'è Dixit
 
-**Dixit** (repo `trascrivi-app`) è un'app desktop macOS che registra, trascrive e riassume le riunioni interamente in locale. È un fork di [Meetily](https://github.com/Zackriya-Solutions/meeting-minutes) (MIT, attribuzione in `LICENSE.md`): l'app supportata è Tauri 2 + Next.js 14, con il core in Rust. La usano Vito e i colleghi, solo su Mac (Apple Silicon).
+**Dixit** (repo `trascrivi-app`) è un'app desktop macOS che registra, trascrive e riassume le riunioni interamente in locale. È un fork di [Meetily](https://github.com/Zackriya-Solutions/meeting-minutes) (MIT, attribuzione in `LICENSE.md`): l'app supportata è Tauri 2 + Next.js 15, con il core in Rust. La usano Vito e i colleghi, solo su Mac (Apple Silicon).
 
 - **Nessuna dipendenza esterna:** trascrizione e riassunto girano su modelli inclusi nel pacchetto `.app`. Ollama e i provider cloud restano solo come opzioni da esperto.
 - **Interfaccia bilingue:** italiano e inglese (`frontend/src/i18n/`).
-- **Design system:** `DESIGN.md` (Dixit). Prodotto e scelte: `PRODUCT.md`.
-- **Archivio legacy:** `backend/` (Python/FastAPI, Docker, whisper-server) non è supportato. Non usarlo e non aggiungerci endpoint.
+- **Design system:** `DESIGN.md`. Prodotto e scelte: `PRODUCT.md`.
 
 ## Cosa fa
 
 | Funzione | Dove vive |
 |---|---|
 | Avvio e stop automatici quando inizia o finisce una call Teams, Zoom, Meet | `src-tauri/src/autopilot/` |
-| Nomi dei parlanti e sottotitoli da Teams; trascrizione nativa Teams | `src-tauri/src/teams/`, `src-tauri/src/speakers/` |
+| Nomi dei parlanti e sottotitoli da Teams; trascrizione nativa Teams solo se la chiedi dal pulsante del banner (è visibile a tutti) | `src-tauri/src/teams/`, `src-tauri/src/speakers/`, `public/banner.html` |
 | Trascrizione live con Parakeet, definitiva con Whisper large-v3 a fine registrazione | `src-tauri/src/parakeet_engine/`, `src-tauri/src/whisper_engine/`, `audio/transcription/` |
 | Attribuzione dei parlanti (wespeaker) | `src-tauri/src/speakers/` |
 | Memoria delle voci: una voce già nominata viene riconosciuta nelle riunioni successive (dopo i nomi da Teams, prima di «Parlante X») | `src-tauri/src/speakers/voices.rs`; taratura con `cargo test --lib bench_voice_memory -- --ignored` |
@@ -111,7 +110,7 @@ DIXIT_MCP_ADDR=127.0.0.1:7338 npx tauri dev --config '{"identifier":"com.vitoman
 Usa i dati in `…/com.vitomanuguerra.trascrivi.dev/` (copia il DB reale con `sqlite3 … ".backup …"`; `models` può essere un symlink a quella reale).
 
 - **Da Claude Code** va lanciata fuori dalla sandbox dei comandi: dentro, il processo web della finestra va in crash («Couldn't connect to launchservicesd») e la finestra resta bianca.
-- **`ChunkLoadError … app/layout … timeout`** al primo avvio: Next stava ancora compilando. Quando `curl localhost:3118/_next/static/chunks/app/layout.js` risponde, riavvia.
+- **`ChunkLoadError … app/layout … timeout`** al primo avvio: Next stava ancora compilando. Quando `curl 127.0.0.1:3118/_next/static/chunks/app/layout.js` risponde, riavvia.
 - **La finestra è nascosta nella barra dei menu:** riaprila da «Apri Dixit» nel menu dell'icona.
 
 ### Build e distribuzione
@@ -145,4 +144,4 @@ Usa i dati in `…/com.vitomanuguerra.trascrivi.dev/` (copia il DB reale con `sq
   - `main` è il branch principale: stabile, da qui partono le build da distribuire;
   - `develop` è il branch di sviluppo: ogni attività nasce da `develop` su un feature branch (`feat/*`, `fix/*`) e ci torna con un merge;
   - quando `develop` è pronto per una build, si mergia in `main`. Mai commit diretti su `main`.
-- **Documenti di verifica:** `docs/confronto-modelli-riassunto.md`, `docs/verifica-riassunti.md`.
+- **Documenti di verifica:** `docs/confronto-modelli-riassunto.md`.

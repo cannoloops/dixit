@@ -300,25 +300,30 @@ pub fn attribute_folder(folder: &Path, me: &str, embedder: Option<&mut Embedder>
     })
 }
 
-/// Speech a cluster needs before its print teaches the memory (a few seconds are a noisy print).
+/// Speech of its name a cluster needs before its print teaches the memory (a few seconds are noisy).
 const MIN_LEARN_SECS: f64 = 30.0;
 
-/// Each remote cluster's most common final name with its print; generic labels, `me` and clusters
-/// with little speech skipped.
+/// Share of a cluster's named time its name must hold: a print of several voices teaches nobody.
+// ponytail: from real Teams meetings: one-voice clusters hold 0.98–1.0, the cluster of a
+// laptop-speaker call (check formazione, 2 Nov) 0.50 over three voices. Raise it if mixes slip in.
+const MIN_NAME_SHARE: f64 = 0.75;
+
+/// Each remote cluster's dominant final name (by time) with its print; generic labels, clusters
+/// with little speech or no dominant name skipped. The user's own Teams turns are left out: prints
+/// come from system audio, where the user's voice is not, so those turns are caption lag.
 fn named_voices(infos: &[SegmentInfo], names: &[String], voices: &ClusterVoices, me: &str) -> Vec<(String, Vec<f32>)> {
     voices
         .iter()
         .filter_map(|(c, print)| {
-            let mut counts: HashMap<&str, usize> = HashMap::new();
-            let mut secs = 0.0;
+            let mut secs: HashMap<&str, f64> = HashMap::new();
             for (info, name) in infos.iter().zip(names) {
-                if info.source == Source::Others && info.cluster == Some(*c) {
-                    *counts.entry(name.as_str()).or_default() += 1;
-                    secs += info.end - info.start;
+                if info.source == Source::Others && info.cluster == Some(*c) && !super::naming::is_me(name, me) {
+                    *secs.entry(name.as_str()).or_default() += info.end - info.start;
                 }
             }
-            let (name, _) = counts.into_iter().max_by(|a, b| a.1.cmp(&b.1).then(b.0.cmp(a.0)))?;
-            (secs >= MIN_LEARN_SECS && !super::naming::is_generic(name) && name != me)
+            let total: f64 = secs.values().sum();
+            let (name, top) = secs.into_iter().max_by(|a, b| a.1.total_cmp(&b.1).then(b.0.cmp(a.0)))?;
+            (top >= MIN_LEARN_SECS && top >= MIN_NAME_SHARE * total && !super::naming::is_generic(name))
                 .then(|| (name.to_string(), print.clone()))
         })
         .collect()
@@ -328,6 +333,33 @@ fn named_voices(infos: &[SegmentInfo], names: &[String], voices: &ClusterVoices,
 mod tests {
     use super::*;
     use crate::speakers::wav::WavWriter;
+
+    #[test]
+    fn my_own_teams_name_is_never_learned() {
+        let infos = [SegmentInfo { seq: 0, start: 0.0, end: 40.0, source: Source::Others, cluster: Some(0) }];
+        let voices = ClusterVoices::from([(0, vec![1.0; 4])]);
+        assert!(named_voices(&infos, &["Manuguerra Vito".into()], &voices, "Manuguerra").is_empty());
+        assert_eq!(named_voices(&infos, &["Rossi Mario".into()], &voices, "Manuguerra").len(), 1);
+    }
+
+    #[test]
+    fn only_a_clearly_dominant_name_is_learned() {
+        let learned = |parts: &[(&str, f64)]| -> Vec<String> {
+            let mut t = 0.0;
+            let (infos, names): (Vec<_>, Vec<String>) = parts
+                .iter()
+                .map(|&(n, secs)| {
+                    t += secs;
+                    (SegmentInfo { seq: 0, start: t - secs, end: t, source: Source::Others, cluster: Some(0) }, n.to_string())
+                })
+                .unzip();
+            named_voices(&infos, &names, &ClusterVoices::from([(0, vec![1.0; 4])]), "Manuguerra").into_iter().map(|v| v.0).collect()
+        };
+        // Laptop speakers, check formazione 2 Nov: one cluster, three remote voices.
+        assert!(learned(&[("Paola Neri", 156.0), ("Greco Luigi", 133.0), ("Manuguerra Vito", 76.0), ("Ricci Dario", 25.0)]).is_empty());
+        // Gallo 2 Nov: the user's own captions over a remote voice (system audio) are caption lag.
+        assert_eq!(learned(&[("Gallo Sara", 1286.0), ("Manuguerra Vito", 814.0)]), ["Gallo Sara"]);
+    }
 
     fn tone(freq: f32, secs: f32, amp: f32) -> Vec<f32> {
         (0..(16000.0 * secs) as usize)

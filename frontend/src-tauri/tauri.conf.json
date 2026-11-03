@@ -6,7 +6,7 @@
     "identifier": "com.vitomanuguerra.trascrivi",
     "build": {
         "frontendDist": "../out",
-        "devUrl": "http://localhost:3118",
+        "devUrl": "http://127.0.0.1:3118",
         "beforeDevCommand": "pnpm dev",
         "beforeBuildCommand": "pnpm build"
     },
@@ -18,7 +18,8 @@
                 "height": 700,
                 "resizable": true,
                 "fullscreen": false,
-                "decorations": true
+                "decorations": true,
+                "backgroundThrottling": "disabled"
             }
         ],
         "macOSPrivateApi": true,
@@ -26,32 +27,17 @@
             "csp": {
                 "default-src": "'self'",
                 "style-src": "'self' 'unsafe-inline'",
-                "img-src": "'self' asset: https://asset.localhost data:",
-                "connect-src": "'self' http://localhost:11434 http://localhost:5167 http://localhost:8178 https://api.ollama.ai"
-            },
-            "assetProtocol": {
-                "enable": true,
-                "scope": [
-                    "$APPDATA/**"
-                ]
+                "img-src": "'self' data:",
+                "connect-src": "'self'"
             },
             "capabilities": [
                 {
                     "identifier": "main",
-                    "description": "Main window capability with file system and media access",
+                    "description": "Main window capability",
                     "windows": [
                         "main"
                     ],
                     "permissions": [
-                        "fs:default",
-                        "fs:allow-read-file",
-                        "fs:read-all",
-                        "fs:write-all",
-                        "fs:allow-app-read",
-                        "fs:allow-app-write",
-                        "fs:allow-download-write",
-                        "fs:allow-download-read",
-                        "fs:scope-download",
                         "core:path:default",
                         "core:event:default",
                         "core:window:default",
@@ -64,15 +50,7 @@
                         "notification:default",
                         "notification:allow-is-permission-granted",
                         "updater:default",
-                        "process:default",
-                        {
-                            "identifier": "fs:scope",
-                            "allow": [
-                                {
-                                    "path": "$APPDATA/*"
-                                }
-                            ]
-                        }
+                        "process:default"
                     ]
                 }
             ]

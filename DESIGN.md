@@ -1,6 +1,6 @@
 ---
 name: Dixit
-description: "Assistente di riunioni locale, nel design system Dixit: antracite e bianco, petrolio per l'azione, verde per la tua voce."
+description: "Assistente di riunioni locale, nel suo design system: antracite e bianco, petrolio per l'azione, verde per la tua voce."
 colors:
   background: "#FFFFFF"
   foreground: "#2A2A2C"
@@ -149,11 +149,11 @@ components:
 
 ## Overview
 
-**Creative North Star: "Il quaderno Dixit"**
+**Creative North Star: "Il quaderno"**
 
-Dixit veste il design system Dixit (template Dixit 2023): antracite e bianco come base, petrolio per l'unica azione che conta, verde Dixit per la voce dell'utente e per ciò che è andato bene. L'interfaccia è un documento di lavoro, non una vetrina: testo piccolo e leggibile (14px), righe divise da filetti sottili, nessuna card. Il colore compare dove significa qualcosa: chi parla, se si sta registrando, cosa richiede attenzione.
+Dixit ha un design system sobrio: antracite e bianco come base, petrolio per l'unica azione che conta, verde per la voce dell'utente e per ciò che è andato bene. L'interfaccia è un documento di lavoro, non una vetrina: testo piccolo e leggibile (14px), righe divise da filetti sottili, nessuna card. Il colore compare dove significa qualcosa: chi parla, se si sta registrando, cosa richiede attenzione.
 
-Light e dark seguono macOS (`prefers-color-scheme`); in scuro lo sfondo è l'antracite Dixit. La sidebar ha una superficie propria (`rail`), più chiara in light e più scura in dark, come nelle app macOS. Il marchio è una D a fumetto (coda in basso a sinistra) in `currentColor` nell'interfaccia; l'icona la mostra bianca su gradiente diagonale Dixit dal verde (alto a sinistra) al blu (basso a destra).
+Light e dark seguono macOS (`prefers-color-scheme`); in scuro lo sfondo è l'antracite. La sidebar ha una superficie propria (`rail`), più chiara in light e più scura in dark, come nelle app macOS. Il marchio è una D a fumetto (coda in basso a sinistra) in `currentColor` nell'interfaccia; l'icona la mostra bianca su gradiente diagonale dal verde (alto a sinistra) al blu (basso a destra).
 
 **Key Characteristics:**
 - Un solo pulsante petrolio pieno per schermata; il resto è outline o ghost.
@@ -167,10 +167,10 @@ Light e dark seguono macOS (`prefers-color-scheme`); in scuro lo sfondo è l'ant
 Antracite e bianco, un petrolio, un verde e una scala di sette colori per le voci. I token con suffisso `-dark` sono i valori in modalità scura dello stesso ruolo; in CSS sono le stesse variabili ridefinite in `prefers-color-scheme: dark` (valori HSL in `globals.css`).
 
 ### Primary
-- **Petrolio Dixit** (`primary`): l'azione principale della schermata, l'anello di focus, la selezione, i puntini e i timbri "da verificare". In scuro si schiarisce (`primary-dark`); in sidebar l'accento è `rail-accent-dark`.
+- **Petrolio** (`primary`): l'azione principale della schermata, l'anello di focus, la selezione, i puntini e i timbri "da verificare". In scuro si schiarisce (`primary-dark`); in sidebar l'accento è `rail-accent-dark`.
 
 ### Secondary
-- **Verde Dixit** (`success`, `speaker-me`): la voce dell'utente e gli stati positivi. In chiaro è scurito (`#457D17`) per reggere il contrasto su bianco; in scuro è il verde pieno (`success-dark`, circa #8DC928).
+- **Verde** (`success`, `speaker-me`): la voce dell'utente e gli stati positivi. In chiaro è scurito (`#457D17`) per reggere il contrasto su bianco; in scuro è il verde pieno (`success-dark`, circa #8DC928).
 
 ### Tertiary
 - **Rosso registrazione** (`live`): solo per "sta registrando" (puntino, etichetta, pulsante di stop).

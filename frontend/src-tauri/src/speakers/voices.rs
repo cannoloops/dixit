@@ -12,10 +12,11 @@ use std::path::Path;
 /// In the app data folder.
 pub const VOICES_FILE: &str = "voices.json";
 // ponytail: calibration knobs from `bench_voice_memory` (79 cluster prints of 30 real Teams
-// meetings, centered): different voices of one meeting score p50 0.14, p90 0.56; at 0.7 only a
-// few pairs pass (mostly one voice split in two clusters) while 31/79 clusters find themselves in
-// another meeting. A wrong name is worse than "Parlante X", hence the margin over the next name.
-pub const KNOWN_VOICE_THRESHOLD: f32 = 0.7;
+// meetings, centered): different voices of one meeting score p50 0.14, p90 0.56, 5/72 pairs over
+// 0.7 and 1/72 over 0.8, while 23/79 clusters still find themselves in another meeting over 0.8.
+// 0.7 named a stranger (55 s cluster, 0.73 to a print from one meeting, Ferri call 2 Nov).
+// A wrong name is worse than "Parlante X", hence 0.8 and the margin over the next name.
+pub const KNOWN_VOICE_THRESHOLD: f32 = 0.8;
 const MIN_MARGIN: f32 = 0.1;
 /// Mean wespeaker print of real Teams voices (|mean| ≈ 0.63): the component every voice shares
 /// (model bias, codec), removed before comparing. Regenerate with `bench_voice_memory`.
@@ -104,6 +105,22 @@ mod tests {
     }
 
     #[test]
+    fn a_stranger_close_to_a_known_voice_stays_unnamed() {
+        // Ferri call, 2 Nov: a stranger at 0.73 to a known print, 0.16 clear of the next name.
+        let mut m = Voices::default();
+        m.learn("2026-10-30 Benè", &[("Elena Benè".into(), voice(0, 7, 0.0))]);
+        m.learn("2026-10-30 Conti", &[("Conti Marco".into(), voice(3, 7, 0.0))]);
+        let at = |cos: f32| -> Vec<f32> {
+            let mut v = vec![0.0; 8];
+            v[0] = cos;
+            v[1] = (1.0 - cos * cos).sqrt();
+            v
+        };
+        assert_eq!(m.recognize(&at(0.73), "2026-11-02 Ferri"), None);
+        assert_eq!(m.recognize(&at(0.9), "2026-11-02 Ferri").as_deref(), Some("Elena Benè"));
+    }
+
+    #[test]
     fn ignores_the_meeting_s_own_contribution() {
         let mut m = Voices::default();
         m.learn("2026-10-01 SAL", &[("Rossi Mario".into(), voice(0, 7, 0.1))]);
@@ -139,7 +156,7 @@ mod tests {
             v
         };
         let rossi = print(&[(0, 1.0)]);
-        let other = print(&[(0, 0.6), (1, 0.8)]); // own parts at 0.6: raw ≈ 0.76, centered ≈ 0.6
+        let other = print(&[(0, 0.75), (1, 0.66)]); // own parts at 0.75: raw ≈ 0.85, centered ≈ 0.75
         let raw: f32 = normalized(&rossi).iter().zip(normalized(&other)).map(|(x, y)| x * y).sum();
         assert!(raw >= KNOWN_VOICE_THRESHOLD, "raw {raw}");
         let mut m = Voices::default();

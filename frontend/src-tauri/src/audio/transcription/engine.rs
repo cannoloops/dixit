@@ -52,7 +52,7 @@ impl TranscriptionEngine {
 // ============================================================================
 
 /// Dixit: set when the live path runs on Parakeet in place of the configured Whisper model,
-/// so Termina re-transcribes the recording with Whisper (`retranscription::final_pass`).
+/// so Termina re-transcribes the recording with Whisper (`speakers::listen_for_stops`).
 pub static FINAL_PASS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 /// Validate that transcription models (Whisper or Parakeet) are ready before starting recording
