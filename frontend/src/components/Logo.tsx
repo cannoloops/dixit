@@ -18,7 +18,7 @@ const Logo = React.forwardRef<HTMLButtonElement, LogoProps>(
         type="button"
         onClick={() => router.push("/")}
         aria-label={t("home")}
-        className="flex h-8 items-center gap-2 rounded-sm px-1 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rail-accent"
+        className="flex h-8 items-center gap-2 rounded-sm px-1 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-rail-accent"
       >
         <DixitMark className="h-6 w-6 text-base text-rail-accent" />
         {!isCollapsed && (

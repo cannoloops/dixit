@@ -1,6 +1,6 @@
 [package]
 name = "meetily"
-version = "0.2.1"
+version = "0.2.2"
 description = "Trascrivi - meeting transcription with automatic start/stop (fork of Meetily)"
 authors = ["Sujith S"]
 license = "MIT"

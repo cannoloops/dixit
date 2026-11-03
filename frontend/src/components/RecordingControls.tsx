@@ -314,7 +314,7 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
     <div className="flex flex-col items-center gap-2">
       {/* Device error: what happened and how to fix it */}
       {deviceError && (
-        <Alert variant="destructive" className="w-[24rem] max-w-full bg-popover pr-9 shadow-[var(--shadow-float)]">
+        <Alert variant="destructive" className="w-96 max-w-full bg-popover pr-9 shadow-(--shadow-float)">
           <AlertCircle className="h-4 w-4" />
           <button
             onClick={() => setDeviceError(null)}
@@ -336,7 +336,7 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
         <p className="text-xs text-muted-foreground">{t('validatingModel')}</p>
       )}
 
-      <div className="flex h-11 items-center gap-3 rounded-md border border-border bg-popover px-2 text-popover-foreground shadow-[var(--shadow-float)]">
+      <div className="flex h-11 items-center gap-3 rounded-md border border-border bg-popover px-2 text-popover-foreground shadow-(--shadow-float)">
         {isProcessing && !isParentProcessing ? (
           <span className="flex items-center gap-2 px-2 text-sm text-muted-foreground" role="status">
             <Loader2 className="h-4 w-4 animate-spin" />

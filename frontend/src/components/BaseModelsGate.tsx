@@ -76,7 +76,7 @@ export function BaseModelsGate({ children }: { children: React.ReactNode }) {
             <p className="text-sm text-destructive">
               {t('downloadFailed')} {t('downloadFailedRemedy')}
             </p>
-            <p className="break-words text-xs text-destructive">{error}</p>
+            <p className="wrap-break-word text-xs text-destructive">{error}</p>
             <Button variant="outline" size="sm" onClick={download}>
               <RefreshCw className="h-4 w-4" />
               {t('tryAgain')}

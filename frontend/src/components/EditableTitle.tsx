@@ -53,7 +53,7 @@ export const EditableTitle: React.FC<EditableTitleProps> = ({
         }}
         className={cn(
           type,
-          'w-full resize-none overflow-hidden rounded-sm border border-input bg-background px-1 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+          'w-full resize-none overflow-hidden rounded-sm border border-input bg-background px-1 text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
         )}
         style={{ minWidth: '300px' }}
         autoFocus
@@ -71,7 +71,7 @@ export const EditableTitle: React.FC<EditableTitleProps> = ({
       <button
         type="button"
         onClick={onStartEditing}
-        className="shrink-0 rounded-sm p-1 text-muted-foreground opacity-0 transition-opacity duration-150 hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
+        className="shrink-0 rounded-sm p-1 text-muted-foreground opacity-0 transition-opacity duration-150 hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
         title={t('editTitle')}
         aria-label={t('editTitle')}
       >
@@ -81,7 +81,7 @@ export const EditableTitle: React.FC<EditableTitleProps> = ({
         <button
           type="button"
           onClick={onDelete}
-          className="shrink-0 rounded-sm p-1 text-destructive opacity-0 transition-opacity duration-150 hover:bg-accent focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
+          className="shrink-0 rounded-sm p-1 text-destructive opacity-0 transition-opacity duration-150 hover:bg-accent focus-visible:opacity-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
           title={t('deleteSection')}
           aria-label={t('deleteSection')}
         >

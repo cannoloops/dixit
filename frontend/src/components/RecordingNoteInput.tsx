@@ -35,7 +35,7 @@ export function RecordingNoteInput() {
       }}
       aria-label={t('noteInputLabel')}
       placeholder={t('notePlaceholder')}
-      className="w-[min(32rem,calc(100vw-3rem))] shadow-[var(--shadow-float)]"
+      className="w-[min(32rem,calc(100vw-3rem))] shadow-(--shadow-float)"
     />
   );
 }

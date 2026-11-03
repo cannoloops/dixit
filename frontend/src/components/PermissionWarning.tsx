@@ -58,7 +58,7 @@ export function PermissionWarning({
       {/* Combined Permission Warning - Show when either permission is missing */}
       {(!hasMicrophone || !hasSystemAudio) && (
         <Alert>
-          <AlertTriangle className="h-4 w-4 !text-destructive" />
+          <AlertTriangle className="h-4 w-4 text-destructive!" />
           <AlertTitle className="flex items-center gap-2 font-semibold">
             {!hasMicrophone && !hasSystemAudio
               ? t('permissionsRequired')

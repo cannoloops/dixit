@@ -987,7 +987,7 @@ export function ModelSettingsModal({
               <button
                 type="button"
                 aria-expanded={isCustomOpenAIAdvancedOpen}
-                className="flex w-full items-center justify-between rounded-sm py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex w-full items-center justify-between rounded-sm py-2 text-sm font-medium focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                 onClick={() => setIsCustomOpenAIAdvancedOpen(!isCustomOpenAIAdvancedOpen)}
               >
                 {t('advancedOptions')}
@@ -1119,7 +1119,7 @@ export function ModelSettingsModal({
             <button
               type="button"
               aria-expanded={!isEndpointSectionCollapsed}
-              className="flex w-full items-center justify-between rounded-sm py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex w-full items-center justify-between rounded-sm py-2 text-sm font-medium focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
               onClick={() => setIsEndpointSectionCollapsed(!isEndpointSectionCollapsed)}
             >
               {t('customEndpoint')}

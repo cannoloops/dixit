@@ -153,7 +153,7 @@ export function MeetingDetailsSplitView({
           aria-valuetext={t('resizeValue', { n: Math.round(ratio * 100) })}
           aria-label={t('resizePanels')}
           tabIndex={0}
-          className="group relative z-10 -mx-1 hidden w-2 flex-shrink-0 cursor-col-resize items-stretch justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:flex"
+          className="group relative z-10 -mx-1 hidden w-2 shrink-0 cursor-col-resize items-stretch justify-center focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:flex"
           onPointerDown={onPointerDown}
           onKeyDown={onSeparatorKeyDown}
         >

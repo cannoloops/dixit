@@ -15,7 +15,7 @@ function StatusOverlay({ show, message }: { show: boolean; message: string }) {
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex justify-center px-6">
       <div
-        className="flex h-11 items-center gap-2 rounded-md border border-border bg-popover px-4 text-sm text-popover-foreground shadow-[var(--shadow-float)]"
+        className="flex h-11 items-center gap-2 rounded-md border border-border bg-popover px-4 text-sm text-popover-foreground shadow-(--shadow-float)"
         role="status"
       >
         <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />

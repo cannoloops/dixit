@@ -20,7 +20,7 @@ export function PermissionRow({ icon, title, description, status, isPending = fa
 
   return (
     <div className="flex items-center gap-3 py-3">
-      <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center text-muted-foreground [&_svg]:h-4 [&_svg]:w-4">
+      <span className="flex h-4 w-4 shrink-0 items-center justify-center text-muted-foreground [&_svg]:h-4 [&_svg]:w-4">
         {icon}
       </span>
 
@@ -31,7 +31,7 @@ export function PermissionRow({ icon, title, description, status, isPending = fa
         </p>
       </div>
 
-      <div className="flex-shrink-0">
+      <div className="shrink-0">
         {isAuthorized ? (
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success">
             <Check className="h-4 w-4" aria-hidden />

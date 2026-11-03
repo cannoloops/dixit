@@ -45,9 +45,9 @@ function formatDuration(seconds: number): string {
 
 // Sidebar controls.
 const railItem =
-  'flex h-8 w-full items-center gap-2 rounded-sm px-2 text-sm text-rail-foreground transition-colors duration-150 hover:bg-rail-active focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rail-accent [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0 [&_svg]:text-rail-muted';
+  'flex h-8 w-full items-center gap-2 rounded-sm px-2 text-sm text-rail-foreground transition-colors duration-150 hover:bg-rail-active focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-rail-accent [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0 [&_svg]:text-rail-muted';
 const railIcon =
-  'flex h-8 w-8 items-center justify-center rounded-sm text-rail-muted transition-colors duration-150 hover:bg-rail-active hover:text-rail-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rail-accent disabled:pointer-events-none disabled:opacity-50 [&_svg]:h-4 [&_svg]:w-4';
+  'flex h-8 w-8 items-center justify-center rounded-sm text-rail-muted transition-colors duration-150 hover:bg-rail-active hover:text-rail-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-rail-accent disabled:pointer-events-none disabled:opacity-50 [&_svg]:h-4 [&_svg]:w-4';
 
 const isSameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 
@@ -491,7 +491,7 @@ const Sidebar: React.FC = () => {
           onClick={() => openMeeting(meeting)}
           aria-current={isActive ? 'page' : undefined}
           className={cn(
-            'flex h-7 w-full items-center gap-2 rounded-sm px-2 text-left text-sm text-rail-foreground transition-colors duration-150 group-hover:pr-16 group-has-[:focus-visible]:pr-16 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rail-accent',
+            'flex h-7 w-full items-center gap-2 rounded-sm px-2 text-left text-sm text-rail-foreground transition-colors duration-150 group-hover:pr-16 group-has-focus-visible:pr-16 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-rail-accent',
             isActive ? 'bg-rail-active font-medium' : 'hover:bg-rail-active'
           )}
         >
@@ -505,7 +505,7 @@ const Sidebar: React.FC = () => {
             />
           )}
           {meeting.duration_secs ? (
-            <span className="shrink-0 text-xs tabular-nums text-rail-muted group-hover:hidden group-has-[:focus-visible]:hidden">
+            <span className="shrink-0 text-xs tabular-nums text-rail-muted group-hover:hidden group-has-focus-visible:hidden">
               {formatDuration(meeting.duration_secs)}
             </span>
           ) : null}
@@ -513,7 +513,7 @@ const Sidebar: React.FC = () => {
         {snippet && (
           <p className="line-clamp-2 pb-1 pl-14 pr-2 text-xs text-rail-muted">{snippet}</p>
         )}
-        <div className="absolute right-1 top-0.5 hidden items-center group-hover:flex group-has-[:focus-visible]:flex">
+        <div className="absolute right-1 top-0.5 hidden items-center group-hover:flex group-has-focus-visible:flex">
           <button
             type="button"
             onClick={() => handleEditStart(meeting.id, meeting.title)}
@@ -609,7 +609,7 @@ const Sidebar: React.FC = () => {
             onClick={() => router.push('/')}
             aria-label={t('openLive')}
             className={cn(
-              'mb-1 flex w-full flex-col items-start gap-1 rounded-sm px-2 py-1.5 text-left transition-colors duration-150 hover:bg-rail-active focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rail-accent',
+              'mb-1 flex w-full flex-col items-start gap-1 rounded-sm px-2 py-1.5 text-left transition-colors duration-150 hover:bg-rail-active focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-rail-accent',
               pathname === '/' && 'bg-rail-active'
             )}
           >

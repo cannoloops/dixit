@@ -66,9 +66,9 @@ function DownloadToastContent({
   const fmt = (n: number) => n.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
   return (
-    <div className="flex w-full max-w-sm items-center gap-3 rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-[var(--shadow-float)]">
+    <div className="flex w-full max-w-sm items-center gap-3 rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-(--shadow-float)">
       {/* Icon */}
-      <div className="flex-shrink-0">
+      <div className="shrink-0">
         {isComplete ? (
           <Check className="h-4 w-4 text-primary" />
         ) : hasError ? (

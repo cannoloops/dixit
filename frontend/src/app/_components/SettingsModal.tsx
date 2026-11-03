@@ -48,7 +48,7 @@ interface SettingsModalsProps {
 }
 
 const selectClass =
-  "h-8 rounded-md border border-input bg-background px-2.5 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+  "h-8 rounded-md border border-input bg-background px-2.5 text-sm focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring";
 
 export function SettingsModals({
   modals,

@@ -461,12 +461,12 @@ function DownloadRow({ title, icon, state, modelSize, sizeUnit = 'MB', onRetry }
   return (
     <li className="space-y-2 py-3">
       <div className="flex items-center gap-3">
-        <span className="flex-shrink-0 text-muted-foreground">{icon}</span>
+        <span className="shrink-0 text-muted-foreground">{icon}</span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">{title}</p>
           <p className="text-xs tabular-nums text-muted-foreground">{modelSize}</p>
         </div>
-        <div className="flex-shrink-0 text-xs">
+        <div className="shrink-0 text-xs">
           {state.status === 'waiting' && <span className="text-muted-foreground">{t('statusWaiting')}</span>}
           {state.status === 'downloading' && (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-label={t('downloading')} />
@@ -507,7 +507,7 @@ function DownloadRow({ title, icon, state, modelSize, sizeUnit = 'MB', onRetry }
             {isCancelled ? t('downloadCancelled') : t('downloadFailed')}{' '}
             {isCancelled ? t('downloadCancelledRemedy') : t('downloadFailedRemedy')}
           </p>
-          {state.error && <p className="break-words text-xs text-destructive">{state.error}</p>}
+          {state.error && <p className="wrap-break-word text-xs text-destructive">{state.error}</p>}
           <Button variant="outline" size="sm" onClick={onRetry}>
             <RefreshCw className="h-4 w-4" />
             {t('tryAgain')}
