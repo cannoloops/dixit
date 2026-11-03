@@ -115,6 +115,7 @@ Usa i dati in `…/com.vitomanuguerra.trascrivi.dev/` (copia il DB reale con `sq
 ### Build e distribuzione
 
 - **Release pubblica:** `scripts/release.sh <versione>` compila, firma, scrive `latest.json` e pubblica su `cannoloops/dixit` (dettagli in `docs/RELEASE.md`). L'updater legge `releases/latest/download/latest.json` dello stesso repo.
+- **Changelog:** ogni release ha un changelog breve in testa a `docs/release-notes.md` («**Novità in <versione>**», una riga per novità, pensata per i colleghi). Senza, `release.sh` si ferma.
 - Solo il `.dmg`: `npx tauri build --bundles dmg -- --features metal`.
 - L'eseguibile si chiama `Dixit` (`mainBinaryName` e `[[bin]]` in `Cargo.toml`); il package Cargo resta `meetily`.
 - **Firma.** Con `APPLE_SIGNING_IDENTITY="Dixit Local Signing"` (in `~/.zshrc` di Vito) Tauri firma con il certificato autofirmato «Dixit Local Signing» del portachiavi: il requisito designato si basa sul certificato e non sul cdhash, quindi macOS conserva microfono, registrazione schermo e Accessibilità da una build all'altra. Controllo: `codesign -dr - /Applications/Dixit.app` mostra `certificate leaf`, non `cdhash`. Senza la variabile vale `signingIdentity: "-"` di `tauri.conf.json` (firma ad hoc, per i colleghi): a ogni installazione l'Accessibilità va tolta e riaggiunta.

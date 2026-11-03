@@ -11,6 +11,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 KEY="$HOME/.tauri/trascrivi.key"
 TRIPLE="aarch64-apple-darwin"
 
+# Ogni release ha il suo changelog breve in testa a docs/release-notes.md («**Novità in <versione>**»).
+grep -q "Novità in $VERSION\*\*" "$ROOT/docs/release-notes.md" || { echo "Manca il changelog di $VERSION in docs/release-notes.md"; exit 1; }
 [[ -f "$KEY" ]] || { echo "Chiave updater mancante: $KEY"; exit 1; }
 export TAURI_SIGNING_PRIVATE_KEY="$(cat "$KEY")"
 export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""
