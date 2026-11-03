@@ -1,7 +1,7 @@
 //! Dixit MCP server: lets local agents (Claude Code, Claude Desktop) read the live transcript and
-//! the saved meetings (list, full meeting, search). Streamable HTTP on 127.0.0.1, JSON responses
-//! only (no SSE stream), read-only tools.
-// ponytail: hand-rolled HTTP/JSON-RPC for four tools; switch to the `rmcp` crate if they multiply.
+//! the saved meetings (list, full meeting, search), and transcribe an audio or video file into a new
+//! meeting. Streamable HTTP on 127.0.0.1, JSON responses only (no SSE stream).
+// ponytail: hand-rolled HTTP/JSON-RPC for six tools; switch to the `rmcp` crate if they multiply.
 
 use crate::teams::captions::Turn;
 use once_cell::sync::Lazy;
@@ -28,8 +28,18 @@ pub type PoolSource = Arc<dyn Fn() -> Option<SqlitePool> + Send + Sync>;
 static POOL_SOURCE: OnceLock<PoolSource> = OnceLock::new();
 
 pub fn set_pool_source<R: Runtime>(app: AppHandle<R>) {
+    let importer = app.clone();
+    let _ = IMPORTER.set(Arc::new(move |path, title, language| {
+        tauri::async_runtime::spawn(transcribe(importer.clone(), path, title, language));
+    }));
     let _ = POOL_SOURCE.set(Arc::new(move || app.try_state::<crate::state::AppState>().map(|s| s.db_manager.pool().clone())));
 }
+
+/// Starts `transcribe_file` in the background: (absolute path, title, language).
+type Importer = Arc<dyn Fn(String, String, Option<String>) + Send + Sync>;
+static IMPORTER: OnceLock<Importer> = OnceLock::new();
+/// The last `transcribe_file` job (none since Dixit started: None).
+static JOB: Lazy<Mutex<Option<Value>>> = Lazy::new(|| Mutex::new(None));
 
 static SERVER: Lazy<Mutex<Option<JoinHandle<()>>>> = Lazy::new(|| Mutex::new(None));
 static BIND_ERROR: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
@@ -164,6 +174,24 @@ async fn respond(body: &[u8], source: &PoolSource) -> Option<Value> {
                     "minutes": {"type": "number", "description": "How many minutes back (default 5)"}
                 }},
                 "annotations": {"readOnlyHint": true},
+            }), json!({
+                "name": "transcribe_file",
+                "description": "Transcribes an audio or video file on this Mac (mp4, m4a, wav, mp3, mkv, webm, ...) into a new \
+                    Dixit meeting, with the configured final model (Whisper large-v3), then writes its automatic summary. \
+                    Runs in the background, one file at a time: follow it with transcription_status, then read the \
+                    meeting with get_meeting. No speaker names: the file has no separate tracks per speaker.",
+                "inputSchema": {"type": "object", "properties": {
+                    "path": {"type": "string", "description": "Absolute path of the file (it is copied into the meeting folder, the original is left alone)"},
+                    "title": {"type": "string", "description": "Meeting title (default: the file name)"},
+                    "language": {"type": "string", "description": "Spoken language code, e.g. it, en (default: detected)"}
+                }, "required": ["path"]},
+                "annotations": {"readOnlyHint": false, "destructiveHint": false},
+            }), json!({
+                "name": "transcription_status",
+                "description": "State of the last transcribe_file job: running (with stage and percentage), done (with \
+                    meeting_id; the summary may still be on its way) or failed (with the error).",
+                "inputSchema": {"type": "object", "properties": {}},
+                "annotations": {"readOnlyHint": true},
             })];
             tools.extend(crate::mcp_tools::definitions());
             Ok(json!({ "tools": tools }))
@@ -171,6 +199,13 @@ async fn respond(body: &[u8], source: &PoolSource) -> Option<Value> {
         "tools/call" if req["params"]["name"] == "live_transcript" => {
             let minutes = req["params"]["arguments"]["minutes"].as_f64().unwrap_or(5.0).clamp(0.5, 240.0);
             Ok(json!({"content": [{"type": "text", "text": live_transcript(minutes).await}]}))
+        }
+        "tools/call" if req["params"]["name"] == "transcribe_file" => Ok(match start_transcription(&req["params"]["arguments"]).await {
+            Ok(text) => json!({"content": [{"type": "text", "text": text}]}),
+            Err(text) => json!({"content": [{"type": "text", "text": text}], "isError": true}),
+        }),
+        "tools/call" if req["params"]["name"] == "transcription_status" => {
+            Ok(json!({"content": [{"type": "text", "text": transcription_status()}]}))
         }
         "tools/call" => {
             let name = req["params"]["name"].as_str().unwrap_or("");
@@ -214,6 +249,70 @@ async fn live_transcript(minutes: f64) -> String {
         .map(|s| Turn { name: String::new(), text: s.text, start: s.audio_start_time, end: s.audio_end_time })
         .collect();
     format!("(No speaker names: Teams live captions are not available for this call.)\n{}", render(&segments, now, minutes))
+}
+
+async fn start_transcription(args: &Value) -> Result<String, String> {
+    let path = args["path"].as_str().map(str::trim).filter(|p| !p.is_empty()).ok_or("`path` is required")?.to_string();
+    if !std::path::Path::new(&path).is_absolute() {
+        return Err(format!("`path` must be absolute, got '{path}'"));
+    }
+    let checked = path.clone();
+    let info = tauri::async_runtime::spawn_blocking(move || crate::audio::import::validate_audio_file(std::path::Path::new(&checked)))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())?;
+    let importer = IMPORTER.get().ok_or("Dixit is not ready yet; try again in a moment")?;
+    let title = args["title"].as_str().map(str::trim).filter(|t| !t.is_empty()).unwrap_or(&info.filename).to_string();
+    let language = args["language"].as_str().map(str::trim).filter(|l| !l.is_empty()).map(String::from);
+    {
+        let mut job = JOB.lock().unwrap();
+        if crate::audio::import::is_import_in_progress() || job.as_ref().is_some_and(|j| j["state"] == "running") {
+            return Err("Another file is being transcribed: wait for it (transcription_status) and try again".to_string());
+        }
+        *job = Some(json!({"state": "running", "path": path, "title": title, "started_at": chrono::Utc::now().to_rfc3339()}));
+    }
+    importer(path, title.clone(), language);
+    Ok(format!(
+        "Started transcribing '{title}' ({:.0} minutes of audio). Follow it with transcription_status.",
+        info.duration_seconds / 60.0
+    ))
+}
+
+/// Imports the file as a new meeting, then the automatic summary as after a recording (no speaker
+/// attribution: an imported file has one mixed track, not one per side of the call).
+async fn transcribe<R: Runtime>(app: AppHandle<R>, path: String, title: String, language: Option<String>) {
+    let started = chrono::Utc::now();
+    let finish = |fields: Value| {
+        if let Some(job) = JOB.lock().unwrap().as_mut() {
+            for (key, value) in fields.as_object().unwrap() {
+                job[key] = value.clone();
+            }
+        }
+    };
+    let imported = match crate::audio::import::start_import(app.clone(), path, title, language, None, None).await {
+        Ok(imported) => imported,
+        Err(e) => return finish(json!({"state": "failed", "error": e.to_string()})),
+    };
+    finish(json!({"state": "done", "meeting_id": imported.meeting_id, "duration_seconds": imported.duration_seconds.round(), "segments": imported.segments_count}));
+    let pool = app.state::<crate::state::AppState>().db_manager.pool().clone();
+    if let Ok(Some(folder)) = crate::database::repositories::transcript::TranscriptsRepository::folder_for_meeting(&pool, &imported.meeting_id).await {
+        let folder = std::path::PathBuf::from(folder);
+        let _pending = crate::summary::auto::Pending::start(&folder);
+        crate::summary::auto::after_final_transcript(&app, &folder, started).await;
+    }
+}
+
+fn transcription_status() -> String {
+    let Some(mut job) = JOB.lock().unwrap().clone() else {
+        return "No file transcribed through MCP since Dixit started.".to_string();
+    };
+    if job["state"] == "running" {
+        if let Some(p) = crate::audio::import::last_progress() {
+            job["stage"] = json!(p.stage);
+            job["progress_percentage"] = json!(p.progress_percentage);
+        }
+    }
+    job.to_string()
 }
 
 fn clock(secs: f64) -> String {
@@ -286,6 +385,13 @@ mod tests {
         let call = post(addr, "", r#"{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"live_transcript","arguments":{}}}"#).await;
         assert!(call.contains("No call in progress"), "{call}");
 
+        let relative = post(addr, "", r#"{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"transcribe_file","arguments":{"path":"call.mp4"}}}"#).await;
+        assert!(relative.contains(r#""isError":true"#) && relative.contains("must be absolute"), "{relative}");
+        let missing = post(addr, "", r#"{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"transcribe_file","arguments":{"path":"/nope/call.mp4"}}}"#).await;
+        assert!(missing.contains(r#""isError":true"#) && missing.contains("does not exist"), "{missing}");
+        let status = post(addr, "", r#"{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"transcription_status","arguments":{}}}"#).await;
+        assert!(status.contains("No file transcribed"), "{status}");
+
         let web = post(addr, "Origin: http://evil.example\r\n", r#"{"jsonrpc":"2.0","id":4,"method":"tools/list"}"#).await;
         assert!(web.starts_with("HTTP/1.1 403"), "{web}");
     }
@@ -315,7 +421,7 @@ mod tests {
         let text = |v: &Value| v["result"]["content"][0]["text"].as_str().unwrap().to_string();
 
         let tools = post(addr, "", r#"{"jsonrpc":"2.0","id":2,"method":"tools/list"}"#).await;
-        for name in ["live_transcript", "list_meetings", "get_meeting", "search_transcripts"] {
+        for name in ["live_transcript", "transcribe_file", "transcription_status", "list_meetings", "get_meeting", "search_transcripts"] {
             assert!(tools.contains(name), "{name} missing: {tools}");
         }
 
