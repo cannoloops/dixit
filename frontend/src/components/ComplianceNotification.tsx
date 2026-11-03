@@ -73,7 +73,7 @@ export const ComplianceNotification: React.FC<ComplianceNotificationProps> = ({
         width: `${position.width}px`,
       }}
     >
-      <div className="rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-[var(--shadow-float)]">
+      <div className="rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-(--shadow-float)">
         {/* Header with close button */}
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center gap-1">
@@ -84,7 +84,7 @@ export const ComplianceNotification: React.FC<ComplianceNotificationProps> = ({
           </div>
           <button
             onClick={handleClose}
-            className="rounded-sm p-0.5 text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="rounded-sm p-0.5 text-muted-foreground transition-colors duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
             aria-label={tApp('close')}
           >
             <X className="h-4 w-4" />

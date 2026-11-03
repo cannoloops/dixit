@@ -54,7 +54,7 @@ export function SetupOverviewStep() {
           const Icon = model.icon;
           return (
             <li key={model.type} className="flex items-center gap-3 py-3">
-              <Icon className="h-4 w-4 flex-shrink-0 text-muted-foreground" aria-hidden />
+              <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-1.5 text-sm font-medium">
                   {model.title}
@@ -65,7 +65,7 @@ export function SetupOverviewStep() {
                           <button
                             type="button"
                             aria-label={t('summaryInfoLabel')}
-                            className="rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            className="rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                           >
                             <Info className="h-4 w-4" />
                           </button>

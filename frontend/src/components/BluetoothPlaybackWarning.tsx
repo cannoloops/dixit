@@ -65,7 +65,7 @@ export function BluetoothPlaybackWarning({
 
   return (
     <Alert className="mb-4" aria-live="polite">
-      <Speaker className="h-4 w-4 !text-muted-foreground" />
+      <Speaker className="h-4 w-4 text-muted-foreground!" />
       <div className="flex w-full items-start justify-between">
         <div className="flex-1">
           <AlertTitle className="font-semibold">{t('bluetoothTitle')}</AlertTitle>

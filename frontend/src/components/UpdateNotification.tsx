@@ -35,7 +35,7 @@ export function showUpdateNotification(updateInfo: UpdateInfo, onUpdateClick?: (
           e.stopPropagation();
           handleClick();
         }}
-        className="shrink-0 rounded-sm text-sm font-medium text-primary underline-offset-4 transition-colors duration-150 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="shrink-0 rounded-sm text-sm font-medium text-primary underline-offset-4 transition-colors duration-150 hover:underline focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
       >
         {t('viewDetails')}
       </button>

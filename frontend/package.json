@@ -28,9 +28,9 @@
         "lint": "next lint"
     },
     "dependencies": {
-        "@blocknote/core": "0.36.0",
-        "@blocknote/react": "0.36.0",
-        "@blocknote/shadcn": "0.36.0",
+        "@blocknote/core": "0.57.0",
+        "@blocknote/react": "0.57.0",
+        "@blocknote/shadcn": "0.57.0",
         "@heroicons/react": "^2.2.0",
         "@hookform/resolvers": "^5.1.1",
         "@radix-ui/react-accordion": "^1.2.12",
@@ -54,9 +54,7 @@
         "@tauri-apps/plugin-process": "^2.3.0",
         "@tauri-apps/plugin-store": "^2.4.0",
         "@tauri-apps/plugin-updater": "^2.3.0",
-        "@tiptap/pm": "^2.10.4",
-        "@tiptap/react": "^2.10.4",
-        "@tiptap/starter-kit": "^2.10.4",
+        "@tiptap/pm": "^3.32.2",
         "@types/lodash": "^4.17.13",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -78,7 +76,7 @@
         "zod": "^4.6.6"
     },
     "devDependencies": {
-        "@tailwindcss/container-queries": "^0.1.1",
+        "@tailwindcss/postcss": "^4.3.3",
         "@tailwindcss/typography": "^0.5.15",
         "@tauri-apps/cli": "^2.1.0",
         "@tauri-apps/plugin-fs": "~2.4.0",
@@ -87,11 +85,10 @@
         "@types/react": "^19.3.0",
         "@types/react-dom": "^19.3.0",
         "@types/react-test-renderer": "18.3.1",
-        "autoprefixer": "^10.0.1",
         "concurrently": "^8.2.2",
         "postcss": "^8",
         "react-test-renderer": "^19.3.1",
-        "tailwindcss": "^3.4.1",
+        "tailwindcss": "^4.3.3",
         "typescript": "^5.7.2",
         "wait-on": "^7.2.0"
     }

@@ -1,10 +1,10 @@
 # pnpm >= 10 reads settings from here, not from package.json
 overrides:
-  prosemirror-model: "1.25.3"
-  prosemirror-state: "1.4.3"
-  prosemirror-view: "1.42.3"
-  prosemirror-transform: "1.10.4"
-  prosemirror-tables: "1.8.1"
+  prosemirror-model: "1.25.12"
+  prosemirror-state: "1.4.4"
+  prosemirror-view: "1.42.9"
+  prosemirror-transform: "1.12.4"
+  prosemirror-tables: "1.8.5"
   # Correzioni di sicurezza nella stessa major (next fissa postcss 8.4.31)
   "postcss@<8.5.23": "^8.5.23"
   "postcss-selector-parser@<6.1.5": "^6.1.5"

@@ -207,7 +207,7 @@ export default function AnalyticsConsentSwitch() {
             <button
               type="button"
               onClick={handlePrivacyPolicyClick}
-              className="rounded-sm text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="rounded-sm text-primary underline-offset-4 hover:underline focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
             >
               {t('privacyPolicy')}
             </button>

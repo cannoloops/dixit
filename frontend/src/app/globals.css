@@ -1,85 +1,191 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-@keyframes vibrate {
-  0% {
-    transform: translate(0);
+/* Classi usate dall'editor di BlockNote (variante shadcn) */
+@source '../../node_modules/@blocknote/shadcn';
+
+@plugin 'tailwindcss-animate';
+@plugin '@tailwindcss/typography';
+
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+@theme {
+  --font-sans:
+    var(--font-open-sans), -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: var(--font-montserrat), var(--font-open-sans), sans-serif;
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-rail: hsl(var(--rail));
+  --color-rail-foreground: hsl(var(--rail-foreground));
+  --color-rail-muted: hsl(var(--rail-muted));
+  --color-rail-border: hsl(var(--rail-border));
+  --color-rail-active: hsl(var(--rail-active));
+  --color-rail-accent: hsl(var(--rail-accent));
+  --color-rail-live: hsl(var(--rail-live));
+
+  --color-success: hsl(var(--success));
+
+  --color-live: hsl(var(--live));
+  --color-live-foreground: hsl(var(--live-foreground));
+
+  --color-speaker-1: hsl(var(--speaker-1));
+  --color-speaker-2: hsl(var(--speaker-2));
+  --color-speaker-3: hsl(var(--speaker-3));
+  --color-speaker-4: hsl(var(--speaker-4));
+  --color-speaker-5: hsl(var(--speaker-5));
+  --color-speaker-6: hsl(var(--speaker-6));
+  --color-speaker-7: hsl(var(--speaker-7));
+  --color-speaker-me: hsl(var(--speaker-me));
+  --color-speaker-other: hsl(var(--speaker-other));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
   }
-
-  20% {
-    transform: translate(-2px, 2px);
-  }
-
-  40% {
-    transform: translate(-2px, -2px);
-  }
-
-  60% {
-    transform: translate(2px, 2px);
-  }
-
-  80% {
-    transform: translate(2px, -2px);
-  }
-
-  100% {
-    transform: translate(0);
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
   }
 }
 
-.animate-vibrate {
-  animation: vibrate 0.3s linear;
-}
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
 
-@keyframes fade-in {
-  0% {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.4s ease-out;
-}
-
-@keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
   }
 }
 
-.animate-fade-in-up {
-  animation: fade-in-up 0.5s ease-out forwards;
-}
+@layer utilities {
+  @keyframes vibrate {
+    0% {
+      transform: translate(0);
+    }
 
-.delay-75 {
-  animation-delay: 75ms;
-}
+    20% {
+      transform: translate(-2px, 2px);
+    }
 
-.delay-100 {
-  animation-delay: 100ms;
-}
+    40% {
+      transform: translate(-2px, -2px);
+    }
 
-.delay-150 {
-  animation-delay: 150ms;
-}
+    60% {
+      transform: translate(2px, 2px);
+    }
 
-/* Dixit design tokens: Dixit design system.
+    80% {
+      transform: translate(2px, -2px);
+    }
+
+    100% {
+      transform: translate(0);
+    }
+  }
+
+  .animate-vibrate {
+    animation: vibrate 0.3s linear;
+  }
+
+  @keyframes fade-in {
+    0% {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.4s ease-out;
+  }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.5s ease-out forwards;
+  }
+
+  .delay-75 {
+    animation-delay: 75ms;
+  }
+
+  .delay-100 {
+    animation-delay: 100ms;
+  }
+
+  .delay-150 {
+    animation-delay: 150ms;
+  }
+
+  /* Dixit design tokens: Dixit design system.
    Antracite #2B2B2D and white, petrolio #1F7E92 for the primary action, green #8DC928
    for positive states, the blue→green scale for speakers. Montserrat for titles, Open Sans for text.
    Light/dark follow macOS (tailwind darkMode: media). Values are HSL triplets. */
+}
 @layer base {
   :root {
     --background: 0 0% 100%;

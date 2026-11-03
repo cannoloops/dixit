@@ -28,13 +28,13 @@ export function ProgressIndicator({ current, total, onStepClick }: ProgressIndic
                 disabled={!isClickable}
                 aria-label={isClickable ? t('goToStep', { step }) : t('stepOf', { current: step, total })}
                 aria-current={isCurrent ? 'step' : undefined}
-                className="group flex h-6 w-full items-center rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-default"
+                className="group flex h-6 w-full items-center rounded-sm focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-default"
               >
                 <span
                   className={cn(
                     'w-full transition-colors duration-150',
                     isCurrent && 'h-0.5 bg-primary',
-                    isCompleted && 'h-px bg-primary/50 group-enabled:group-hover:bg-primary',
+                    isCompleted && 'h-px bg-primary/50 group-hover:group-enabled:bg-primary',
                     !isCurrent && !isCompleted && 'h-px bg-border'
                   )}
                 />
@@ -43,7 +43,7 @@ export function ProgressIndicator({ current, total, onStepClick }: ProgressIndic
           );
         })}
       </ol>
-      <span className="flex-shrink-0 text-xs tabular-nums text-muted-foreground">
+      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
         {t('stepOf', { current, total })}
       </span>
     </nav>

@@ -55,7 +55,7 @@ export function AudioLevelMeter({
         )}
       </div>
 
-      <span className={cn('min-w-[3rem] text-right tabular-nums text-muted-foreground', sizes.text)}>
+      <span className={cn('min-w-12 text-right tabular-nums text-muted-foreground', sizes.text)}>
         {rmsPercent}%
       </span>
     </div>

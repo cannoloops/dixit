@@ -208,7 +208,7 @@ export const BlockComponent: React.FC<BlockProps> = ({
       onContextMenu={onContextMenu}
     >
       {block.type === 'bullet' && (
-        <div className="flex-shrink-0 mr-2 select-none mt-[2px]">•</div>
+        <div className="shrink-0 mr-2 select-none mt-[2px]">•</div>
       )}
 
       <div className="relative flex-1 py-0.5 px-1">
@@ -224,7 +224,7 @@ export const BlockComponent: React.FC<BlockProps> = ({
           onContextMenu={onContextMenu}
           rows={1}
           className={cn(
-            'w-full resize-none overflow-hidden border-none bg-transparent p-0 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-0',
+            'w-full resize-none overflow-hidden border-none bg-transparent p-0 text-sm placeholder:text-muted-foreground focus:outline-hidden focus:ring-0',
             block.color === 'gray' && 'text-muted-foreground',
             block.type === 'heading1' && 'text-base font-semibold',
             block.type === 'heading2' && 'text-sm font-semibold'
@@ -235,7 +235,7 @@ export const BlockComponent: React.FC<BlockProps> = ({
         {showCommands && (
           <div 
             ref={commandsRef}
-            className="absolute left-0 top-full z-50 mt-1 w-64 rounded-md border border-border bg-popover py-1 text-popover-foreground shadow-[var(--shadow-float)]"
+            className="absolute left-0 top-full z-50 mt-1 w-64 rounded-md border border-border bg-popover py-1 text-popover-foreground shadow-(--shadow-float)"
           >
             {filteredCommands.map((cmd, index) => (
               <button
@@ -247,7 +247,7 @@ export const BlockComponent: React.FC<BlockProps> = ({
                 onClick={() => handleCommandSelect(cmd)}
                 onMouseEnter={() => setSelectedCommandIndex(index)}
               >
-                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-sm bg-muted text-xs text-muted-foreground">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm bg-muted text-xs text-muted-foreground">
                   {cmd.icon}
                 </span>
                 <div className="flex-1">
