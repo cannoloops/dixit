@@ -217,14 +217,9 @@ async fn start<R: Runtime>(app: &AppHandle<R>, platform: Platform) -> Result<(),
     *CANCELLED_FOLDER.lock().unwrap() = None;
     PENDING_CANCEL.store(false, Ordering::SeqCst);
 
-    // Banner first: the user can say no while the recorder is still starting.
+    // Banner first: the user can say no while the recorder is still starting. It is the only
+    // start notice: a system notification on top of it showed the same thing twice.
     banner::show(app, &title, offers_teams_transcription(app, platform));
-    let (head, body) = if crate::i18n::it() {
-        (format!("Trascrizione avviata – {title}"), "Puoi annullarla dal banner o dal menu Dixit.")
-    } else {
-        (format!("Transcription started – {title}"), "You can cancel it from the banner or the Dixit menu.")
-    };
-    notify(app, &head, body);
     if let Err(e) = crate::audio::recording_commands::start_recording_with_meeting_name(app.clone(), Some(title.clone())).await {
         banner::close(app);
         end_session();
