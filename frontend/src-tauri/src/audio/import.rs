@@ -265,6 +265,7 @@ pub async fn start_import<R: Runtime>(
 
     // Reset cancellation flag
     IMPORT_CANCELLED.store(false, Ordering::SeqCst);
+    *LAST_PROGRESS.lock().unwrap_or_else(|e| e.into_inner()) = None;
 
     let use_parakeet = provider.as_deref() == Some("parakeet");
     let result = run_import(
@@ -674,16 +675,22 @@ async fn run_import<R: Runtime>(
     })
 }
 
+/// Last progress emitted, for the MCP `transcription_status` tool.
+static LAST_PROGRESS: std::sync::Mutex<Option<ImportProgress>> = std::sync::Mutex::new(None);
+
+pub fn last_progress() -> Option<ImportProgress> {
+    LAST_PROGRESS.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
 /// Emit progress event
 fn emit_progress<R: Runtime>(app: &AppHandle<R>, stage: &str, progress: u32, message: &str) {
-    let _ = app.emit(
-        "import-progress",
-        ImportProgress {
-            stage: stage.to_string(),
-            progress_percentage: progress,
-            message: message.to_string(),
-        },
-    );
+    let progress = ImportProgress {
+        stage: stage.to_string(),
+        progress_percentage: progress,
+        message: message.to_string(),
+    };
+    *LAST_PROGRESS.lock().unwrap_or_else(|e| e.into_inner()) = Some(progress.clone());
+    let _ = app.emit("import-progress", progress);
 }
 
 
