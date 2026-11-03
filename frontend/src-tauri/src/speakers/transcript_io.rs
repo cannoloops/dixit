@@ -312,9 +312,9 @@ mod tests {
         let big = dir.path().join("big.docx");
         write_docx_xml(&big, &vec![b'a'; MAX_DOCX_XML_BYTES as usize + 1], zip::CompressionMethod::Deflated);
         assert!(err(&big).contains("too large"), "{}", err(&big));
-        // Bigger than the cap while declaring 1 KB: the read itself stops at the cap.
+        // Bigger than the cap while declaring 1 KB: zip refuses the lie, else the read stops at the cap.
         patch_headers(&big, 22, 24, &1024u32.to_le_bytes());
-        assert!(err(&big).contains("too large"), "{}", err(&big));
+        assert!(err(&big).contains("too large") || err(&big).contains("larger than its declared"), "{}", err(&big));
         // LZMA (method 14) decodes a whole dictionary in one read: refused before reading.
         let lzma = dir.path().join("lzma.docx");
         write_docx_xml(&lzma, b"<w:p></w:p>", zip::CompressionMethod::Stored);
