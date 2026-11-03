@@ -10,7 +10,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 pub const CAPTIONS_FILE: &str = "captions.json";
 /// Per-meeting Teams facts (kept out of metadata.json, which the recorder rewrites on stop).
@@ -148,6 +148,11 @@ fn run_session<R: Runtime>(app: AppHandle<R>, session: u64) {
         );
     }
     ACTIVE.lock().unwrap().insert(folder.clone());
+    let call_over = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let mute_watch = {
+        let (app, call_over) = (app.clone(), call_over.clone());
+        std::thread::spawn(move || watch_mic_mute(&app, pid, &call_over))
+    };
 
     let mut reader = ax::CaptionReader::default();
     *LIVE.lock().unwrap() = captions::CaptionLog::default();
@@ -190,9 +195,39 @@ fn run_session<R: Runtime>(app: AppHandle<R>, session: u64) {
             last_write = Instant::now();
         }
     }
+    call_over.store(true, std::sync::atomic::Ordering::Relaxed);
+    let _ = mute_watch.join();
     write_json(&folder.join(CAPTIONS_FILE), &std::mem::take(&mut *LIVE.lock().unwrap()).turns());
     NATIVE.lock().unwrap().session_ended(session);
     ACTIVE.lock().unwrap().remove(&folder);
+}
+
+/// Polls Teams' mic button every 100 ms for the whole call: while muted, the mic is recorded and
+/// transcribed as silence. Button not found = not muted.
+// ponytail: up to ~100 ms of speech leaks at mute (or is lost at unmute); a short delay line in
+// the pipeline would close it. A button lost while muted counts as unmuted: audio is never lost to a UI change.
+#[cfg(target_os = "macos")]
+fn watch_mic_mute<R: Runtime>(app: &AppHandle<R>, pid: i32, call_over: &std::sync::atomic::AtomicBool) {
+    use crate::audio::pipeline::MIC_MUTED;
+    use std::sync::atomic::Ordering::Relaxed;
+    let mut reader = ax::MicMuteReader::default();
+    while !call_over.load(Relaxed) {
+        let muted = reader.read(pid).unwrap_or(false);
+        if MIC_MUTED.swap(muted, Relaxed) != muted {
+            log::info!("Teams mic {}", if muted { "muted: recording silence" } else { "unmuted" });
+            let _ = app.emit("mic-muted", muted);
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    if MIC_MUTED.swap(false, Relaxed) {
+        let _ = app.emit("mic-muted", false);
+    }
+}
+
+/// Recording view: is the mic muted in the call app right now (the "mic-muted" event follows changes).
+#[tauri::command]
+pub fn mic_muted() -> bool {
+    crate::audio::pipeline::MIC_MUTED.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 /// Caption tries per call, a minute apart: a transient miss gets another go, a Teams UI change
