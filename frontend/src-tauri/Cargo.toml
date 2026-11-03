@@ -74,7 +74,6 @@ serde = { version = "1.0", features = ["derive"] }
 anyhow = "1.0"
 once_cell = "1.17.1"
 uuid = { version = "1.0", features = ["v4", "serde"] }
-posthog-rs = "0.3.7"
 
 # Cross-platform audio capture
 cpal = "0.15.3"
@@ -101,7 +100,7 @@ bytemuck = "1.16.1"
 ebur128 = "0.1"
 
 # Noise suppression - RNNoise-based neural network noise reduction
-nnnoiseless = "0.5"
+nnnoiseless = { version = "0.5", default-features = false, features = ["dasp"] }  # senza "bin": niente clap 3/atty
 
 # Speech recognition and async utilities
 # NOTE: whisper-rs is declared in platform-specific sections below (macOS/Windows/Linux)
@@ -158,7 +157,7 @@ tauri-plugin-fs = "2.4.0"
 tauri-plugin-dialog = "2.3.0"
 tauri-plugin-store = "2.4.0"
 tauri-plugin-notification = "2.3.1"
-tauri-plugin-updater = "2.3.0"
+tauri-plugin-updater = { version = "2.3.0", default-features = false, features = ["rustls-tls"] }  # niente zip: su macOS l'aggiornamento è un .tar.gz
 tauri-plugin-process = "2.3.0"
 tokenizers = { version = "0.23.2", default-features = false, features = ["onig"] }
 

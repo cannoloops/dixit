@@ -5,3 +5,6 @@ overrides:
   prosemirror-view: "1.42.3"
   prosemirror-transform: "1.10.4"
   prosemirror-tables: "1.8.1"
+  # Correzioni di sicurezza nella stessa major (next fissa postcss 8.4.31)
+  "postcss@<8.5.23": "^8.5.23"
+  "postcss-selector-parser@<6.1.5": "^6.1.5"
