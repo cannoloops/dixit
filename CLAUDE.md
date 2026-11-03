@@ -6,7 +6,7 @@ Guida per lavorare su questo repository con Claude Code.
 
 **Dixit** (repo `trascrivi-app`) è un'app desktop macOS che registra, trascrive e riassume le riunioni interamente in locale. È un fork di [Meetily](https://github.com/Zackriya-Solutions/meeting-minutes) (MIT, attribuzione in `LICENSE.md`): l'app supportata è Tauri 2 + Next.js 15, con il core in Rust. La usano Vito e i colleghi, solo su Mac (Apple Silicon).
 
-- **Nessuna dipendenza esterna:** trascrizione e riassunto girano su modelli inclusi nel pacchetto `.app`. Ollama e i provider cloud restano solo come opzioni da esperto.
+- **Nessuna dipendenza esterna:** trascrizione e riassunto girano su modelli locali, scaricati al primo avvio. Ollama e i provider cloud restano solo come opzioni da esperto.
 - **Interfaccia bilingue:** italiano e inglese (`frontend/src/i18n/`).
 - **Design system:** `DESIGN.md`. Prodotto e scelte: `PRODUCT.md`.
 
@@ -26,7 +26,7 @@ Guida per lavorare su questo repository con Claude Code.
 
 ## Modelli (configurazione base)
 
-La configurazione di default è quella di Vito e non va cambiata senza motivo. I modelli sono **dentro il pacchetto** (`Dixit.app/Contents/Resources/models`): solo un utente esperto li cambia, da Impostazioni › Avanzate › Modalità esperto.
+La configurazione di default è quella di Vito e non va cambiata senza motivo. I modelli **non sono nel pacchetto** (le release GitHub accettano file fino a 2 GB): al primo avvio `BaseModelsGate` li scarica (circa 9 GB) nella cartella modelli dei dati utente. Solo un utente esperto li cambia, da Impostazioni › Avanzate › Modalità esperto.
 
 | Uso | Modello | File in `models/` |
 |---|---|---|
@@ -34,10 +34,10 @@ La configurazione di default è quella di Vito e non va cambiata senza motivo. I
 | Trascrizione definitiva | Whisper large-v3 | `ggml-large-v3.bin` |
 | Parlanti | wespeaker ResNet34 | `speaker/` |
 | Riassunto | Gemma 4 E4B Q4_K_M, motore interno `llama-helper` | `summary/gemma-4-E4B-it-Q4_K_M.gguf` |
-| Ricerca semantica | EmbeddingGemma 300M (ONNX, `ort`) | `embeddinggemma-300m/` |
+| Ricerca semantica | EmbeddingGemma 300M (ONNX, `ort`) | `embedding/embeddinggemma-300m/` |
 
-- **Dove li cerca l'app:** prima nella cartella modelli dei dati utente (`~/Library/Application Support/com.vitomanuguerra.trascrivi/models/`), poi nel pacchetto (`src-tauri/src/bundled_models.rs`). In sviluppo il «pacchetto» è `target/debug/models`, copiato da `frontend/src-tauri/resources/models/`.
-- **Scaricarli:** `frontend/scripts/fetch-models.sh` riempie `frontend/src-tauri/resources/models/` (fuori da git). Se un file è già nei dati utente lo clona (APFS, nessuno spazio in più).
+- **Dove li cerca l'app:** nella cartella modelli dei dati utente (`~/Library/Application Support/com.vitomanuguerra.trascrivi/models/`), poi nel pacchetto se ce n'è uno vecchio che li include (`src-tauri/src/bundled_models.rs`).
+- **Download al primo avvio:** `src-tauri/src/base_models.rs` elenca i file con revisione Hugging Face fissata, dimensione e SHA-256; riprende i `.part` interrotti. Per cambiare un modello di default aggiorna lì URL, dimensione e hash. Prova di rete: `cargo test --lib base_models_download_real -- --ignored`.
 - **Perché Gemma 4 E4B:** confronto in `docs/confronto-modelli-riassunto.md`. Gemma 4 26B-A4B è migliore ma pesa 16 GB e usa circa 24 GB di RAM: è un'opzione esperto da scaricare, non il default. Qwen 3.5 4B è sconsigliato (inventa dati).
 - Gemma 4 a volte apre la risposta con un canale di pensiero vuoto: il client lo toglie (`strip_gemma4_thought`).
 
@@ -92,7 +92,6 @@ Tutti da `frontend/`.
 
 ```bash
 pnpm install                      # dipendenze
-./scripts/fetch-models.sh         # modelli in src-tauri/resources/models (prima della prima build)
 pnpm run tauri:dev                # sviluppo (rileva la GPU, su Mac usa --features metal)
 pnpm run tauri:build              # .app e .dmg in target/release/bundle/
 cd src-tauri && cargo test --lib  # test Rust (circa 370)
@@ -115,12 +114,12 @@ Usa i dati in `…/com.vitomanuguerra.trascrivi.dev/` (copia il DB reale con `sq
 
 ### Build e distribuzione
 
-- Il pacchetto pesa circa 8,6 GB; per creare il `.dmg` servono circa 20 GB liberi. Se manca spazio, `bundle_dmg.sh` fallisce con «Spazio esaurito sul dispositivo»: libera gli output di build (`target/` dei worktree), che si rigenerano.
+- **Release pubblica:** `scripts/release.sh <versione>` compila, firma, scrive `latest.json` e pubblica su `cannoloops/dixit` (dettagli in `docs/RELEASE.md`). L'updater legge `releases/latest/download/latest.json` dello stesso repo.
 - Solo il `.dmg`: `npx tauri build --bundles dmg -- --features metal`.
 - L'eseguibile si chiama `Dixit` (`mainBinaryName` e `[[bin]]` in `Cargo.toml`); il package Cargo resta `meetily`.
 - **Firma.** Con `APPLE_SIGNING_IDENTITY="Dixit Local Signing"` (in `~/.zshrc` di Vito) Tauri firma con il certificato autofirmato «Dixit Local Signing» del portachiavi: il requisito designato si basa sul certificato e non sul cdhash, quindi macOS conserva microfono, registrazione schermo e Accessibilità da una build all'altra. Controllo: `codesign -dr - /Applications/Dixit.app` mostra `certificate leaf`, non `cdhash`. Senza la variabile vale `signingIdentity: "-"` di `tauri.conf.json` (firma ad hoc, per i colleghi): a ogni installazione l'Accessibilità va tolta e riaggiunta.
 - Il certificato si crea una volta: Accesso Portachiavi › Assistente certificato › Crea un certificato, «Radice autofirmata», tipo «Firma codice», validità 3650 giorni. Alla prima build firmata codesign chiede l'accesso alla chiave («Consenti sempre») e i permessi vanno ridati una volta.
-- Il pacchetto non è notarizzato. Sui Mac dei colleghi: tasto destro › Apri, oppure `xattr -dr com.apple.quarantine /Applications/Dixit.app`. Condividilo da Drive o OneDrive.
+- Il pacchetto non è notarizzato. Sui Mac dei colleghi: tasto destro › Apri, oppure `xattr -dr com.apple.quarantine /Applications/Dixit.app`. Si scarica dalle release di GitHub.
 - Installare sul proprio Mac: chiudi Dixit, sposta `/Applications/Dixit.app` nel Cestino (reversibile), copia la nuova con `ditto`. Al primo avvio partono le migrazioni; macOS può richiedere di nuovo microfono e registrazione schermo.
 
 ## Architettura (Rust ↔ frontend)

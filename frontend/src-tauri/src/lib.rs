@@ -39,6 +39,7 @@ pub mod analytics;
 pub mod api;
 pub mod audio;
 pub mod autopilot;
+pub mod base_models;
 pub mod bundled_models;
 #[cfg(target_os = "macos")]
 pub mod ax_util;
@@ -683,6 +684,8 @@ pub fn run() {
             whisper_engine::commands::whisper_validate_model_ready,
             whisper_engine::commands::whisper_transcribe_audio,
             whisper_engine::commands::whisper_get_models_directory,
+            base_models::base_models_missing_bytes,
+            base_models::base_models_download,
             whisper_engine::commands::whisper_download_model,
             whisper_engine::commands::whisper_cancel_download,
             whisper_engine::commands::whisper_delete_corrupted_model,

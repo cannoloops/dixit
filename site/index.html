@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dixit</title>
+<meta name="description" content="Dixit registra le riunioni di Teams, Zoom e Meet, scrive chi ha detto cosa e prepara il riassunto. Tutto sul tuo Mac, senza cloud.">
+<link rel="icon" href="icon.png">
+<style>
+@font-face { font-family: Montserrat; src: url(fonts/montserrat-latin.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Open Sans"; src: url(fonts/open-sans-latin.woff2) format("woff2"); font-weight: 300 800; font-display: swap; }
+
+:root {
+  --bg: #FFFFFF; --fg: #2A2A2C; --soft: #62656A; --line: #E2E6E9; --muted: #F4F5F6;
+  --primary: #1F8093; --primary-fg: #FFFFFF; --tint: #EEF4F6;
+  --me: #457D17; --s1: #1A77AD; --s2: #A9610A; --s3: #A83E91;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #2A2A2C; --fg: #F2F2F3; --soft: #AAACB1; --line: #404145; --muted: #343437;
+    --primary: #30AAC5; --primary-fg: #2A2A2C; --tint: #232325;
+    --me: #8DC828; --s1: #5BB7EC; --s2: #F2A74A; --s3: #E58ACA;
+  }
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 "Open Sans", -apple-system, BlinkMacSystemFont, sans-serif; }
+h1, h2, h3 { font-family: Montserrat, "Open Sans", sans-serif; line-height: 1.2; margin: 0; }
+a { color: var(--primary); }
+a:focus-visible, .btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+section { padding: 72px 0; border-top: 1px solid var(--line); }
+section > .wrap > h2 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+.lead { color: var(--soft); max-width: 62ch; margin: 0 0 40px; }
+
+/* header */
+.top { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; }
+.brand { display: flex; align-items: center; gap: 10px; font: 700 20px Montserrat, sans-serif; color: var(--fg); text-decoration: none; }
+.brand img { width: 36px; height: 36px; }
+.top nav a { color: var(--soft); text-decoration: none; margin-left: 20px; font-size: 14px; }
+.top nav a:hover { color: var(--fg); }
+
+/* hero: the product's own artefact, a transcript with speakers */
+.hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 56px; align-items: center; padding: 56px 0 88px; }
+.hero h1 { font-size: clamp(36px, 5.4vw, 56px); font-weight: 700; letter-spacing: -0.01em; }
+.hero p { color: var(--soft); font-size: 18px; max-width: 46ch; margin: 20px 0 32px; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.btn { display: inline-flex; align-items: center; height: 44px; padding: 0 20px; border-radius: 6px; font: 600 15px Montserrat, sans-serif; text-decoration: none; }
+.btn.primary { background: var(--primary); color: var(--primary-fg); }
+.btn.ghost { color: var(--primary); border: 1px solid var(--line); }
+.req { color: var(--soft); font-size: 13px; margin-top: 16px; }
+
+.doc { margin: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 14px; }
+.doc header { display: flex; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--muted); }
+.doc header b { font-family: Montserrat, sans-serif; font-weight: 600; }
+.doc header span { color: var(--soft); font-size: 12px; white-space: nowrap; }
+.turn { padding: 10px 16px; border-left: 3px solid var(--c); margin: 10px 0; }
+.turn b { color: var(--c); font: 600 13px Montserrat, sans-serif; }
+.turn time { color: var(--soft); font-size: 11px; margin-left: 8px; }
+.turn p { margin: 2px 0 0; }
+.note { margin: 4px 16px 10px; padding: 6px 10px; background: var(--muted); border-radius: 4px; color: var(--soft); font-size: 13px; }
+.summary { border-top: 1px solid var(--line); padding: 14px 16px 16px; background: var(--tint); }
+.summary b { font: 600 13px Montserrat, sans-serif; }
+.summary ul { margin: 6px 0 0; padding-left: 18px; }
+
+/* how it works: a real sequence, so numbered */
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 24px; position: relative; counter-reset: step; }
+.steps::before { content: ""; position: absolute; top: 17px; left: 10%; right: 10%; height: 2px; background: var(--primary); }
+.steps li { position: relative; counter-increment: step; }
+.steps li::before { content: counter(step); display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: var(--primary-fg); font: 700 15px Montserrat, sans-serif; margin-bottom: 16px; box-shadow: 0 0 0 6px var(--bg); }
+.steps h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.steps p { margin: 0; color: var(--soft); font-size: 14px; }
+.kinds { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 40px; }
+.kinds span { border: 1px solid var(--line); border-radius: 9999px; padding: 4px 12px; font-size: 13px; color: var(--soft); }
+.kinds strong { color: var(--fg); font-weight: 600; }
+
+/* privacy */
+.privacy { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.mac { background: var(--tint); padding: 32px; border-right: 1px solid var(--line); }
+.mac h3, .out h3 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+.mac > p, .out > p { color: var(--soft); font-size: 14px; margin: 0 0 20px; }
+.chips { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; list-style: none; padding: 0; margin: 0; }
+.chips li { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; font-size: 14px; }
+.mac .ok { color: var(--me); font-weight: 600; font-size: 14px; margin: 20px 0 0; }
+.out { padding: 32px; }
+.out ul { list-style: none; margin: 0; padding: 0; }
+.out li { padding: 14px 0 14px 32px; border-top: 1px solid var(--line); position: relative; font-size: 14px; color: var(--soft); }
+.out li:first-child { border-top: 0; }
+.out li::before { content: ""; position: absolute; left: 0; top: 24px; width: 20px; border-top: 2px solid var(--soft); }
+.out li.opt::before { border-top: 2px dashed var(--s2); }
+.out li strong { display: block; color: var(--fg); font: 600 15px Montserrat, sans-serif; }
+
+/* install */
+.install { counter-reset: i; list-style: none; padding: 0; margin: 0; max-width: 720px; }
+.install li { counter-increment: i; display: grid; grid-template-columns: 36px 1fr; gap: 16px; padding: 16px 0; border-top: 1px solid var(--line); }
+.install li::before { content: counter(i); font: 700 18px Montserrat, sans-serif; color: var(--primary); }
+.install p { margin: 0; }
+code, pre { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
+pre { background: var(--muted); border-radius: 6px; padding: 10px 12px; margin: 8px 0 0; overflow-x: auto; }
+
+.agents { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+.agents p { margin: 0 0 12px; color: var(--soft); }
+.agents > *, .install li > * { min-width: 0; }
+
+footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--soft); font-size: 13px; }
+footer a { color: var(--soft); }
+
+@media (max-width: 860px) {
+  .hero, .privacy, .agents { grid-template-columns: 1fr; }
+  .hero { gap: 40px; padding-top: 24px; }
+  .mac { border-right: 0; border-bottom: 1px solid var(--line); }
+  .steps { grid-template-columns: 1fr; gap: 20px; }
+  .steps::before { top: 0; bottom: 0; left: 17px; right: auto; width: 2px; height: auto; }
+  .steps li { padding-left: 56px; }
+  .steps li::before { position: absolute; left: 0; top: 0; }
+  .top nav { display: none; }
+}
+@media (max-width: 480px) { .chips { grid-template-columns: 1fr; } .mac, .out { padding: 24px 20px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="./"><img src="icon.png" alt="">Dixit</a>
+    <nav aria-label="Sezioni">
+      <a href="#come-funziona">Come funziona</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#installazione">Installazione</a>
+      <a href="https://github.com/cannoloops/dixit">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+  <div class="hero">
+    <div>
+      <h1>Le tue riunioni, scritte sul tuo Mac.</h1>
+      <p>Dixit registra le call di Teams, Zoom e Meet, scrive chi ha detto cosa e prepara il riassunto. Tutto gira in locale: niente account, niente cloud.</p>
+      <div class="actions">
+        <a class="btn primary" href="https://github.com/cannoloops/dixit/releases/latest">Scarica per Mac</a>
+        <a class="btn ghost" href="https://github.com/cannoloops/dixit">Codice sorgente</a>
+      </div>
+      <p class="req">Mac con Apple Silicon, macOS 14.4 o successivo, 16 GB di RAM. Gratis e open source.</p>
+    </div>
+
+    <figure class="doc" aria-label="Esempio di trascrizione e riassunto in Dixit">
+      <header><b>Avanzamento progetto Alfa</b><span>Teams · 32 min</span></header>
+      <div class="turn" style="--c: var(--me)"><b>Tu</b><time>00:12</time><p>Partiamo dalla demo di giovedì: a che punto siamo?</p></div>
+      <div class="turn" style="--c: var(--s1)"><b>Paola Neri</b><time>00:19</time><p>La build è pronta, manca solo il test sui permessi.</p></div>
+      <div class="note">Nota 00:24 · chiedere a Marco i tempi del test</div>
+      <div class="turn" style="--c: var(--s2)"><b>Marco Conti</b><time>00:31</time><p>Lo chiudo entro mercoledì.</p></div>
+      <div class="summary"><b>Riassunto · SAL</b>
+        <ul><li>Build pronta per la demo di giovedì</li><li>Marco Conti: test dei permessi entro mercoledì</li></ul>
+      </div>
+    </figure>
+  </div>
+  </main>
+</div>
+
+<section id="come-funziona">
+  <div class="wrap">
+    <h2>Come funziona</h2>
+    <p class="lead">Non devi ricordarti di avviarlo. Dixit si accorge della call e a fine riunione ti lascia trascrizione e riassunto.</p>
+    <ol class="steps">
+      <li><h3>Inizia la call</h3><p>Dixit si accende da solo con Teams, Zoom o Meet, e si ferma quando la call finisce.</p></li>
+      <li><h3>Trascrizione live</h3><p>Il testo compare mentre si parla. Scrivi una nota e resta agganciata a quell'istante.</p></li>
+      <li><h3>Trascrizione definitiva</h3><p>A fine call Whisper large-v3 riscrive tutto, con più precisione.</p></li>
+      <li><h3>Chi ha detto cosa</h3><p>Su Teams usa i nomi dei partecipanti, altrove riconosce le voci che conosce già.</p></li>
+      <li><h3>Riassunto</h3><p>Capisce che tipo di riunione era e scrive il riassunto nella forma giusta.</p></li>
+    </ol>
+    <div class="kinds" aria-label="Tipi di riassunto">
+      <span><strong>SAL</strong>: fatto, in corso, bloccato, azioni con chi e quando</span>
+      <span><strong>Analisi</strong>: temi, requisiti, decisioni, domande aperte</span>
+      <span><strong>Mix</strong>: le due cose insieme</span>
+    </div>
+  </div>
+</section>
+
+<section id="privacy">
+  <div class="wrap">
+    <h2>Cosa resta sul tuo Mac</h2>
+    <p class="lead">Trascrizione e riassunto usano modelli che girano sul Mac. Ogni riunione è una cartella in Documenti/Dixit, che puoi aprire, spostare o cancellare.</p>
+    <div class="privacy">
+      <div class="mac">
+        <h3>Resta qui</h3>
+        <p>Niente di questo esce dal computer.</p>
+        <ul class="chips">
+          <li>Audio delle riunioni</li><li>Trascrizioni</li><li>Riassunti</li><li>Le tue note</li><li>Impronte delle voci</li><li>Modelli di IA</li>
+        </ul>
+        <p class="ok">Nessuna statistica d'uso, nessun account.</p>
+      </div>
+      <div class="out">
+        <h3>Esce solo questo</h3>
+        <p>Solo in questi tre casi.</p>
+        <ul>
+          <li><strong>Controllo degli aggiornamenti</strong>GitHub vede l'indirizzo IP, non i tuoi dati.</li>
+          <li><strong>Modelli, al primo avvio</strong>Circa 9 GB scaricati da Hugging Face e verificati sul Mac.</li>
+          <li class="opt"><strong>Provider esterni, solo se li attivi</strong>In modalità esperto puoi usare OpenAI, Claude o Ollama per i riassunti: il testo va al servizio che scegli.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="req">I dettagli sono nell'<a href="https://github.com/cannoloops/dixit/blob/main/PRIVACY_POLICY.md">informativa sulla privacy</a>. Registrare una riunione può richiedere il consenso dei partecipanti: avvisali prima.</p>
+  </div>
+</section>
+
+<section id="installazione">
+  <div class="wrap">
+    <h2>Installazione</h2>
+    <p class="lead">Servono circa 10 GB liberi: l'app è leggera, i modelli arrivano al primo avvio.</p>
+    <ol class="install">
+      <li><p>Scarica il file <code>.dmg</code> dall'<a href="https://github.com/cannoloops/dixit/releases/latest">ultima versione</a> e trascina Dixit in Applicazioni.</p></li>
+      <li><div><p>Dixit non è ancora notarizzato da Apple, quindi la prima volta macOS lo blocca. Aprilo con tasto destro › Apri, oppure dal Terminale:</p><pre><code>xattr -dr com.apple.quarantine /Applications/Dixit.app</code></pre></div></li>
+      <li><p>Al primo avvio Dixit scarica i modelli e chiede tre permessi: microfono, registrazione dello schermo e dell'audio di sistema, Accessibilità per leggere i nomi da Teams.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section id="agenti">
+  <div class="wrap agents">
+    <div>
+      <h2>Per i tuoi agenti</h2>
+      <p class="lead" style="margin-top:8px">Se lo attivi, Dixit espone un server MCP in sola lettura, raggiungibile solo dal tuo Mac. Claude Code o Claude Desktop possono cercare nelle riunioni, leggere riassunti e note, seguire la call in corso.</p>
+    </div>
+    <div>
+      <p>Per collegarlo a Claude Code:</p>
+      <pre><code>claude mcp add --transport http dixit http://127.0.0.1:7337/mcp</code></pre>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    Dixit è open source con licenza MIT, nato come fork di <a href="https://github.com/Zackriya-Solutions/meeting-minutes">Meetily</a>. Modelli: Whisper, Parakeet, WeSpeaker, Gemma, ognuno con la sua licenza.
+    <a href="https://github.com/cannoloops/dixit/blob/main/SECURITY.md">Segnalare un problema di sicurezza</a>.
+  </div>
+</footer>
+</body>
+</html>

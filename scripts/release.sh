@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Dixit release: build, sign with Developer ID, notarize, publish to the public releases repo.
+# Dixit release: build, sign, notarize if the Apple ID is set, publish on cannoloops/dixit.
 # Usage: scripts/release.sh <version> [--dry-run]     (see docs/RELEASE.md)
 set -euo pipefail
 
 VERSION="${1:?usage: scripts/release.sh <version> [--dry-run]}"
 DRY_RUN=false
 [[ "${2:-}" == "--dry-run" ]] && DRY_RUN=true
-RELEASES_REPO="cannoloops/trascrivi-releases"
+RELEASES_REPO="cannoloops/dixit"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 KEY="$HOME/.tauri/trascrivi.key"
 TRIPLE="aarch64-apple-darwin"
@@ -15,15 +15,11 @@ TRIPLE="aarch64-apple-darwin"
 export TAURI_SIGNING_PRIVATE_KEY="$(cat "$KEY")"
 export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""
 
-if $DRY_RUN; then
-  SIGNING_IDENTITY="-"   # ad-hoc: si apre solo su questo Mac
-  unset APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID   # niente notarizzazione
-else
-  for v in APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
-    [[ -n "${!v:-}" ]] || { echo "Imposta $v (vedi docs/RELEASE.md)"; exit 1; }
-  done
-  SIGNING_IDENTITY="$APPLE_SIGNING_IDENTITY"
-fi
+# Developer ID + APPLE_ID/APPLE_PASSWORD/APPLE_TEAM_ID: firmata e notarizzata.
+# Altrimenti firma con APPLE_SIGNING_IDENTITY (es. «Dixit Local Signing») o ad hoc, senza notarizzazione.
+SIGNING_IDENTITY="${APPLE_SIGNING_IDENTITY:--}"
+[[ -n "${APPLE_ID:-}" ]] || echo "Nessun APPLE_ID: release non notarizzata"
+$DRY_RUN && unset APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
 
 echo "==> Versione $VERSION"
 python3 - "$ROOT" "$VERSION" <<'PY'
@@ -72,5 +68,5 @@ if $DRY_RUN; then
 fi
 
 echo "==> Pubblicazione su $RELEASES_REPO"
-gh release create "v$VERSION" --repo "$RELEASES_REPO" --title "Dixit $VERSION" --notes "Dixit $VERSION" \
+gh release create "v$VERSION" --repo "$RELEASES_REPO" --title "Dixit $VERSION" --notes-file "$ROOT/docs/release-notes.md" \
   "$DMG" "$TARBALL" "$TARBALL.sig" "$BUNDLE/latest.json"
