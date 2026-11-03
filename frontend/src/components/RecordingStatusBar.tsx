@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
+import { MicOff } from 'lucide-react';
 import { useRecordingState } from '@/contexts/RecordingStateContext';
 import { LiveIndicator } from '@/components/dixit';
 import { cn } from '@/lib/utils';
@@ -31,6 +34,16 @@ export const RecordingStatusBar: React.FC<RecordingStatusBarProps> = ({ isPaused
     if (activeDuration !== null) setDisplaySeconds(Math.floor(activeDuration));
   }, [activeDuration]);
 
+  // Muted in the call app (Teams): the mic is recorded as silence.
+  const [micMuted, setMicMuted] = useState(false);
+  useEffect(() => {
+    invoke<boolean>('mic_muted').then(setMicMuted).catch(() => {});
+    const unlisten = listen<boolean>('mic-muted', (e) => setMicMuted(e.payload));
+    return () => {
+      unlisten.then((f) => f());
+    };
+  }, []);
+
   return (
     <span className={cn('inline-flex items-center gap-2', className)}>
       {isPaused ? (
@@ -42,6 +55,16 @@ export const RecordingStatusBar: React.FC<RecordingStatusBarProps> = ({ isPaused
         <LiveIndicator />
       )}
       <span className="text-sm tabular-nums text-foreground">{formatClock(displaySeconds)}</span>
+      {micMuted && (
+        <span
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
+          role="status"
+          title={t('micMutedHint')}
+        >
+          <MicOff className="h-3.5 w-3.5" aria-hidden />
+          {t('micMuted')}
+        </span>
+      )}
     </span>
   );
 };

@@ -36,6 +36,10 @@ const PARTIAL_STEP: usize = 16_000;
 // audio) partials stop and the line waits for the pause. Sliding window if that matters.
 const PARTIAL_MAX: usize = 30 * 16_000;
 
+/// Dixit: the user's mic is muted in the call app (set by the Teams session thread): the mic
+/// channel is recorded and transcribed as silence.
+pub static MIC_MUTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// Ring buffer for synchronized audio mixing
 /// Accumulates samples from mic and system streams until we have aligned windows
 struct AudioMixerRingBuffer {
@@ -81,6 +85,10 @@ impl AudioMixerRingBuffer {
         }
 
         match device_type {
+            // Dixit: muted in the call app = silence, gated on arrival (windows are 600 ms long).
+            DeviceType::Microphone if MIC_MUTED.load(std::sync::atomic::Ordering::Relaxed) => {
+                self.mic_buffer.extend(std::iter::repeat(0.0).take(samples.len()))
+            }
             DeviceType::Microphone => self.mic_buffer.extend(samples),
             DeviceType::System => self.system_buffer.extend(samples),
         }

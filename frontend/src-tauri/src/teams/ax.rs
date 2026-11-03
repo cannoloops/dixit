@@ -231,6 +231,59 @@ impl CaptionReader {
     }
 }
 
+// --- Microphone mute state ---------------------------------------------------------------
+
+/// Teams' mic toggle in the call toolbar: DOM id, or a label naming its action (it + en).
+static MIC_BUTTON: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"(?i)^microphone-button$|^(mute|unmute|(ri)?attiva (l['’])?audio|disattiva (l['’])?audio|(ri)?attiva (il )?microfono|disattiva (il )?microfono)\b").unwrap()
+});
+/// The label names what a press does: "Unmute" / "Riattiva audio" = muted now.
+static UNMUTE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)^(unmute|(ri)?attiva (l['’])?audio|(ri)?attiva (il )?microfono)\b").unwrap());
+/// Roster actions on other people ("Mute all", "Disattiva audio di tutti") are not our mic.
+static OTHERS: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)\b(all|everyone|tutti|partecipant)").unwrap());
+
+fn is_mic_button(e: &cidre::ax::UiElement) -> bool {
+    let labels = ax_util::labels(e);
+    ax_util::role(e) == "AXButton"
+        && labels.iter().any(|l| MIC_BUTTON.is_match(l.trim()))
+        && !labels.iter().any(|l| OTHERS.is_match(l))
+}
+
+fn is_muted_labels(labels: &[String]) -> bool {
+    labels.iter().any(|l| UNMUTE.is_match(l.trim()))
+}
+
+/// Reads the mute state from Teams' mic button; caches the button (one attribute read per poll)
+/// and searches for it again every couple of seconds while it's missing.
+#[derive(Default)]
+pub struct MicMuteReader {
+    button: Option<El>,
+    last_search: Option<std::time::Instant>,
+}
+
+const MIC_SEARCH_EVERY: std::time::Duration = std::time::Duration::from_secs(2);
+
+impl MicMuteReader {
+    /// None when the button is not on screen (compact view, Teams UI change): state unknown.
+    pub fn read(&mut self, pid: i32) -> Option<bool> {
+        let labels = self.button.as_ref().map(|b| ax_util::labels(b)).unwrap_or_default();
+        if !labels.is_empty() {
+            return Some(is_muted_labels(&labels));
+        }
+        self.button = None;
+        let now = std::time::Instant::now();
+        if self.last_search.map_or(true, |t| now.saturating_duration_since(t) >= MIC_SEARCH_EVERY) {
+            self.last_search = Some(now);
+            self.button = call_window(pid).and_then(|w| ax_util::find_all(&w, 6000, &is_mic_button).into_iter().next());
+            if self.button.is_none() {
+                log::debug!("Teams mic button not found");
+            }
+        }
+        self.button.as_ref().map(|b| is_muted_labels(&ax_util::labels(b)))
+    }
+}
+
 /// Full JSON snapshot of every Teams window, for tuning selectors after a Teams update.
 pub fn dump_tree(pid: i32, depth: usize) -> serde_json::Value {
     let app = ax_util::app(pid);
@@ -254,6 +307,19 @@ mod tests {
         assert!(MORE.is_match("Altro"));
     }
 
+    /// "Riattiva microfono" (id microphone-button) logged live on the Italian client (Nov 2026).
+    #[test]
+    fn mic_button_labels() {
+        let muted = |l: &str| is_muted_labels(&[l.to_string()]);
+        for l in ["Riattiva microfono", "Unmute (⌘+Shift+M)", "Riattiva audio (⌘+MAIUSC+M)", "Riattiva l'audio"] {
+            assert!(MIC_BUTTON.is_match(l) && muted(l), "{l}");
+        }
+        for l in ["Mute (⌘+Shift+M)", "Disattiva audio (⌘+MAIUSC+M)", "Disattiva il microfono", "microphone-button"] {
+            assert!(MIC_BUTTON.is_match(l) && !muted(l), "{l}");
+        }
+        assert!(OTHERS.is_match("Disattiva audio di tutti") && OTHERS.is_match("Mute all"));
+    }
+
     /// Live diagnostics while a Teams call is on screen:
     /// `TRASCRIVI_AX_OUT=/tmp/teams.json cargo test --lib dump_teams_tree -- --ignored --nocapture`
     #[test]
@@ -265,5 +331,6 @@ mod tests {
         println!("call window: {}", super::call_window(pid).is_some());
         println!("menu available: {}", super::has_menu(pid));
         println!("captions: {:?}", super::CaptionReader::default().read(pid));
+        println!("mic muted: {:?}", super::MicMuteReader::default().read(pid));
     }
 }

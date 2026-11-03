@@ -35,6 +35,8 @@ export const t = makeT({
 
     // Recording controls
     paused: 'In pausa',
+    micMuted: 'Microfono in muto',
+    micMutedHint: 'Sei in muto nella call: la tua voce non viene registrata né trascritta.',
     startRecording: 'Avvia registrazione',
     starting: 'Avvio…',
     pause: 'Pausa',
@@ -192,6 +194,8 @@ export const t = makeT({
     savingMeeting: 'Saving the meeting…',
 
     paused: 'Paused',
+    micMuted: 'Mic muted',
+    micMutedHint: 'You are muted in the call: your voice is not recorded or transcribed.',
     startRecording: 'Start recording',
     starting: 'Starting…',
     pause: 'Pause',
