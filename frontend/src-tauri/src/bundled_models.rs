@@ -1,4 +1,5 @@
-//! Dixit: models shipped in the .app (`Contents/Resources/models`, filled by `scripts/fetch-models.sh`).
+//! Dixit: models shipped in the .app (`Contents/Resources/models`): only older full packages have them,
+//! new ones download them at first launch (`base_models.rs`).
 //! Same layout as the user's models dir (`<app_data>/models`): a path is looked up there first,
 //! then at the same relative path in the bundle. Bundled files are read in place, never copied.
 
