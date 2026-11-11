@@ -979,7 +979,7 @@ pub async fn api_save_transcript<R: Runtime>(
     }
 
     // Convert serde_json::Value to TranscriptSegment
-    let transcripts_to_save: Vec<TranscriptSegment> = transcripts
+    let mut transcripts_to_save: Vec<TranscriptSegment> = transcripts
         .into_iter()
         .map(serde_json::from_value)
         .collect::<Result<Vec<_>, _>>()
@@ -995,6 +995,20 @@ pub async fn api_save_transcript<R: Runtime>(
                    first_seg.audio_start_time,
                    first_seg.audio_end_time,
                    first_seg.duration);
+    }
+
+    // Dixit: when a call ends and the next one starts right away, the frontend may already have
+    // cleared its transcript for the new recording; the saver wrote the full one at stop.
+    if let Some(folder) = &folder_path {
+        let from_file = segments_from_folder(std::path::Path::new(folder));
+        if from_file.len() > transcripts_to_save.len() {
+            log_warn!(
+                "Frontend sent {} segments, transcripts.json has {}: saving the file's",
+                transcripts_to_save.len(),
+                from_file.len()
+            );
+            transcripts_to_save = from_file;
+        }
     }
 
     let pool = state.db_manager.pool();
@@ -1034,6 +1048,46 @@ pub async fn api_save_transcript<R: Runtime>(
             );
             Err(format!("Failed to save transcript: {}", e))
         }
+    }
+}
+
+/// Dixit: the segments the recording saver wrote to `transcripts.json` at stop (empty if none).
+fn segments_from_folder(folder: &std::path::Path) -> Vec<TranscriptSegment> {
+    let Ok(text) = std::fs::read_to_string(folder.join("transcripts.json")) else { return Vec::new() };
+    let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) else { return Vec::new() };
+    let Some(segs) = json["segments"].as_array() else { return Vec::new() };
+    segs.iter()
+        .filter_map(|s| {
+            Some(TranscriptSegment {
+                id: s["id"].as_str().unwrap_or_default().to_string(),
+                text: s["text"].as_str()?.to_string(),
+                timestamp: s["display_time"].as_str().unwrap_or_default().to_string(),
+                audio_start_time: s["audio_start_time"].as_f64(),
+                audio_end_time: s["audio_end_time"].as_f64(),
+                duration: s["duration"].as_f64(),
+            })
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod save_fallback_tests {
+    use super::segments_from_folder;
+
+    #[test]
+    fn reads_saver_segments_and_tolerates_missing_file() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(segments_from_folder(dir.path()).is_empty());
+        std::fs::write(
+            dir.path().join("transcripts.json"),
+            r#"{"segments":[{"id":"seg_1","text":"ciao","display_time":"10:16:14","audio_start_time":1.5,"audio_end_time":3.0,"duration":1.5},{"id":"seg_2"}]}"#,
+        )
+        .unwrap();
+        let segs = segments_from_folder(dir.path());
+        assert_eq!(segs.len(), 1);
+        assert_eq!(segs[0].text, "ciao");
+        assert_eq!(segs[0].timestamp, "10:16:14");
+        assert_eq!(segs[0].audio_start_time, Some(1.5));
     }
 }
 
