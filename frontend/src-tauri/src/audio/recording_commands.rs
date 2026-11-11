@@ -883,7 +883,11 @@ pub async fn stop_recording<R: Runtime>(
                 engine_guard.as_ref().cloned()
             };
 
-            if let Some(engine) = engine_clone {
+            // Dixit: the previous call's final pass may be running on this engine (back-to-back calls).
+            // ponytail: check-then-unload, a pass starting in between can still lose its model.
+            if crate::audio::retranscription::is_retranscription_in_progress() {
+                info!("Whisper model kept loaded: a retranscription is running");
+            } else if let Some(engine) = engine_clone {
                 let current_model = engine
                     .get_current_model()
                     .await

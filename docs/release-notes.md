@@ -1,5 +1,5 @@
-**Novità in 0.2.4**
-- Gli agenti collegati a Dixit via MCP (es. Claude) possono trascrivere un file audio o video (mp4, m4a, wav, …) in una nuova riunione, con riassunto automatico.
+**Novità in 0.2.5**
+- Se una call finisce e ne inizia subito un'altra, la trascrizione della prima non va più persa e la trascrizione definitiva non si interrompe.
 
 Dixit registra, trascrive e riassume le riunioni di Teams, Zoom e Meet, tutto sul tuo Mac.
 
