@@ -34,8 +34,24 @@ export const t = makeT({
     meetingDeletedDesc: "Tolta dall'archivio di Dixit. I file su disco non vengono toccati.",
     deleteFailed: 'Impossibile eliminare la riunione',
     deleteConfirm:
-      "Trascrizione e riassunto di questa riunione verranno tolti dall'archivio di Dixit. I file su disco restano. L'operazione non si può annullare.",
+      "Trascrizione e riassunto di questa riunione verranno tolti dall'archivio di Dixit. L'operazione non si può annullare.",
     confirmDeleteTitle: 'Eliminare la riunione?',
+    deleteConfirmMany:
+      "Trascrizione e riassunto di {count} riunioni verranno tolti dall'archivio di Dixit. L'operazione non si può annullare.",
+    confirmDeleteManyTitle: 'Eliminare {count} riunioni?',
+    deleteFolderToo: 'Sposta nel Cestino anche la cartella con audio e trascrizione',
+    deleteFoldersToo: 'Sposta nel Cestino anche le cartelle con audio e trascrizione',
+    meetingDeletedTrashedDesc: "Tolta dall'archivio di Dixit. La cartella è nel Cestino.",
+    meetingsDeleted: '{count} riunioni eliminate',
+    meetingsDeletedDesc: "Tolte dall'archivio di Dixit. I file su disco non vengono toccati.",
+    meetingsDeletedTrashedDesc: "Tolte dall'archivio di Dixit. Le cartelle sono nel Cestino.",
+    folderKept:
+      "Una cartella resta su disco: ancora in elaborazione, fuori dalla cartella delle registrazioni, usata da un'altra riunione o non spostabile nel Cestino.",
+    foldersKept:
+      "{count} cartelle restano su disco: ancora in elaborazione, fuori dalla cartella delle registrazioni, usate da un'altra riunione o non spostabili nel Cestino.",
+    selectedCount: '{count} selezionate',
+    deleteSelected: 'Elimina selezionate',
+    clearSelection: 'Annulla selezione',
     delete: 'Elimina',
     unknownError: 'Errore sconosciuto',
     summaryTimeout: 'Il riassunto ha superato i 15 minuti. Riprova o controlla il modello scelto.',
@@ -190,8 +206,24 @@ export const t = makeT({
     meetingDeletedDesc: 'Removed from the Dixit archive. Files on disk are not touched.',
     deleteFailed: 'Could not delete the meeting',
     deleteConfirm:
-      "This meeting's transcript and summary will be removed from the Dixit archive. Files on disk stay. This cannot be undone.",
+      "This meeting's transcript and summary will be removed from the Dixit archive. This cannot be undone.",
     confirmDeleteTitle: 'Delete this meeting?',
+    deleteConfirmMany:
+      'The transcripts and summaries of {count} meetings will be removed from the Dixit archive. This cannot be undone.',
+    confirmDeleteManyTitle: 'Delete {count} meetings?',
+    deleteFolderToo: 'Also move the folder with audio and transcript to the Trash',
+    deleteFoldersToo: 'Also move the folders with audio and transcripts to the Trash',
+    meetingDeletedTrashedDesc: 'Removed from the Dixit archive. The folder is in the Trash.',
+    meetingsDeleted: '{count} meetings deleted',
+    meetingsDeletedDesc: 'Removed from the Dixit archive. Files on disk are not touched.',
+    meetingsDeletedTrashedDesc: 'Removed from the Dixit archive. The folders are in the Trash.',
+    folderKept:
+      'One folder stays on disk: still being processed, outside the recordings folder, used by another meeting, or not movable to the Trash.',
+    foldersKept:
+      '{count} folders stay on disk: still being processed, outside the recordings folder, used by another meeting, or not movable to the Trash.',
+    selectedCount: '{count} selected',
+    deleteSelected: 'Delete selected',
+    clearSelection: 'Clear selection',
     delete: 'Delete',
     unknownError: 'Unknown error',
     summaryTimeout: 'The summary took longer than 15 minutes. Try again or check the selected model.',

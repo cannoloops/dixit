@@ -151,8 +151,10 @@ pub fn listen_for_stops<R: Runtime>(app: &AppHandle<R>) {
         let app = handle.clone();
         let stopped_at = chrono::Utc::now();
         let pending = crate::summary::auto::Pending::start(&folder);
+        let in_use = crate::meeting_folder::InUse::start(&folder);
         tauri::async_runtime::spawn(async move {
             let _pending = pending; // the view shows "automatic summary on its way" until this ends
+            let _in_use = in_use; // deleting the meeting meanwhile leaves the folder where it is
             // Taken now: the next recording sets it again.
             let final_pass =
                 crate::audio::transcription::engine::FINAL_PASS.swap(false, std::sync::atomic::Ordering::SeqCst);
@@ -228,6 +230,7 @@ pub fn resume_interrupted<R: Runtime>(app: &AppHandle<R>) {
         for folder in own_meetings(&pool(&app), interrupted_meetings(&root)).await {
             log::info!("Resuming the post-call work of {}", folder.display());
             let _pending = crate::summary::auto::Pending::start(&folder);
+            let _in_use = crate::meeting_folder::InUse::start(&folder);
             let resumed_at = chrono::Utc::now();
             if needs_final_pass(&app, &folder).await {
                 crate::audio::retranscription::run_final_pass(&app, &folder).await;
