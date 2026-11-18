@@ -1,4 +1,4 @@
-//! Dixit MCP server: lets local agents (Claude Code, Claude Desktop) read the live transcript and
+//! Dixit MCP server: lets local agents (Claude, Codex, Antigravity, Cursor…) read the live transcript and
 //! the saved meetings (list, full meeting, search), and transcribe an audio or video file into a new
 //! meeting. Streamable HTTP on 127.0.0.1, JSON responses only (no SSE stream).
 // ponytail: hand-rolled HTTP/JSON-RPC for six tools; switch to the `rmcp` crate if they multiply.

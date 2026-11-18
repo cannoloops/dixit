@@ -65,6 +65,16 @@ Finché il riassunto non è pronto, la barra a sinistra mostra «Riassunti in co
 
 Per dare un nome a un «Parlante X», rinominalo nel pannello dei parlanti: Dixit ricorderà la voce nelle riunioni successive.
 
+## Collegare un agente
+
+Dixit può fare da memoria ai tuoi agenti (Claude Code, Claude Desktop, Codex, Antigravity, Gemini CLI, Cursor, VS Code e altri): chiedi cosa si è detto nella call in corso, cerca nelle riunioni passate o fai trascrivere un file audio o video.
+
+1. Apri **Impostazioni › Automazione › Agenti** e accendi **Server MCP locale**.
+2. Scegli il tuo agente dal menu e copia il comando o la configurazione che compare, seguendo l'indicazione sopra (di solito: incolla nel terminale, oppure aggiungi a un file e riavvia l'agente).
+3. Chiedi all'agente, ad esempio: «Cosa ha detto Mario negli ultimi 5 minuti?» o «Quando abbiamo fissato la demo?».
+
+Il server risponde solo dal tuo Mac; quello che l'agente fa poi con il testo dipende dall'agente.
+
 ## Dove trovo i file
 
 Ogni riunione ha una cartella in `~/Documents/Dixit/<AAAA-MM-GG HH.MM Titolo>/` con l'audio, la trascrizione in Markdown con le tue note, il riassunto e i metadati.
