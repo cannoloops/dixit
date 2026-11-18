@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { invoke } from '@tauri-apps/api/core';
 import { TranscriptSettings } from '@/components/TranscriptSettings';
 import { RecordingSettings } from '@/components/RecordingSettings';
@@ -31,8 +31,10 @@ const TABS = [
 
 const EXPERT_KEY = 'dixit-expert-mode';
 
-export default function SettingsPage() {
+function SettingsContent() {
   const router = useRouter();
+  // Not window.location: during a router.push the page renders before the URL changes.
+  const initialTab = useSearchParams().get('tab') ?? 'general';
   const { transcriptModelConfig, setTranscriptModelConfig } = useConfig();
   // Dixit: model pickers hidden unless expert mode is on (per-Mac preference).
   const [expert, setExpert] = useState(false);
@@ -66,7 +68,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
-      <Tabs defaultValue={new URLSearchParams(window.location.search).get('tab') ?? 'general'} className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6">
+      <Tabs defaultValue={initialTab} className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6">
         <header className="shrink-0 space-y-3 pt-4">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => router.back()}>
@@ -127,5 +129,13 @@ export default function SettingsPage() {
         </div>
       </Tabs>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={null}>
+      <SettingsContent />
+    </Suspense>
   );
 }
