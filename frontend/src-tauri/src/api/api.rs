@@ -793,7 +793,7 @@ pub async fn api_delete_meeting<R: Runtime>(
     match MeetingsRepository::delete_meeting(pool, &meeting_id).await {
         Ok(true) => {
             log_info!("Successfully deleted meeting {}", meeting_id);
-            // "kept" (not asked), "trashed", "missing", "outside", "shared" or "failed".
+            // "kept" (not asked), "trashed", "missing", "busy", "outside", "shared" or "failed".
             let (folder_outcome, folder_error) = if move_folder_to_trash {
                 trash_meeting_folder(&app, folder.as_deref(), shared).await
             } else {
@@ -848,6 +848,7 @@ async fn trash_meeting_folder<R: Runtime>(
             log_info!("Meeting folder {:?} left in place: {:?}", folder, kept);
             let outcome = match kept {
                 Kept::Missing => "missing",
+                Kept::InUse => "busy",
                 Kept::OutsideRecordings => "outside",
                 Kept::Shared => "shared",
             };

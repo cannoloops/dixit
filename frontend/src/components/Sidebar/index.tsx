@@ -325,7 +325,7 @@ const Sidebar: React.FC = () => {
         deleted.push(id);
         Analytics.trackMeetingDeleted(id);
         // "missing" is fine (nothing left to move); the others mean files are still on disk.
-        if (moveFolder && ['outside', 'shared', 'failed'].includes(result?.folder ?? '')) foldersKept += 1;
+        if (moveFolder && ['busy', 'outside', 'shared', 'failed'].includes(result?.folder ?? '')) foldersKept += 1;
       } catch (error) {
         console.error('Failed to delete meeting:', id, error);
         firstError ??= error instanceof Error ? error.message : String(error);
@@ -334,7 +334,8 @@ const Sidebar: React.FC = () => {
 
     if (deleted.length > 0) {
       const gone = new Set(deleted);
-      setMeetings(meetings.filter((m: CurrentMeeting) => !gone.has(m.id)));
+      // From the current list: a meeting saved meanwhile (e.g. by the autopilot) must stay.
+      setMeetings((prev) => prev.filter((m: CurrentMeeting) => !gone.has(m.id)));
       setSelectedIds((prev) => new Set([...prev].filter((id) => !gone.has(id))));
 
       const one = deleted.length === 1;

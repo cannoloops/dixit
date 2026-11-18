@@ -98,6 +98,7 @@ pub async fn start_retranscription<R: Runtime>(
 ) -> Result<RetranscriptionResult> {
     // Acquire guard - ensures flag is cleared even on panic/early return
     let _guard = RetranscriptionGuard::acquire().map_err(|e| anyhow!(e))?;
+    let _in_use = crate::meeting_folder::InUse::start(std::path::Path::new(&meeting_folder_path));
 
     // Reset cancellation flag
     RETRANSCRIPTION_CANCELLED.store(false, Ordering::SeqCst);

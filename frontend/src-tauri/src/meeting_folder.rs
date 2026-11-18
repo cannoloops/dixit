@@ -1,13 +1,49 @@
 //! A deleted meeting's folder on disk (audio, transcript, notes): moved to the Trash on request,
 //! never removed for good, and only when it is unmistakably that meeting's own folder.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::{LazyLock, Mutex};
+
+/// Folders Dixit is still writing after the stop (large-v3, speakers, automatic summary,
+/// retranscription), with how many jobs hold each.
+static IN_USE: LazyLock<Mutex<HashMap<String, usize>>> = LazyLock::new(Default::default);
+
+/// Marks a meeting folder as in use until dropped: deleting the meeting then leaves the folder.
+/// Keyed by the path as stored in `meetings.folder_path`, the string the jobs are started with.
+pub struct InUse(String);
+
+impl InUse {
+    pub fn start(folder: &Path) -> Self {
+        let folder = folder.to_string_lossy().to_string();
+        *IN_USE.lock().unwrap_or_else(|e| e.into_inner()).entry(folder.clone()).or_insert(0) += 1;
+        Self(folder)
+    }
+}
+
+impl Drop for InUse {
+    fn drop(&mut self) {
+        let mut in_use = IN_USE.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(count) = in_use.get_mut(&self.0) {
+            *count -= 1;
+            if *count == 0 {
+                in_use.remove(&self.0);
+            }
+        }
+    }
+}
+
+pub fn is_in_use(folder: &str) -> bool {
+    IN_USE.lock().unwrap_or_else(|e| e.into_inner()).contains_key(folder)
+}
 
 /// Why a folder was left where it is: the meeting is gone from the archive either way.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Kept {
     /// The meeting has no folder, or it is no longer on disk.
     Missing,
+    /// Dixit is still working on it (final pass, speakers, summary): trashing it would break that.
+    InUse,
     /// Not strictly inside a recordings folder (e.g. the save folder changed since): too risky.
     OutsideRecordings,
     /// Another meeting still points at the same folder.
@@ -18,6 +54,9 @@ pub enum Kept {
 /// folders (current and default save folder); the folder must be strictly inside one of them.
 pub fn trashable(folder: Option<&str>, roots: &[PathBuf], shared: bool) -> Result<PathBuf, Kept> {
     let folder = folder.map(str::trim).filter(|f| !f.is_empty()).ok_or(Kept::Missing)?;
+    if is_in_use(folder) {
+        return Err(Kept::InUse);
+    }
     let folder = Path::new(folder).canonicalize().map_err(|_| Kept::Missing)?;
     if !folder.is_dir() {
         return Err(Kept::Missing);
@@ -37,7 +76,6 @@ pub fn trashable(folder: Option<&str>, roots: &[PathBuf], shared: bool) -> Resul
 
 /// Moves `path` to the user's Trash (Finder can put it back).
 #[cfg(target_os = "macos")]
-#[allow(unexpected_cfgs)] // objc 0.2's msg_send! checks a `cargo-clippy` feature
 pub fn move_to_trash(path: &Path) -> Result<(), String> {
     use objc::runtime::{Object, BOOL, NO};
     use objc::{class, msg_send, sel, sel_impl};
@@ -108,6 +146,24 @@ mod tests {
         let file = root.path().join("note.txt");
         std::fs::write(&file, "x").unwrap();
         assert_eq!(trashable(Some(&file.to_string_lossy()), &roots, false), Err(Kept::Missing));
+    }
+
+    #[test]
+    fn a_folder_still_being_processed_stays() {
+        let root = tempfile::tempdir().unwrap();
+        let meeting = root.path().join("2026-11-18 14.31 Daily");
+        std::fs::create_dir(&meeting).unwrap();
+        let roots = vec![root.path().to_path_buf()];
+        let meeting_str = meeting.to_string_lossy().to_string();
+
+        let final_pass = InUse::start(&meeting);
+        let summary = InUse::start(&meeting); // two jobs on the same folder
+        assert_eq!(trashable(Some(&meeting_str), &roots, false), Err(Kept::InUse));
+        drop(final_pass);
+        assert_eq!(trashable(Some(&meeting_str), &roots, false), Err(Kept::InUse));
+        drop(summary);
+        assert!(!is_in_use(&meeting_str));
+        assert!(trashable(Some(&meeting_str), &roots, false).is_ok());
     }
 
     /// Puts an empty "dixit-trash-check-…" folder in this Mac's Trash:

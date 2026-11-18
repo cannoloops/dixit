@@ -46,9 +46,9 @@ export const t = makeT({
     meetingsDeletedDesc: "Tolte dall'archivio di Dixit. I file su disco non vengono toccati.",
     meetingsDeletedTrashedDesc: "Tolte dall'archivio di Dixit. Le cartelle sono nel Cestino.",
     folderKept:
-      "Una cartella resta su disco: fuori dalla cartella delle registrazioni, usata da un'altra riunione o non spostabile nel Cestino.",
+      "Una cartella resta su disco: ancora in elaborazione, fuori dalla cartella delle registrazioni, usata da un'altra riunione o non spostabile nel Cestino.",
     foldersKept:
-      "{count} cartelle restano su disco: fuori dalla cartella delle registrazioni, usate da un'altra riunione o non spostabili nel Cestino.",
+      "{count} cartelle restano su disco: ancora in elaborazione, fuori dalla cartella delle registrazioni, usate da un'altra riunione o non spostabili nel Cestino.",
     selectedCount: '{count} selezionate',
     deleteSelected: 'Elimina selezionate',
     clearSelection: 'Annulla selezione',
@@ -218,9 +218,9 @@ export const t = makeT({
     meetingsDeletedDesc: 'Removed from the Dixit archive. Files on disk are not touched.',
     meetingsDeletedTrashedDesc: 'Removed from the Dixit archive. The folders are in the Trash.',
     folderKept:
-      'One folder stays on disk: outside the recordings folder, used by another meeting, or not movable to the Trash.',
+      'One folder stays on disk: still being processed, outside the recordings folder, used by another meeting, or not movable to the Trash.',
     foldersKept:
-      '{count} folders stay on disk: outside the recordings folder, used by another meeting, or not movable to the Trash.',
+      '{count} folders stay on disk: still being processed, outside the recordings folder, used by another meeting, or not movable to the Trash.',
     selectedCount: '{count} selected',
     deleteSelected: 'Delete selected',
     clearSelection: 'Clear selection',
