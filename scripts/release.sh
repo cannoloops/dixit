@@ -14,6 +14,12 @@ TRIPLE="aarch64-apple-darwin"
 # Ogni release ha il suo changelog breve in testa a docs/release-notes.md («**Novità in <versione>**»).
 grep -q "Novità in $VERSION\*\*" "$ROOT/docs/release-notes.md" || { echo "Manca il changelog di $VERSION in docs/release-notes.md"; exit 1; }
 [[ -f "$KEY" ]] || { echo "Chiave updater mancante: $KEY"; exit 1; }
+# La release finisce in un commit su develop e in un merge in main: si parte da develop pulito (changelog a parte).
+if ! $DRY_RUN; then
+  [[ "$(git -C "$ROOT" branch --show-current)" == develop ]] || { echo "Lancia la release da develop"; exit 1; }
+  [[ -z "$(git -C "$ROOT" status --porcelain --untracked-files=no -- . ':!docs/release-notes.md')" ]] \
+    || { echo "Ci sono modifiche non committate oltre al changelog"; exit 1; }
+fi
 export TAURI_SIGNING_PRIVATE_KEY="$(cat "$KEY")"
 export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""
 
@@ -69,6 +75,15 @@ if $DRY_RUN; then
   exit 0
 fi
 
-echo "==> Pubblicazione su $RELEASES_REPO"
-gh release create "v$VERSION" --repo "$RELEASES_REPO" --title "Dixit $VERSION" --notes-file "$ROOT/docs/release-notes.md" \
-  "$DMG" "$TARBALL" "$TARBALL.sig" "$BUNDLE/latest.json"
+echo "==> Commit di versione su develop e merge in main"
+git -C "$ROOT" commit -qam "chore: versione $VERSION"
+git -C "$ROOT" checkout -q main
+git -C "$ROOT" pull -q --ff-only origin main
+git -C "$ROOT" merge -q --no-ff develop -m "Merge branch 'develop': $VERSION"
+TARGET="$(git -C "$ROOT" rev-parse HEAD)"
+git -C "$ROOT" push -q origin main develop
+git -C "$ROOT" checkout -q develop
+
+echo "==> Pubblicazione su $RELEASES_REPO (tag su $TARGET)"
+gh release create "v$VERSION" --repo "$RELEASES_REPO" --target "$TARGET" --title "Dixit $VERSION" \
+  --notes-file "$ROOT/docs/release-notes.md" "$DMG" "$TARBALL" "$TARBALL.sig" "$BUNDLE/latest.json"

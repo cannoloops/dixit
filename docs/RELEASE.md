@@ -21,7 +21,7 @@ Prima di tutto scrivi il changelog breve in testa a `docs/release-notes.md`, al 
 - una riga per novità, scritta per i colleghi (cosa cambia per loro, non come)
 ```
 
-Senza quella riga lo script si ferma.
+Senza quella riga lo script si ferma. Si lancia da `develop`, senza altre modifiche non committate oltre al changelog.
 
 Senza account Apple Developer (oggi):
 
@@ -44,11 +44,10 @@ Lo script:
 2. compila il sidecar `llama-helper`;
 3. lancia `tauri build` (app e dmg, senza modelli: si scaricano al primo avvio);
 4. scrive `latest.json`;
-5. pubblica la release `v0.2.0` su `cannoloops/dixit` con dmg, `.app.tar.gz`, `.sig` e `latest.json`, con le note di `docs/release-notes.md`.
+5. fa il commit `chore: versione 0.2.0` su `develop`, lo mergia in `main` e pusha i due branch;
+6. pubblica la release `v0.2.0` su `cannoloops/dixit` con dmg, `.app.tar.gz`, `.sig` e `latest.json`, con le note di `docs/release-notes.md`. Il tag punta al merge in `main`, cioè al codice compilato.
 
-Fai il commit del cambio di versione.
-
-`scripts/release.sh 0.2.0 --dry-run` fa la stessa build senza notarizzazione e senza pubblicare. Serve a verificare il bundle in locale.
+`scripts/release.sh 0.2.0 --dry-run` fa la stessa build senza notarizzazione, senza commit e senza pubblicare. Serve a verificare il bundle in locale.
 
 ### Note di build su questo Mac
 
