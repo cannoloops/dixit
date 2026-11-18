@@ -1,5 +1,5 @@
-**Novità in 0.2.5**
-- Se una call finisce e ne inizia subito un'altra, la trascrizione della prima non va più persa e la trascrizione definitiva non si interrompe.
+**Novità in 0.2.6**
+- Nelle call Teams i sottotitoli tornano ad attivarsi da soli anche con il nuovo menu «Altro», quindi i nomi dei parlanti arrivano di nuovo.
 
 Dixit registra, trascrive e riassume le riunioni di Teams, Zoom e Meet, tutto sul tuo Mac.
 
