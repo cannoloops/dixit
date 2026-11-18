@@ -51,7 +51,7 @@ La configurazione di default è quella di Vito e non va cambiata senza motivo. I
 
 Regole dei template: nomi, date e cifre non presenti nella trascrizione diventano «Non indicato», le sezioni vuote «Non emerso». Le etichette generiche di diarizzazione («Parlante A», «Altri») non arrivano all'LLM.
 
-**Concorrenza:** il riassunto automatico parte una sola volta per riunione, e mentre si aspetta mostra «Riassunto automatico in arrivo» al posto di Genera. Le generazioni sul motore interno passano una alla volta (`GENERATION_TURN` in `summary_engine/client.rs`): un annullamento spegne il sidecar e la richiesta successiva lo rilancia.
+**Concorrenza:** il riassunto automatico parte una sola volta per riunione. Mentre aspetta, al posto di Genera mostra «Riassunto automatico in arrivo» con la fase (in coda, trascrizione definitiva con la percentuale reale, parlanti) e una X che lo annulla solo per quella riunione: large-v3 e parlanti vanno avanti. La sidebar elenca in «Riassunti in corso» quelli automatici e manuali, ognuno con la sua fase e una X per fermarlo (`api_summaries_in_progress`, `api_cancel_auto_summary`). Le generazioni sul motore interno passano una alla volta (`GENERATION_TURN` in `summary_engine/client.rs`): un annullamento spegne il sidecar e la richiesta successiva lo rilancia.
 
 ## Note durante la registrazione
 
