@@ -1,3 +1,10 @@
+**Novità in 0.2.8**
+- Al primo avvio Dixit ti presenta gli agenti: un'animazione mostra Claude che cerca nelle tue riunioni. Puoi rivederla in Impostazioni › Automazione › Agenti.
+- Nella barra a sinistra, «Riassunti in corso» mostra i riassunti che stanno girando, a che punto sono (anche la percentuale della trascrizione definitiva) e una X per fermarli.
+- Il riassunto automatico di una singola riunione si può annullare: trascrizione e parlanti vanno avanti, e il riassunto lo generi quando vuoi.
+- Gli avvisi di Teams nei sottotitoli («Transcription has started…») non compaiono più come parlante.
+- Le maniglie delle tabelle del riassunto non escono più dal pannello quando scorre.
+
 **Novità in 0.2.7**
 - Puoi selezionare più riunioni ed eliminarle insieme; la cartella di una riunione eliminata finisce nel Cestino, così si può recuperare.
 - Con Teams in inglese, passare alla vista compatta non spezza più la registrazione in due riunioni.

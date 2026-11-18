@@ -16,10 +16,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Settings, Loader2, FileText, Check } from 'lucide-react';
+import { Settings, Loader2, FileText, Check, X } from 'lucide-react';
 import Analytics from '@/lib/analytics';
 import { useState, useEffect, ReactNode } from 'react';
 import { t } from '@/i18n/meeting';
+import { t as tShell } from '@/i18n/shell';
+import { phaseLabel, type SummaryJob } from '@/hooks/useSummariesInProgress';
 
 type SummaryStatus = 'idle' | 'processing' | 'summarizing' | 'regenerating' | 'completed' | 'error';
 
@@ -28,10 +30,11 @@ interface GenerateSummaryButtonProps {
   hasSummary: boolean;
   hasTranscripts: boolean;
   isModelConfigLoading: boolean;
-  /** Dixit: the backend will start the summary after large-v3 and speaker attribution. */
-  autoPending?: boolean;
+  /** Dixit: the automatic summary still waiting for large-v3 and the speakers, with its step. */
+  autoJob?: SummaryJob;
   onGenerate: () => void;
   onStop: () => void;
+  onCancelAuto?: () => void;
 }
 
 /** The meeting's primary action (top right): generate the summary, or stop it while it runs. */
@@ -40,9 +43,10 @@ export function GenerateSummaryButton({
   hasSummary,
   hasTranscripts,
   isModelConfigLoading,
-  autoPending = false,
+  autoJob,
   onGenerate,
   onStop,
+  onCancelAuto,
 }: GenerateSummaryButtonProps) {
   const isGenerating = summaryStatus === 'processing' || summaryStatus === 'summarizing' || summaryStatus === 'regenerating';
 
@@ -62,12 +66,25 @@ export function GenerateSummaryButton({
     );
   }
 
-  if (autoPending && !hasSummary) {
+  if (autoJob && autoJob.phase !== 'generating') {
     return (
-      <Button variant="outline" disabled title={t('autoPendingTitle')}>
-        <Loader2 className="animate-spin" />
-        {t('autoPending')}
-      </Button>
+      <ButtonGroup>
+        <Button variant="outline" disabled title={t('autoPendingTitle')} className="tabular-nums disabled:opacity-100">
+          <Loader2 className="animate-spin" />
+          {t('autoPending')} · {phaseLabel(autoJob)}
+        </Button>
+        {onCancelAuto && (
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onCancelAuto}
+            title={tShell('cancelAutoSummary')}
+            aria-label={tShell('cancelAutoSummary')}
+          >
+            <X />
+          </Button>
+        )}
+      </ButtonGroup>
     );
   }
 

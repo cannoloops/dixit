@@ -61,6 +61,8 @@ Scrivi nel campo note e premi **Invio**: la nota resta agganciata all'istante es
 2. Riconosce il tipo di riunione (SAL, analisi, mix o altro) e scrive il riassunto adatto.
 3. Se il tipo è sbagliato, cambialo nella vista della riunione: il riassunto si rigenera.
 
+Finché il riassunto non è pronto, la barra a sinistra mostra «Riassunti in corso» con la fase di ognuno, compresa la percentuale della trascrizione definitiva. La X sulla riga ferma il riassunto. Se è automatico e non è ancora partito, lo annulla solo per quella riunione: la trascrizione e i parlanti vanno avanti, e il riassunto lo generi quando vuoi.
+
 Per dare un nome a un «Parlante X», rinominalo nel pannello dei parlanti: Dixit ricorderà la voce nelle riunioni successive.
 
 ## Dove trovo i file

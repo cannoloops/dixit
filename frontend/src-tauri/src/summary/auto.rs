@@ -2,6 +2,7 @@
 
 use crate::database::repositories::{
     meeting::MeetingsRepository, setting::SettingsRepository, summary::SummaryProcessesRepository,
+    transcript::TranscriptsRepository,
 };
 use chrono::{DateTime, Utc};
 use crate::state::AppState;
@@ -12,7 +13,7 @@ use crate::summary::service::SummaryService;
 use log::{info, warn};
 use serde::Serialize;
 use sqlx::SqlitePool;
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{LazyLock, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -34,8 +35,35 @@ pub(crate) fn is_named(speaker: &str) -> bool {
     !s.is_empty() && !generic
 }
 
+/// Where a recording's automatic summary is while it waits for its turn.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Phase {
+    /// Waiting for the meeting's row, or for an earlier meeting's post-call work.
+    Queued,
+    /// large-v3 is rewriting the transcript.
+    Transcribing,
+    /// Speaker attribution.
+    Speakers,
+    /// About to start the summary.
+    Starting,
+}
+
+struct Waiting {
+    phase: Phase,
+    /// The user cancelled this meeting's automatic summary: the post-call work goes on without it.
+    cancelled: bool,
+}
+
 /// Recordings whose automatic summary is still on its way (final pass, speakers, start).
-static PENDING: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(Default::default);
+static PENDING: LazyLock<Mutex<HashMap<String, Waiting>>> = LazyLock::new(Default::default);
+
+/// Automatic summaries started, by meeting: their process id, to tell them from manual ones.
+static AUTO_PROCESSES: LazyLock<Mutex<HashMap<String, String>>> = LazyLock::new(Default::default);
+
+fn pending() -> std::sync::MutexGuard<'static, HashMap<String, Waiting>> {
+    PENDING.lock().unwrap_or_else(|e| e.into_inner())
+}
 
 /// Marks a stopped recording as waiting for its automatic summary until dropped.
 pub struct Pending(Option<String>);
@@ -46,7 +74,7 @@ impl Pending {
             return Self(None);
         }
         let folder = folder.to_string_lossy().to_string();
-        PENDING.lock().unwrap_or_else(|e| e.into_inner()).insert(folder.clone());
+        pending().insert(folder.clone(), Waiting { phase: Phase::Queued, cancelled: false });
         Self(Some(folder))
     }
 }
@@ -54,24 +82,100 @@ impl Pending {
 impl Drop for Pending {
     fn drop(&mut self) {
         if let Some(folder) = &self.0 {
-            PENDING.lock().unwrap_or_else(|e| e.into_inner()).remove(folder);
+            pending().remove(folder);
         }
     }
 }
 
-/// True while the meeting waits for large-v3, speaker attribution and its automatic summary.
+/// Moves a waiting recording to its next step (no effect when it is not waiting).
+pub fn set_phase(folder: &Path, phase: Phase) {
+    if let Some(waiting) = pending().get_mut(folder.to_string_lossy().as_ref()) {
+        waiting.phase = phase;
+    }
+}
+
+fn is_cancelled(folder: &str) -> bool {
+    pending().get(folder).is_some_and(|w| w.cancelled)
+}
+
+/// A summary on its way or running, automatic or not, for the "in progress" list.
+#[derive(Debug, PartialEq, Serialize)]
+pub struct SummaryJob {
+    pub meeting_id: String,
+    pub automatic: bool,
+    /// `queued`, `transcribing`, `speakers`, `starting` (automatic only) or `generating`.
+    pub phase: String,
+    /// Real percentage of the final pass while `transcribing`.
+    pub progress: Option<u32>,
+    /// Set while `generating`: what `api_cancel_summary` stops.
+    pub process_id: Option<String>,
+}
+
+/// Running generations first (one per meeting), then the automatic summaries still waiting.
+fn jobs(
+    waiting: Vec<(String, Phase)>,
+    running: Vec<(String, String)>,
+    automatic: &HashMap<String, String>,
+    progress: impl Fn(&str) -> Option<u32>,
+) -> Vec<SummaryJob> {
+    let mut jobs: Vec<SummaryJob> = running
+        .into_iter()
+        .map(|(meeting_id, process_id)| SummaryJob {
+            automatic: automatic.get(&meeting_id) == Some(&process_id),
+            meeting_id,
+            phase: "generating".to_string(),
+            progress: None,
+            process_id: Some(process_id),
+        })
+        .collect();
+    jobs.sort_by(|a, b| a.process_id.cmp(&b.process_id));
+    for (meeting_id, phase) in waiting {
+        if jobs.iter().any(|j| j.meeting_id == meeting_id) {
+            continue;
+        }
+        let progress = if phase == Phase::Transcribing { progress(&meeting_id) } else { None };
+        let phase = serde_json::to_value(phase).ok().and_then(|v| v.as_str().map(str::to_string)).unwrap_or_default();
+        jobs.push(SummaryJob { meeting_id, automatic: true, phase, progress, process_id: None });
+    }
+    jobs
+}
+
+/// Summaries in progress, automatic and manual: generating, or (automatic) waiting for their turn.
 #[tauri::command]
-pub async fn api_auto_summary_pending(
-    state: tauri::State<'_, AppState>,
-    meeting_id: String,
-) -> Result<bool, String> {
-    let folder = crate::database::repositories::transcript::TranscriptsRepository::folder_for_meeting(
-        state.db_manager.pool(),
-        &meeting_id,
-    )
-    .await
-    .map_err(|e| e.to_string())?;
-    Ok(folder.is_some_and(|f| PENDING.lock().unwrap_or_else(|e| e.into_inner()).contains(&f)))
+pub async fn api_summaries_in_progress(state: tauri::State<'_, AppState>) -> Result<Vec<SummaryJob>, String> {
+    let folders: Vec<(String, Phase)> =
+        pending().iter().filter(|(_, w)| !w.cancelled).map(|(f, w)| (f.clone(), w.phase)).collect();
+    let mut waiting = Vec::new();
+    for (folder, phase) in folders {
+        // A recording whose row is not saved yet is still on the live view.
+        if let Ok(Some(meeting_id)) = TranscriptsRepository::meeting_for_folder(state.db_manager.pool(), &folder).await {
+            waiting.push((meeting_id, phase));
+        }
+    }
+    let running = SummaryService::active_generations();
+    let mut automatic = AUTO_PROCESSES.lock().unwrap_or_else(|e| e.into_inner());
+    automatic.retain(|meeting_id, process_id| running.iter().any(|(m, p)| m == meeting_id && p == process_id));
+    Ok(jobs(waiting, running, &automatic, crate::audio::retranscription::progress_of))
+}
+
+/// Cancels a meeting's automatic summary that has not started yet; large-v3 and the speakers go on.
+/// False when it is not waiting (already started: stop it with `api_cancel_summary`).
+#[tauri::command]
+pub async fn api_cancel_auto_summary(state: tauri::State<'_, AppState>, meeting_id: String) -> Result<bool, String> {
+    let folder = TranscriptsRepository::folder_for_meeting(state.db_manager.pool(), &meeting_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    let cancelled = folder.is_some_and(|f| match pending().get_mut(&f) {
+        Some(waiting) => {
+            waiting.cancelled = true;
+            true
+        }
+        None => false,
+    });
+    if cancelled {
+        info!("Automatic summary of {meeting_id} cancelled by the user");
+    }
+    Ok(cancelled)
 }
 
 /// Transcript as the summary reads it: `[mm:ss] Speaker: text`, in time order.
@@ -106,11 +210,15 @@ pub async fn after_final_transcript<R: Runtime>(app: &AppHandle<R>, folder: &Pat
     }
     let pool = app.state::<AppState>().db_manager.pool().clone();
     let folder_str = folder.to_string_lossy().to_string();
+    set_phase(folder, Phase::Starting);
+    if is_cancelled(&folder_str) {
+        return;
+    }
     // The frontend saves the meeting right after the stop: wait for its row.
     let mut meeting_id = None;
     for _ in 0..120 {
         if let Ok(Some(id)) =
-            crate::database::repositories::transcript::TranscriptsRepository::meeting_for_folder(&pool, &folder_str).await
+            TranscriptsRepository::meeting_for_folder(&pool, &folder_str).await
         {
             meeting_id = Some(id);
             break;
@@ -143,6 +251,10 @@ pub async fn after_final_transcript<R: Runtime>(app: &AppHandle<R>, folder: &Pat
             .await
             .or_else(|| SummaryService::detect_summary_language_from_text(&text)),
     };
+    // ponytail: a cancel arriving after this check finds the summary started: the view then offers Stop.
+    if is_cancelled(&folder_str) {
+        return info!("Auto summary skipped for {meeting_id}: cancelled by the user");
+    }
     info!("Auto summary for {meeting_id} with {}/{}", config.provider, config.model);
     match start_summary(
         app.clone(), pool, meeting_id.clone(), text, config.provider, config.model, 40000, 1000,
@@ -151,6 +263,10 @@ pub async fn after_final_transcript<R: Runtime>(app: &AppHandle<R>, folder: &Pat
     .await
     {
         Ok(started) => {
+            AUTO_PROCESSES
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .insert(meeting_id.clone(), started.process_id.clone());
             let _ = app.emit(
                 "summary-auto-started",
                 serde_json::json!({ "meeting_id": meeting_id, "process_id": started.process_id }),
@@ -216,9 +332,41 @@ mod tests {
         let folder = std::path::Path::new("/tmp/dixit-test-pending");
         let key = folder.to_string_lossy().to_string();
         let guard = super::Pending::start(folder);
-        assert!(super::PENDING.lock().unwrap().contains(&key));
+        assert_eq!(super::pending().get(&key).map(|w| w.phase), Some(super::Phase::Queued));
+        super::set_phase(folder, super::Phase::Speakers);
+        assert_eq!(super::pending().get(&key).map(|w| w.phase), Some(super::Phase::Speakers));
+        assert!(!super::is_cancelled(&key));
+        super::pending().get_mut(&key).unwrap().cancelled = true;
+        assert!(super::is_cancelled(&key));
         drop(guard);
-        assert!(!super::PENDING.lock().unwrap().contains(&key));
+        assert!(!super::pending().contains_key(&key));
+        // Once gone, a late phase change does not bring it back.
+        super::set_phase(folder, super::Phase::Starting);
+        assert!(!super::pending().contains_key(&key));
+    }
+
+    #[test]
+    fn in_progress_lists_running_summaries_then_waiting_ones() {
+        use super::Phase;
+        let waiting = vec![
+            ("m-final".to_string(), Phase::Transcribing),
+            ("m-auto".to_string(), Phase::Starting),
+            ("m-queued".to_string(), Phase::Queued),
+        ];
+        let running = vec![("m-manual".to_string(), "2026-11-18T16:01".to_string()), ("m-auto".to_string(), "2026-11-18T16:00".to_string())];
+        let automatic = std::collections::HashMap::from([("m-auto".to_string(), "2026-11-18T16:00".to_string())]);
+        let jobs = super::jobs(waiting, running, &automatic, |id| (id == "m-final").then_some(42));
+        let seen: Vec<_> = jobs.iter().map(|j| (j.meeting_id.as_str(), j.phase.as_str(), j.automatic, j.progress)).collect();
+        assert_eq!(
+            seen,
+            vec![
+                ("m-auto", "generating", true, None),
+                ("m-manual", "generating", false, None),
+                ("m-final", "transcribing", true, Some(42)),
+                ("m-queued", "queued", true, None),
+            ]
+        );
+        assert_eq!(jobs[1].process_id.as_deref(), Some("2026-11-18T16:01"));
     }
 
     #[test]
