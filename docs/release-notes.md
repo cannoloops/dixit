@@ -1,3 +1,6 @@
+**Novità in 0.2.9**
+- «Attiva e configura» nella presentazione degli agenti apre davvero Impostazioni › Automazione, dove trovi il server MCP già acceso.
+
 **Novità in 0.2.8**
 - Al primo avvio Dixit ti presenta gli agenti: un'animazione mostra Claude che cerca nelle tue riunioni. Puoi rivederla in Impostazioni › Automazione › Agenti.
 - Nella barra a sinistra, «Riassunti in corso» mostra i riassunti che stanno girando, a che punto sono (anche la percentuale della trascrizione definitiva) e una X per fermarli.
