@@ -1,5 +1,7 @@
 //! Turns a stream of Teams live-caption snapshots into timed speaker turns.
 
+use once_cell::sync::Lazy;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 /// A timed utterance with a speaker name (live captions or native Teams transcript).
@@ -32,6 +34,27 @@ impl SearchThrottle {
     }
 }
 
+/// Teams' own notices in the captions region ("Transcription has started…", "La trascrizione è
+/// stata avviata", recording and captions on/off): a subject plus a state change. No name has both.
+static NOTICE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"(?i)\b(transcription|recording|captions|trascrizione|registrazione|sottotitoli)\b.*\b(start|stopp|end|paus|resum|turned (on|off)|avviat|iniziat|interrott|terminat|arrestat|sospes|ripres|attivat|disattivat)",
+    )
+    .unwrap()
+});
+
+pub fn is_teams_notice(text: &str) -> bool {
+    NOTICE.is_match(text)
+}
+
+/// The texts of one caption item → (speaker, what they said). Teams may put its notice banner in
+/// the same item before the speaker's name: leading notices are dropped.
+pub fn caption_line(parts: &[String]) -> Option<(String, String)> {
+    let start = parts.iter().position(|p| !is_teams_notice(p))?;
+    let parts = &parts[start..];
+    (parts.len() >= 2).then(|| (parts[0].clone(), parts[1..].join(" ")))
+}
+
 fn normalize(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
@@ -56,7 +79,7 @@ impl CaptionLog {
         let mut still_open = Vec::new();
         for (name, text) in visible {
             let text = normalize(text);
-            if text.is_empty() {
+            if text.is_empty() || is_teams_notice(name) {
                 continue;
             }
             let matched = self.open.iter().copied().find(|&i| {
@@ -145,6 +168,49 @@ mod tests {
             log.ingest(t as f64, &[line("A", "ciao a tutti"), line("B", "buongiorno")]);
         }
         assert_eq!(log.turns()[0].end, 11.0);
+    }
+
+    /// Teams' "transcription started" banner sits in the same caption item as the next speaker
+    /// (seen live, Nov 2026): it took the speaker's place and the real name ended up in the text.
+    #[test]
+    fn teams_notice_never_becomes_a_speaker() {
+        let parts = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        let notice = "Transcription has started. Captions will now continue to display all upcoming conversation.";
+        let mut log = CaptionLog::default();
+        let visible: Vec<_> = [
+            parts(&[notice, "Rossi Mario", "dicevo, il lavoro fatto finora"]),
+            parts(&[notice]),
+            parts(&["La trascrizione è stata avviata.", "Informativa sulla privacy"]),
+        ]
+        .iter()
+        .filter_map(|p| caption_line(p))
+        .collect();
+        log.ingest(10.0, &visible);
+        log.ingest(11.0, &[line(notice, "Rossi Mario dicevo")]);
+        let turns = log.turns();
+        assert_eq!(turns.len(), 1, "{turns:?}");
+        assert_eq!((turns[0].name.as_str(), turns[0].text.as_str()), ("Rossi Mario", "dicevo, il lavoro fatto finora"));
+    }
+
+    #[test]
+    fn teams_notices_it_en() {
+        for n in [
+            "Transcription has started. Captions will now continue to display all upcoming conversation.",
+            "Transcription has stopped.",
+            "Recording has started",
+            "Recording and transcription have started.",
+            "Live captions have been turned on",
+            "La trascrizione è stata avviata.",
+            "La trascrizione è iniziata. I sottotitoli continueranno a mostrare la conversazione.",
+            "La trascrizione è stata interrotta",
+            "Registrazione e trascrizione avviate",
+            "La registrazione è stata arrestata.",
+        ] {
+            assert!(is_teams_notice(n), "{n}");
+        }
+        for n in ["Rossi Mario", "Bianchi Anna (Ospite)", "Sala riunioni 2", "Registrazione Srl"] {
+            assert!(!is_teams_notice(n), "{n}");
+        }
     }
 
     #[test]

@@ -26,11 +26,15 @@ pub fn live_captions() -> Vec<Turn> {
     LIVE.lock().unwrap().turns()
 }
 
+/// Files saved before Teams notices were filtered may hold one as a speaker: dropped here too.
 pub fn read_captions(folder: &Path) -> Vec<Turn> {
     std::fs::read_to_string(folder.join(CAPTIONS_FILE))
         .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
+        .and_then(|s| serde_json::from_str::<Vec<Turn>>(&s).ok())
         .unwrap_or_default()
+        .into_iter()
+        .filter(|t| !captions::is_teams_notice(&t.name))
+        .collect()
 }
 
 /// Seconds from recording start at which Trascrivi started the native Teams transcription.
@@ -323,6 +327,19 @@ pub async fn teams_dump_ax_tree<R: Runtime>(app: AppHandle<R>) -> Result<String,
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn saved_captions_drop_teams_notices() {
+        let dir = tempfile::tempdir().unwrap();
+        let captions = serde_json::json!([
+            {"name": "Transcription has started. Captions will now continue to display all upcoming conversation.",
+             "text": "Rossi Mario dicevo", "start": 10.0, "end": 12.0},
+            {"name": "Rossi Mario", "text": "ciao a tutti", "start": 13.0, "end": 14.0}
+        ]);
+        std::fs::write(dir.path().join(CAPTIONS_FILE), captions.to_string()).unwrap();
+        let names: Vec<_> = read_captions(dir.path()).into_iter().map(|t| t.name).collect();
+        assert_eq!(names, vec!["Rossi Mario"]);
+    }
 
     #[test]
     fn already_running_transcription_is_never_stopped() {

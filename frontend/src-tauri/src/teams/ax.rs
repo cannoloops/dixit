@@ -237,8 +237,7 @@ impl CaptionReader {
                 let mut parts = Vec::new();
                 let mut budget = 200;
                 texts(item, &mut parts, &mut budget);
-                // First text is the speaker, the rest is what they said.
-                (parts.len() >= 2).then(|| (parts[0].clone(), parts[1..].join(" ")))
+                super::captions::caption_line(&parts)
             })
             .collect()
     }
