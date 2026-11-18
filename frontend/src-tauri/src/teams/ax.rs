@@ -37,8 +37,10 @@ pub fn has_call_controls(pid: i32) -> bool {
 static MORE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)^(more|more actions|altro|altre azioni)$|showMoreBtn").unwrap());
 static LANGUAGE_SPEECH: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)^(language and speech|lingua e (voce|riconoscimento vocale))").unwrap());
+/// Old menu: "Attiva sottotitoli" under Language and speech. New menu (Nov 2026): a bare
+/// "Sottotitoli" tile right in More, a toggle (see `enable_live_captions`).
 static CAPTIONS_ON: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?i)^(turn on|show|attiva|mostra)\b.*(captions|sottotitoli)|^(live captions|sottotitoli in tempo reale)$").unwrap()
+    Regex::new(r"(?i)^(turn on|show|attiva|mostra)\b.*(captions|sottotitoli)|^(captions|sottotitoli|live captions|sottotitoli in tempo reale)$").unwrap()
 });
 static CAPTIONS_ALREADY_ON: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?i)^(turn off|hide|disattiva|nascondi)\b.*(captions|sottotitoli)").unwrap());
@@ -136,7 +138,16 @@ pub fn has_menu(pid: i32) -> bool {
     call_window(pid).is_some_and(|w| find_pressable(&w, &MORE).is_some())
 }
 
+/// New menu first (the "Sottotitoli" tile right under More), old one as fallback
+/// (More › Language and speech › Turn on captions): `reveal_and_press` tries the target before
+/// each opener.
 pub fn enable_live_captions(pid: i32) -> anyhow::Result<()> {
+    // ponytail: the new tile is a toggle with the same label on and off, so pressing it while
+    // captions show would hide them; the captions region on screen is the "already on" signal.
+    // Read the tile's state attribute instead once a live dump shows it.
+    if captions_region(pid).is_some() {
+        return Ok(());
+    }
     reveal_and_press(pid, &[&MORE, &LANGUAGE_SPEECH], &CAPTIONS_ON, Some(&CAPTIONS_ALREADY_ON)).map(|_| ())
 }
 
@@ -204,6 +215,10 @@ fn is_captions_region(e: &cidre::ax::UiElement) -> bool {
             .any(|l| CAPTIONS_REGION.is_match(&l))
 }
 
+fn captions_region(pid: i32) -> Option<El> {
+    call_window(pid).and_then(|w| ax_util::find_all(&w, 6000, &is_captions_region).into_iter().next())
+}
+
 impl CaptionReader {
     pub fn read(&mut self, pid: i32) -> Vec<(String, String)> {
         let alive = self.region.as_ref().is_some_and(|r| !ax_util::role(r).is_empty());
@@ -212,9 +227,7 @@ impl CaptionReader {
             self.region = None;
             if self.search.due(now) {
                 self.search.mark(now);
-                self.region = call_window(pid).and_then(|w| {
-                    ax_util::find_all(&w, 6000, &is_captions_region).into_iter().next()
-                });
+                self.region = captions_region(pid);
             }
         }
         let Some(region) = &self.region else { return Vec::new() };
@@ -305,6 +318,13 @@ mod tests {
         assert!(!START_TRANSCRIPTION.is_match("Avvia registrazione"));
         assert!(STOP_TRANSCRIPTION.is_match("Interrompi la trascrizione") && STOP_TRANSCRIPTION.is_match("Stop transcription"));
         assert!(MORE.is_match("Altro"));
+        // New More menu (issue #23): a "Sottotitoli" tile; the old path's labels still match.
+        for l in ["Sottotitoli", "Captions", "Attiva sottotitoli in tempo reale", "Turn on live captions"] {
+            assert!(CAPTIONS_ON.is_match(l), "{l}");
+        }
+        for l in ["Disattiva sottotitoli", "Impostazioni sottotitoli", "Lingua dei sottotitoli"] {
+            assert!(!CAPTIONS_ON.is_match(l), "{l}");
+        }
     }
 
     /// "Riattiva microfono" (id microphone-button) logged live on the Italian client (Nov 2026).
