@@ -768,25 +768,42 @@ pub async fn api_delete_api_key<R: Runtime>(
 
 #[tauri::command]
 pub async fn api_delete_meeting<R: Runtime>(
-    _app: AppHandle<R>,
+    app: AppHandle<R>,
     state: tauri::State<'_, AppState>,
     meeting_id: String,
     auth_token: Option<String>,
+    move_folder_to_trash: Option<bool>,
 ) -> Result<serde_json::Value, String> {
+    let move_folder_to_trash = move_folder_to_trash.unwrap_or(false);
     log_info!(
-        "api_delete_meeting called for meeting_id(native): {}, auth_token: {}",
+        "api_delete_meeting called for meeting_id(native): {}, auth_token: {}, folder to Trash: {}",
         meeting_id,
-        auth_token.is_some()
+        auth_token.is_some(),
+        move_folder_to_trash
     );
 
     let pool = state.db_manager.pool();
+    // Read before the row goes: afterwards nothing says which folder was this meeting's.
+    let (folder, shared) = if move_folder_to_trash {
+        MeetingsRepository::folder_of(pool, &meeting_id).await.map_err(|e| e.to_string())?
+    } else {
+        (None, false)
+    };
 
     match MeetingsRepository::delete_meeting(pool, &meeting_id).await {
         Ok(true) => {
             log_info!("Successfully deleted meeting {}", meeting_id);
+            // "kept" (not asked), "trashed", "missing", "outside", "shared" or "failed".
+            let (folder_outcome, folder_error) = if move_folder_to_trash {
+                trash_meeting_folder(&app, folder.as_deref(), shared).await
+            } else {
+                ("kept", None)
+            };
             Ok(serde_json::json!({
                 "status": "success",
-                "message": "Meeting deleted successfully"
+                "message": "Meeting deleted successfully",
+                "folder": folder_outcome,
+                "folder_error": folder_error,
             }))
         }
         Ok(false) => {
@@ -799,6 +816,42 @@ pub async fn api_delete_meeting<R: Runtime>(
         Err(e) => {
             log_error!("Error deleting meeting {}: {}", meeting_id, e);
             Err(format!("Failed to delete meeting: {}", e))
+        }
+    }
+}
+
+/// Moves a deleted meeting's folder to the Trash when it is safely its own (see `meeting_folder`).
+async fn trash_meeting_folder<R: Runtime>(
+    app: &AppHandle<R>,
+    folder: Option<&str>,
+    shared: bool,
+) -> (&'static str, Option<String>) {
+    use crate::audio::recording_preferences::{get_default_recordings_folder, load_recording_preferences};
+    use crate::meeting_folder::{move_to_trash, trashable, Kept};
+
+    let mut roots = vec![get_default_recordings_folder()];
+    if let Ok(prefs) = load_recording_preferences(app).await {
+        roots.push(prefs.save_folder);
+    }
+    match trashable(folder, &roots, shared) {
+        Ok(path) => match move_to_trash(&path) {
+            Ok(()) => {
+                log_info!("Moved meeting folder to the Trash: {}", path.display());
+                ("trashed", None)
+            }
+            Err(e) => {
+                log_warn!("Could not move {} to the Trash: {}", path.display(), e);
+                ("failed", Some(e))
+            }
+        },
+        Err(kept) => {
+            log_info!("Meeting folder {:?} left in place: {:?}", folder, kept);
+            let outcome = match kept {
+                Kept::Missing => "missing",
+                Kept::OutsideRecordings => "outside",
+                Kept::Shared => "shared",
+            };
+            (outcome, None)
         }
     }
 }

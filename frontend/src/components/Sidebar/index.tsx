@@ -123,7 +123,41 @@ const Sidebar: React.FC = () => {
     [meetings]
   );
 
-  const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; itemId: string | null }>({ isOpen: false, itemId: null });
+  const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; ids: string[] }>({ isOpen: false, ids: [] });
+  // On by default: a meeting deleted from the archive rarely needs its audio left on disk.
+  const [moveFolderToTrash, setMoveFolderToTrash] = useState(true);
+  // Multiple selection in the archive: Cmd/Ctrl+click toggles, Shift+click extends from the anchor.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectionAnchor, setSelectionAnchor] = useState<string | null>(null);
+
+  const askDelete = (ids: string[]) => {
+    setMoveFolderToTrash(true);
+    setDeleteModalState({ isOpen: true, ids });
+  };
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+    setSelectionAnchor(null);
+  }, []);
+
+  // Deleted or vanished meetings leave the selection.
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const ids = new Set(meetings.map((m) => m.id));
+      const kept = [...prev].filter((id) => ids.has(id));
+      return kept.length === prev.size ? prev : new Set(kept);
+    });
+  }, [meetings]);
+
+  // Esc drops the selection (the delete dialog handles its own Esc).
+  useEffect(() => {
+    if (selectedIds.size === 0 || deleteModalState.isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') clearSelection();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedIds.size, deleteModalState.isOpen, clearSelection]);
 
   useEffect(() => {
     // Note: Don't set hardcoded defaults - let DB be the source of truth
@@ -276,44 +310,82 @@ const Sidebar: React.FC = () => {
     : meetings;
 
 
-  const handleDelete = async (itemId: string) => {
-    console.log('Deleting item:', itemId);
+  /** Deletes the meetings one after the other, then reports once. */
+  const handleDelete = async (ids: string[], moveFolder: boolean) => {
+    const deleted: string[] = [];
+    let foldersKept = 0;
+    let firstError: string | null = null;
 
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('api_delete_meeting', {
-        meetingId: itemId,
-      });
-      console.log('Meeting deleted successfully');
-      const updatedMeetings = meetings.filter((m: CurrentMeeting) => m.id !== itemId);
-      setMeetings(updatedMeetings);
+    for (const id of ids) {
+      try {
+        const result = await invoke<{ folder?: string }>('api_delete_meeting', {
+          meetingId: id,
+          moveFolderToTrash: moveFolder,
+        });
+        deleted.push(id);
+        Analytics.trackMeetingDeleted(id);
+        // "missing" is fine (nothing left to move); the others mean files are still on disk.
+        if (moveFolder && ['outside', 'shared', 'failed'].includes(result?.folder ?? '')) foldersKept += 1;
+      } catch (error) {
+        console.error('Failed to delete meeting:', id, error);
+        firstError ??= error instanceof Error ? error.message : String(error);
+      }
+    }
 
-      // Track meeting deletion
-      Analytics.trackMeetingDeleted(itemId);
+    if (deleted.length > 0) {
+      const gone = new Set(deleted);
+      setMeetings(meetings.filter((m: CurrentMeeting) => !gone.has(m.id)));
+      setSelectedIds((prev) => new Set([...prev].filter((id) => !gone.has(id))));
 
-      // Show success toast
-      toast.success(t('meetingDeleted'), {
-        description: t('meetingDeletedDesc')
-      });
+      const one = deleted.length === 1;
+      const description = !moveFolder
+        ? t(one ? 'meetingDeletedDesc' : 'meetingsDeletedDesc')
+        : foldersKept > 0
+          ? (foldersKept === 1 ? t('folderKept') : t('foldersKept', { count: foldersKept }))
+          : t(one ? 'meetingDeletedTrashedDesc' : 'meetingsDeletedTrashedDesc');
+      toast.success(one ? t('meetingDeleted') : t('meetingsDeleted', { count: deleted.length }), { description });
 
       // If deleting the active meeting, navigate to home
-      if (currentMeeting?.id === itemId) {
+      if (currentMeeting && gone.has(currentMeeting.id)) {
         setCurrentMeeting({ id: 'intro-call', title: '+ New Call' });
         router.push('/');
       }
-    } catch (error) {
-      console.error('Failed to delete meeting:', error);
-      toast.error(t('deleteFailed'), {
-        description: error instanceof Error ? error.message : String(error)
-      });
+    }
+    if (firstError !== null) {
+      toast.error(t('deleteFailed'), { description: firstError });
     }
   };
 
   const handleDeleteConfirm = () => {
-    if (deleteModalState.itemId) {
-      handleDelete(deleteModalState.itemId);
+    if (deleteModalState.ids.length > 0) {
+      handleDelete(deleteModalState.ids, moveFolderToTrash);
     }
-    setDeleteModalState({ isOpen: false, itemId: null });
+    setDeleteModalState({ isOpen: false, ids: [] });
+  };
+
+  const handleRowClick = (e: React.MouseEvent, meeting: CurrentMeeting) => {
+    if (e.metaKey || e.ctrlKey) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(meeting.id)) next.delete(meeting.id);
+        else next.add(meeting.id);
+        return next;
+      });
+      setSelectionAnchor(meeting.id);
+      return;
+    }
+    if (e.shiftKey) {
+      // From the anchor (or the open meeting) to here, in the order shown.
+      const order = visibleMeetings.map((m) => m.id);
+      const from = order.indexOf(selectionAnchor ?? currentMeeting?.id ?? meeting.id);
+      const to = order.indexOf(meeting.id);
+      const [a, b] = from < 0 ? [to, to] : [Math.min(from, to), Math.max(from, to)];
+      setSelectedIds((prev) => new Set([...prev, ...order.slice(a, b + 1)]));
+      if (from < 0) setSelectionAnchor(meeting.id);
+      return;
+    }
+    clearSelection();
+    openMeeting(meeting);
   };
 
   // Handle modal editing of meeting names
@@ -479,6 +551,7 @@ const Sidebar: React.FC = () => {
 
   const renderMeetingRow = (meeting: CurrentMeeting, iso: string | undefined) => {
     const isActive = currentMeeting?.id === meeting.id;
+    const isSelected = selectedIds.has(meeting.id);
     const snippet = query ? searchResults.find(result => result.id === meeting.id)?.matchContext : undefined;
     const time = iso
       ? new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
@@ -488,11 +561,17 @@ const Sidebar: React.FC = () => {
       <div key={meeting.id} className="group relative">
         <button
           type="button"
-          onClick={() => openMeeting(meeting)}
+          onClick={(e) => handleRowClick(e, meeting)}
+          // Shift+click selects a range: don't let it select the row text too.
+          onMouseDown={(e) => { if (e.shiftKey) e.preventDefault(); }}
           aria-current={isActive ? 'page' : undefined}
+          aria-pressed={selectedIds.size > 0 ? isSelected : undefined}
           className={cn(
             'flex h-7 w-full items-center gap-2 rounded-sm px-2 text-left text-sm text-rail-foreground transition-colors duration-150 group-hover:pr-16 group-has-focus-visible:pr-16 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-rail-accent',
-            isActive ? 'bg-rail-active font-medium' : 'hover:bg-rail-active'
+            isSelected
+              ? 'bg-rail-accent/25 hover:bg-rail-accent/30'
+              : isActive ? 'bg-rail-active' : 'hover:bg-rail-active',
+            isActive && 'font-medium'
           )}
         >
           <span className="w-10 shrink-0 text-xs tabular-nums text-rail-muted">{time}</span>
@@ -525,7 +604,8 @@ const Sidebar: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => setDeleteModalState({ isOpen: true, itemId: meeting.id })}
+            // On a selected row the bin deletes the whole selection, as in Finder.
+            onClick={() => askDelete(isSelected ? [...selectedIds] : [meeting.id])}
             className={cn(railIcon, 'h-6 w-6')}
             aria-label={t('deleteMeeting')}
             title={t('deleteMeeting')}
@@ -596,12 +676,38 @@ const Sidebar: React.FC = () => {
       </div>
 
       {/* Archive */}
-      <div className="flex h-7 shrink-0 items-center justify-between border-t border-rail-border px-4 text-xs text-rail-muted">
-        <span className="font-medium">{t('meetings')}</span>
-        <span className="tabular-nums">
-          {query && isSearching ? t('searching') : visibleMeetings.length}
-        </span>
-      </div>
+      {selectedIds.size > 0 ? (
+        <div className="flex h-7 shrink-0 items-center justify-between border-t border-rail-border pl-4 pr-2 text-xs text-rail-foreground">
+          <span className="font-medium tabular-nums">{t('selectedCount', { count: selectedIds.size })}</span>
+          <div className="flex items-center">
+            <button
+              type="button"
+              onClick={() => askDelete([...selectedIds])}
+              className={cn(railIcon, 'h-6 w-6')}
+              aria-label={t('deleteSelected')}
+              title={t('deleteSelected')}
+            >
+              <Trash2 />
+            </button>
+            <button
+              type="button"
+              onClick={clearSelection}
+              className={cn(railIcon, 'h-6 w-6')}
+              aria-label={t('clearSelection')}
+              title={t('clearSelection')}
+            >
+              <X />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex h-7 shrink-0 items-center justify-between border-t border-rail-border px-4 text-xs text-rail-muted">
+          <span className="font-medium">{t('meetings')}</span>
+          <span className="tabular-nums">
+            {query && isSearching ? t('searching') : visibleMeetings.length}
+          </span>
+        </div>
+      )}
       <nav aria-label={t('meetings')} className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         {(isRecording || isFinishing) && (
           <button
@@ -676,10 +782,29 @@ const Sidebar: React.FC = () => {
       {/* Confirmation Modal for Delete */}
       <ConfirmationModal
         isOpen={deleteModalState.isOpen}
-        text={t('deleteConfirm')}
+        title={
+          deleteModalState.ids.length > 1
+            ? t('confirmDeleteManyTitle', { count: deleteModalState.ids.length })
+            : undefined
+        }
+        text={
+          deleteModalState.ids.length > 1
+            ? t('deleteConfirmMany', { count: deleteModalState.ids.length })
+            : t('deleteConfirm')
+        }
         onConfirm={handleDeleteConfirm}
-        onCancel={() => setDeleteModalState({ isOpen: false, itemId: null })}
-      />
+        onCancel={() => setDeleteModalState({ isOpen: false, ids: [] })}
+      >
+        <label className="flex cursor-pointer items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5 accent-primary"
+            checked={moveFolderToTrash}
+            onChange={(e) => setMoveFolderToTrash(e.target.checked)}
+          />
+          <span>{t(deleteModalState.ids.length > 1 ? 'deleteFoldersToo' : 'deleteFolderToo')}</span>
+        </label>
+      </ConfirmationModal>
 
       {/* Edit Meeting Title Modal */}
       <Dialog open={editModalState.isOpen} onOpenChange={(open) => {

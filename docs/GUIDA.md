@@ -67,6 +67,8 @@ Per dare un nome a un «Parlante X», rinominalo nel pannello dei parlanti: Dixi
 
 Ogni riunione ha una cartella in `~/Documents/Dixit/<AAAA-MM-GG HH.MM Titolo>/` con l'audio, la trascrizione in Markdown con le tue note, il riassunto e i metadati.
 
+Per eliminare più riunioni insieme selezionale nella barra laterale con **Cmd+clic** (una alla volta) o **Maiusc+clic** (un intervallo), poi premi il cestino accanto a «N selezionate»; **Esc** annulla la selezione. Alla conferma, la casella «Sposta nel Cestino anche la cartella» (attiva di default) sposta anche le cartelle nel Cestino di macOS, da cui si possono recuperare.
+
 ## Aggiornamenti
 
 Dixit si aggiorna da solo; riunioni, impostazioni e modelli restano. Dopo un aggiornamento macOS può chiedere di nuovo i permessi.
