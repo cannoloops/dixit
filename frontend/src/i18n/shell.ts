@@ -181,6 +181,12 @@ export const t = makeT({
     agentsLater: 'In Impostazioni › Automazione › Agenti, quando vuoi.',
     agentsEnable: 'Attiva e configura',
     agentsNotNow: 'Non ora',
+    demoLabel: 'Esempio: Claude chiede a Dixit quando è stata fissata la demo, Dixit cerca nelle trascrizioni e legge il riassunto, Claude risponde con data e responsabile.',
+    demoAsk: 'Quando abbiamo fissato la demo, e chi fa il test dei permessi?',
+    demoSearchArgs: '(query: "demo test permessi", mode: hybrid)',
+    demoSearchRes: '3 risultati · Avanzamento progetto Alfa, 28 ott',
+    demoMeetingRes: 'Riassunto SAL, 3 partecipanti, 1 nota',
+    demoAnswer: 'Nel SAL «Avanzamento progetto Alfa» del 28 ottobre: la demo è giovedì e la build è pronta. Il test dei permessi è di Marco Conti, che lo chiude entro mercoledì.',
   },
   en: {
     // Rail
@@ -360,5 +366,11 @@ export const t = makeT({
     agentsLater: 'In Settings › Automation › Agents, whenever you like.',
     agentsEnable: 'Turn on and set up',
     agentsNotNow: 'Not now',
+    demoLabel: 'Example: Claude asks Dixit when the demo was set, Dixit searches the transcripts and reads the summary, Claude answers with the date and owner.',
+    demoAsk: 'When did we set the demo, and who is doing the permissions test?',
+    demoSearchArgs: '(query: "demo permissions test", mode: hybrid)',
+    demoSearchRes: '3 results · Project Alpha progress, 28 Oct',
+    demoMeetingRes: 'Status summary, 3 participants, 1 note',
+    demoAnswer: 'In the “Project Alpha progress” status call on 28 October: the demo is on Thursday and the build is ready. Marco Conti owns the permissions test and will finish it by Wednesday.',
   },
 });
