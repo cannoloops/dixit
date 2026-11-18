@@ -227,11 +227,14 @@ footer a { color: var(--soft); }
   <div class="wrap agents">
     <div>
       <h2>Per i tuoi agenti</h2>
-      <p class="lead" style="margin-top:8px">Se lo attivi, Dixit espone un server MCP in sola lettura, raggiungibile solo dal tuo Mac. Claude Code o Claude Desktop possono cercare nelle riunioni, leggere riassunti e note, seguire la call in corso.</p>
+      <p class="lead" style="margin-top:8px">Se lo attivi, Dixit espone un server MCP in sola lettura, raggiungibile solo dal tuo Mac. Claude, Codex, Antigravity, Gemini CLI, Cursor e gli altri agenti compatibili possono cercare nelle riunioni, leggere riassunti e note, seguire la call in corso.</p>
     </div>
     <div>
       <p>Per collegarlo a Claude Code:</p>
       <pre><code>claude mcp add --transport http dixit http://127.0.0.1:7337/mcp</code></pre>
+      <p style="margin-top:12px">A Codex:</p>
+      <pre><code>codex mcp add dixit --url http://127.0.0.1:7337/mcp</code></pre>
+      <p style="margin-top:12px">Per Antigravity, Gemini CLI, Cursor, VS Code e gli altri, Dixit mostra la configurazione da copiare in Impostazioni › Automazione › Agenti.</p>
       <figure style="margin-top:20px"><img src="demo/mcp.gif" width="680" height="440" loading="lazy" alt="Claude chiede quando è stata fissata la demo: Dixit cerca nelle trascrizioni, legge il riassunto del SAL e Claude risponde con data e responsabile"></figure>
     </div>
   </div>

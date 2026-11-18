@@ -191,7 +191,7 @@ export const t = makeT({
     // Agents announcement
     agentsTitle: 'Novità: Dixit lavora con i tuoi agenti',
     agentsBody:
-      'Collega Claude Code o Claude Desktop a Dixit e chiedigli cosa si è detto nella call in corso, cerca nelle riunioni passate o fai trascrivere un file audio o video. Tutto resta su questo Mac.',
+      'Collega a Dixit il tuo agente (Claude, Codex, Antigravity e altri) e chiedigli cosa si è detto nella call in corso, cerca nelle riunioni passate o fai trascrivere un file audio o video. Tutto resta su questo Mac.',
     agentsLater: 'In Impostazioni › Automazione › Agenti, quando vuoi.',
     agentsEnable: 'Attiva e configura',
     agentsNotNow: 'Non ora',
@@ -390,7 +390,7 @@ export const t = makeT({
     // Agents announcement
     agentsTitle: 'New: Dixit works with your agents',
     agentsBody:
-      'Connect Claude Code or Claude Desktop to Dixit and ask what was said in the current call, search past meetings, or have an audio or video file transcribed. Everything stays on this Mac.',
+      'Connect your agent (Claude, Codex, Antigravity and more) to Dixit and ask what was said in the current call, search past meetings, or have an audio or video file transcribed. Everything stays on this Mac.',
     agentsLater: 'In Settings › Automation › Agents, whenever you like.',
     agentsEnable: 'Turn on and set up',
     agentsNotNow: 'Not now',

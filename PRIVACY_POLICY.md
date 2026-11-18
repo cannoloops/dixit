@@ -18,7 +18,7 @@ Solo quello che scegli tu, e solo in questi casi:
 - **Aggiornamenti:** l'app controlla se esiste una nuova versione scaricando un file da GitHub. GitHub vede l'indirizzo IP, non i tuoi dati.
 - **Modelli (modalità esperto):** se scarichi un modello diverso da quelli inclusi, il file arriva da Hugging Face o dal sito del modello.
 - **Provider LLM esterni (modalità esperto):** se scegli OpenAI, Anthropic, Groq, OpenRouter o un endpoint compatibile per i riassunti, la trascrizione della riunione viene inviata a quel servizio, secondo la sua privacy policy. Ollama in locale non invia nulla fuori dal Mac.
-- **Server MCP:** se lo attivi, gli agenti sul tuo Mac (per esempio Claude Code) possono leggere riunioni e trascrizioni tramite `127.0.0.1`. Quello che l'agente fa poi con il testo dipende dall'agente.
+- **Server MCP:** se lo attivi, gli agenti sul tuo Mac (per esempio Claude Code, Codex o Antigravity) possono leggere riunioni e trascrizioni tramite `127.0.0.1`. Quello che l'agente fa poi con il testo dipende dall'agente.
 
 Dixit non raccoglie statistiche d'uso: il codice di analytics ereditato da Meetily è disattivato e non invia nulla.
 

@@ -27,7 +27,7 @@ Dixit si accende da solo quando inizia una call su Teams, Zoom o Meet, trascrive
 
   Il tipo si può cambiare a mano, e il riassunto si rigenera.
 - **Una cartella per riunione** in `~/Documents/Dixit/`: audio, trascrizione in Markdown con le tue note, riassunto e metadati.
-- **Per gli agenti:** un server MCP locale espone trascrizioni, riassunti e note ad agenti esterni (Claude Code, Claude Desktop), con ricerca per parola e per significato. Utile per esempio per alimentare una wiki.
+- **Per gli agenti:** un server MCP locale espone trascrizioni, riassunti e note ad agenti esterni (Claude, Codex, Antigravity, Gemini CLI, Cursor, VS Code e altri), con ricerca per parola e per significato. Utile per esempio per alimentare una wiki.
 - **Italiano e inglese.**
 
 ## Installazione
@@ -70,11 +70,18 @@ Sui Mac con molta RAM (32 GB o più), in modalità esperto si può scaricare **G
 
 ## Usare Dixit con un agente (MCP)
 
-Con l'opzione MCP attiva, Dixit espone un server locale su `http://127.0.0.1:7337/mcp`, raggiungibile solo dal tuo Mac e in sola lettura. Per collegarlo a Claude Code:
+Con l'opzione MCP attiva, Dixit espone un server locale su `http://127.0.0.1:7337/mcp`, raggiungibile solo dal tuo Mac. Le Impostazioni › Automazione › Agenti mostrano il comando o la configurazione da copiare per ogni agente:
 
-```bash
-claude mcp add --transport http dixit http://127.0.0.1:7337/mcp
-```
+| Agente | Come collegarlo |
+|---|---|
+| Claude Code | `claude mcp add --transport http --scope user dixit http://127.0.0.1:7337/mcp` |
+| Claude Desktop | in `~/Library/Application Support/Claude/claude_desktop_config.json`: `{"mcpServers":{"dixit":{"command":"npx","args":["-y","mcp-remote","http://127.0.0.1:7337/mcp"]}}}` (serve Node.js) |
+| Codex (CLI, app, IDE) | `codex mcp add dixit --url http://127.0.0.1:7337/mcp` |
+| Antigravity | Manage MCP Servers › View raw config (`~/.gemini/config/mcp_config.json`): `{"mcpServers":{"dixit":{"serverUrl":"http://127.0.0.1:7337/mcp"}}}` |
+| Gemini CLI | `gemini mcp add --transport http --scope user dixit http://127.0.0.1:7337/mcp` |
+| Cursor | in `~/.cursor/mcp.json`: `{"mcpServers":{"dixit":{"url":"http://127.0.0.1:7337/mcp"}}}` |
+| VS Code | `code --add-mcp '{"name":"dixit","type":"http","url":"http://127.0.0.1:7337/mcp"}'` |
+| Altri | qualsiasi client MCP Streamable HTTP, senza autenticazione, all'indirizzo `http://127.0.0.1:7337/mcp` |
 
 <p align="center"><img src="site/demo/mcp.gif" width="680" alt="Claude chiede quando è stata fissata la demo: Dixit cerca nelle trascrizioni, legge il riassunto del SAL e Claude risponde con data e responsabile"></p>
 
@@ -84,6 +91,8 @@ claude mcp add --transport http dixit http://127.0.0.1:7337/mcp
 | `list_meetings` | L'elenco delle riunioni, filtrabile per data o per ultime modifiche |
 | `get_meeting` | Una riunione completa: riassunto, tipo di call, partecipanti, note e trascrizione, in JSON o Markdown |
 | `search_transcripts` | Ricerca nelle trascrizioni, nelle note e nei riassunti: per parola esatta, per significato o mista |
+| `transcribe_file` | Trascrive un file audio o video del Mac in una nuova riunione, con riassunto automatico (l'unico tool che scrive) |
+| `transcription_status` | A che punto è l'ultimo `transcribe_file` |
 
 ## Privacy
 

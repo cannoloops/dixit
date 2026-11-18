@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Copy, Loader2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
@@ -19,12 +20,24 @@ export interface AutopilotSettingsValue {
 }
 
 const MCP_URL = 'http://127.0.0.1:7337/mcp';
-const CLAUDE_CODE_CMD = `claude mcp add --transport http --scope user dixit ${MCP_URL}`;
-const CLAUDE_DESKTOP_JSON = JSON.stringify(
-  { mcpServers: { dixit: { command: 'npx', args: ['-y', 'mcp-remote', MCP_URL] } } },
-  null,
-  2,
-);
+const json = (o: unknown) => JSON.stringify(o, null, 2);
+
+/** How to connect each agent to the MCP server: label, i18n key of the instruction, snippet. */
+const CLIENTS = [
+  { id: 'claude-code', label: 'Claude Code', how: 'mcpHowClaudeCode', snippet: `claude mcp add --transport http --scope user dixit ${MCP_URL}` },
+  {
+    id: 'claude-desktop',
+    label: 'Claude Desktop',
+    how: 'mcpHowClaudeDesktop',
+    snippet: json({ mcpServers: { dixit: { command: 'npx', args: ['-y', 'mcp-remote', MCP_URL] } } }),
+  },
+  { id: 'codex', label: 'Codex (CLI, app, IDE)', how: 'mcpHowCodex', snippet: `codex mcp add dixit --url ${MCP_URL}` },
+  { id: 'antigravity', label: 'Antigravity', how: 'mcpHowAntigravity', snippet: json({ mcpServers: { dixit: { serverUrl: MCP_URL } } }) },
+  { id: 'gemini', label: 'Gemini CLI', how: 'mcpHowGemini', snippet: `gemini mcp add --transport http --scope user dixit ${MCP_URL}` },
+  { id: 'cursor', label: 'Cursor', how: 'mcpHowCursor', snippet: json({ mcpServers: { dixit: { url: MCP_URL } } }) },
+  { id: 'vscode', label: 'VS Code', how: 'mcpHowVscode', snippet: `code --add-mcp '${JSON.stringify({ name: 'dixit', type: 'http', url: MCP_URL })}'` },
+  { id: 'other', label: null, how: 'mcpHowOther', snippet: MCP_URL },
+] as const;
 
 /** A snippet to paste elsewhere, with a copy button. */
 function CopyBlock({ text }: { text: string }) {
@@ -48,6 +61,8 @@ export function AutopilotSettings() {
   const [dumping, setDumping] = useState(false);
   // true = listening, false = off, string = why it could not start
   const [mcp, setMcp] = useState<boolean | string>(false);
+  const [clientId, setClientId] = useState<string>(CLIENTS[0].id);
+  const client = CLIENTS.find((c) => c.id === clientId) ?? CLIENTS[0];
 
   const refreshMcp = useCallback(async () => {
     setMcp(await invoke<boolean>('mcp_status').catch((e) => String(e)));
@@ -176,14 +191,21 @@ export function AutopilotSettings() {
         {settings.mcp_enabled && (
           <div className="space-y-4 py-3 text-sm">
             <div className="space-y-1.5">
-              <p className="font-medium">{t('mcpClaudeCode')}</p>
-              <p className="text-xs text-muted-foreground">{t('mcpClaudeCodeDesc')}</p>
-              <CopyBlock text={CLAUDE_CODE_CMD} />
-            </div>
-            <div className="space-y-1.5">
-              <p className="font-medium">{t('mcpClaudeDesktop')}</p>
-              <p className="text-xs text-muted-foreground">{t('mcpClaudeDesktopDesc')}</p>
-              <CopyBlock text={CLAUDE_DESKTOP_JSON} />
+              <p className="font-medium">{t('mcpClient')}</p>
+              <Select value={clientId} onValueChange={setClientId}>
+                <SelectTrigger className="w-64" aria-label={t('mcpClient')}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CLIENTS.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.label ?? t('mcpOther')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">{t(client.how)}</p>
+              <CopyBlock text={client.snippet} />
             </div>
             <div className="space-y-1">
               <p className="font-medium">{t('mcpUsage')}</p>

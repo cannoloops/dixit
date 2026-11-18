@@ -73,7 +73,7 @@ Server `dixit`, HTTP streamable su `http://127.0.0.1:7337/mcp`. Tutti i tool son
 | `transcription_status` | Stato dell'ultimo `transcribe_file`: `running` con fase e percentuale, `done` con `meeting_id`, `failed` con l'errore |
 | `search_transcripts` | `mode: classic` (SQLite FTS5), `smart` (embedding, nessun LLM), `hybrid` (fusione RRF, default). Cerca anche in note e riassunti |
 
-Le date senza fuso orario sono ora locale. I vettori stanno in SQLite e il confronto è a forza bruta: basta fino a migliaia di riunioni, poi sqlite-vec. Per provarli con un client vero:
+Le Impostazioni › Automazione › Agenti mostrano comando o configurazione per Claude Code, Claude Desktop, Codex, Antigravity, Gemini CLI, Cursor, VS Code e un client generico (`CLIENTS` in `AutopilotSettings.tsx`). Le date senza fuso orario sono ora locale. I vettori stanno in SQLite e il confronto è a forza bruta: basta fino a migliaia di riunioni, poi sqlite-vec. Per provarli con un client vero:
 
 ```bash
 claude -p --strict-mcp-config --mcp-config mcp.json --allowedTools "mcp__dixit__list_meetings mcp__dixit__get_meeting mcp__dixit__search_transcripts" "elenca le riunioni"

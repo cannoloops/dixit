@@ -1,3 +1,6 @@
+**Novità in 0.2.10**
+- Dixit si collega anche a Codex, Antigravity, Gemini CLI, Cursor e VS Code: in Impostazioni › Automazione › Agenti scegli il tuo agente e copi il comando pronto.
+
 **Novità in 0.2.9**
 - «Attiva e configura» nella presentazione degli agenti apre davvero Impostazioni › Automazione, dove trovi il server MCP già acceso.
 
