@@ -81,9 +81,15 @@ pub fn meeting_title(platform: Platform, window_title: &str) -> Option<String> {
     let title = match platform {
         Platform::Teams => {
             // The compact meeting view and the pre-join screen (which already holds the mic, seen
-            // live) prefix their own name: the meeting, if any, comes next.
-            const VIEWS: &[&str] =
-                &["Visualizzazione compatta delle riunioni", "Compact meeting view", "Partecipazione alla riunione"];
+            // live) prefix their own name: the meeting, if any, comes next. English Teams says
+            // "Meeting compact view" (seen live): missing it, the call flipped between that and the
+            // real title every time the window went compact, and each flip split the recording.
+            const VIEWS: &[&str] = &[
+                "Visualizzazione compatta delle riunioni",
+                "Meeting compact view",
+                "Compact meeting view",
+                "Partecipazione alla riunione",
+            ];
             let mut parts = window_title.split(" | ").map(str::trim);
             let mut first = parts.next()?;
             if VIEWS.iter().any(|v| first.eq_ignore_ascii_case(v)) {
@@ -148,6 +154,13 @@ mod tests {
             meeting_title(Platform::Teams, "Compact meeting view | Daily | Contoso | a@b.c").as_deref(),
             Some("Daily")
         );
+        // English Teams (seen live): same view, other word order. Never a meeting title itself.
+        assert_eq!(
+            meeting_title(Platform::Teams, "Meeting compact view | Verifica budget | Contoso | a@b.c").as_deref(),
+            Some("Verifica budget")
+        );
+        assert_eq!(meeting_title(Platform::Teams, "Meeting compact view | Microsoft Teams"), None);
+        assert_eq!(meeting_title(Platform::Teams, "Meeting compact view"), None);
     }
 
     #[test]
