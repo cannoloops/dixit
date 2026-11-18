@@ -84,7 +84,7 @@ pub fn spawn<R: Runtime>(app: AppHandle<R>) {
         );
         // Whether the auto-started recording is up (to tell a manual stop apart).
         let mut seen_recording = false;
-        // (platform, call title) of the running or suppressed call, to split back-to-back calls.
+        // (platform, whole call-window title) of the running or suppressed call, to split back-to-back calls.
         let mut identity: Option<(Platform, String)> = None;
         let mut last_identity_check = Instant::now();
         let mut last_obs = tracker::Observation::default();
@@ -133,9 +133,12 @@ pub fn spawn<R: Runtime>(app: AppHandle<R>) {
             if (tracker.is_auto_session() || tracker.is_suppressed()) && last_identity_check.elapsed() >= IDENTITY_CHECK {
                 last_identity_check = Instant::now();
                 if let Some(p) = obs.mic {
-                    let title = blocking(move || probe::call_title(p)).await.flatten();
+                    // Whole window titles: the view (compact, pre-join, any language) changes the
+                    // title of the same call, so only `same_call` says when the call changed. The
+                    // first title stays the reference, so small steps can't drift into another call.
+                    let title = blocking(move || probe::call_window_title(p)).await.flatten();
                     match (&identity, title) {
-                        (Some((ip, it)), Some(t)) if *ip == p && *it != t => {
+                        (Some((ip, it)), Some(t)) if *ip == p && !platform::same_call(p, it, &t) => {
                             log::info!("Autopilot: '{it}' became '{t}', treating it as a new call");
                             identity = None;
                             if tracker.new_call() == Some(Action::Stop) {
@@ -157,7 +160,7 @@ pub fn spawn<R: Runtime>(app: AppHandle<R>) {
                     seen_recording = false;
                     #[cfg(target_os = "macos")]
                     {
-                        identity = blocking(move || probe::call_title(p)).await.flatten().map(|t| (p, t));
+                        identity = blocking(move || probe::call_window_title(p)).await.flatten().map(|t| (p, t));
                     }
                     match start(&app, p).await {
                         Ok(()) if PENDING_CANCEL.swap(false, Ordering::SeqCst) => {
