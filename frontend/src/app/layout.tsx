@@ -24,6 +24,7 @@ import { BaseModelsGate } from '@/components/BaseModelsGate'
 import { loadBetaFeatures } from '@/types/betaFeatures'
 import { DownloadProgressToastProvider } from '@/components/shared/DownloadProgressToast'
 import { UpdateCheckProvider } from '@/components/UpdateCheckProvider'
+import { AgentsAnnouncement } from '@/components/AgentsAnnouncement'
 import { RecordingPostProcessingProvider } from '@/contexts/RecordingPostProcessingProvider'
 import { ImportAudioDialog, ImportDropOverlay } from '@/components/ImportAudio'
 import { ImportDialogProvider } from '@/contexts/ImportDialogContext'
@@ -271,6 +272,7 @@ export default function RootLayout({
                                     <MainContent>{children}</MainContent>
                                   </div>
                                 )}
+                                {!showOnboarding && <AgentsAnnouncement />}
                               </BaseModelsGate>
                               {/* Import audio overlay and dialog */}
                               <ImportDropOverlay visible={showDropOverlay} />
