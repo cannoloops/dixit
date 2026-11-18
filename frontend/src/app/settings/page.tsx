@@ -66,7 +66,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex h-screen flex-col bg-background text-foreground">
-      <Tabs defaultValue="general" className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6">
+      <Tabs defaultValue={new URLSearchParams(window.location.search).get('tab') ?? 'general'} className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col px-6">
         <header className="shrink-0 space-y-3 pt-4">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => router.back()}>

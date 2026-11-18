@@ -7,6 +7,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { SettingsSection, SettingRow } from '@/components/molecules/form-components/setting-row';
 import { t } from '@/i18n/settings';
+import { showAgentsAnnouncement, MCP_ENABLED_EVENT } from '@/components/AgentsAnnouncement';
 
 export interface AutopilotSettingsValue {
   auto_start: boolean;
@@ -53,8 +54,13 @@ export function AutopilotSettings() {
   }, []);
 
   useEffect(() => {
-    invoke<AutopilotSettingsValue>('autopilot_get_settings').then(setSettings).catch(console.error);
-    refreshMcp();
+    const load = () => {
+      invoke<AutopilotSettingsValue>('autopilot_get_settings').then(setSettings).catch(console.error);
+      refreshMcp();
+    };
+    load();
+    window.addEventListener(MCP_ENABLED_EVENT, load);
+    return () => window.removeEventListener(MCP_ENABLED_EVENT, load);
   }, [refreshMcp]);
 
   const save = async (patch: Partial<AutopilotSettingsValue>) => {
@@ -147,6 +153,11 @@ export function AutopilotSettings() {
       </SettingsSection>
 
       <SettingsSection title={t('agentsSection')} description={t('agentsDesc')}>
+        <SettingRow label={t('agentsTour')} description={t('agentsTourDesc')}>
+          <Button variant="outline" size="sm" onClick={showAgentsAnnouncement}>
+            {t('agentsTourShow')}
+          </Button>
+        </SettingRow>
         <SettingRow
           label={t('mcpEnabled')}
           description={
