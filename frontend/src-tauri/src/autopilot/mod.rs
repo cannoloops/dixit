@@ -139,7 +139,9 @@ pub fn spawn<R: Runtime>(app: AppHandle<R>) {
                     let title = blocking(move || probe::call_window_title(p)).await.flatten();
                     match (&identity, title) {
                         (Some((ip, it)), Some(t)) if *ip == p && !platform::same_call(p, it, &t) => {
-                            log::info!("Autopilot: '{it}' became '{t}', treating it as a new call");
+                            // Meeting names only: the whole window title may carry the user's address.
+                            let (a, b) = (platform::meeting_title(p, it), platform::meeting_title(p, &t));
+                            log::info!("Autopilot: {a:?} became {b:?}, treating it as a new call");
                             identity = None;
                             if tracker.new_call() == Some(Action::Stop) {
                                 stop_session(&app, seen_recording);
