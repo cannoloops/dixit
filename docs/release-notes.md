@@ -1,5 +1,7 @@
-**Novità in 0.2.6**
-- Nelle call Teams i sottotitoli tornano ad attivarsi da soli anche con il nuovo menu «Altro», quindi i nomi dei parlanti arrivano di nuovo.
+**Novità in 0.2.7**
+- Puoi selezionare più riunioni ed eliminarle insieme; la cartella di una riunione eliminata finisce nel Cestino, così si può recuperare.
+- Con Teams in inglese, passare alla vista compatta non spezza più la registrazione in due riunioni.
+- Se elimini una riunione mentre Dixit la sta ancora elaborando, la sua cartella resta su disco e l'elaborazione arriva in fondo.
 
 Dixit registra, trascrive e riassume le riunioni di Teams, Zoom e Meet, tutto sul tuo Mac.
 

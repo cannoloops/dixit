@@ -81,9 +81,15 @@ pub fn meeting_title(platform: Platform, window_title: &str) -> Option<String> {
     let title = match platform {
         Platform::Teams => {
             // The compact meeting view and the pre-join screen (which already holds the mic, seen
-            // live) prefix their own name: the meeting, if any, comes next.
-            const VIEWS: &[&str] =
-                &["Visualizzazione compatta delle riunioni", "Compact meeting view", "Partecipazione alla riunione"];
+            // live) prefix their own name: the meeting, if any, comes next. English Teams says
+            // "Meeting compact view" (seen live): missing it, the call flipped between that and the
+            // real title every time the window went compact, and each flip split the recording.
+            const VIEWS: &[&str] = &[
+                "Visualizzazione compatta delle riunioni",
+                "Meeting compact view",
+                "Compact meeting view",
+                "Partecipazione alla riunione",
+            ];
             let mut parts = window_title.split(" | ").map(str::trim);
             let mut first = parts.next()?;
             if VIEWS.iter().any(|v| first.eq_ignore_ascii_case(v)) {
@@ -104,9 +110,59 @@ pub fn meeting_title(platform: Platform, window_title: &str) -> Option<String> {
     (!title.is_empty()).then(|| title.to_string())
 }
 
+/// Whether two whole call-window titles belong to the same call. The window title changes with the
+/// view (compact view, pre-join screen, in any language), so a different title is not enough: it is
+/// the same call when the meeting name read from one title is one of the ` | ` segments of the
+/// other, or both titles give the same meeting name.
+// ponytail: a view that drops the meeting name from its title (no segment to match) still reads as
+// a new call; telling it apart would need the meeting id, which Teams does not show in the title.
+pub fn same_call(platform: Platform, a: &str, b: &str) -> bool {
+    if a.trim() == b.trim() {
+        return true;
+    }
+    let (name_a, name_b) = (meeting_title(platform, a), meeting_title(platform, b));
+    if name_a.is_some() && name_a == name_b {
+        return true;
+    }
+    let named_in = |name: &Option<String>, title: &str| {
+        name.as_deref()
+            .is_some_and(|n| title.split(" | ").map(str::trim).any(|segment| segment.eq_ignore_ascii_case(n)))
+    };
+    named_in(&name_a, b) || named_in(&name_b, a)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn same_meeting_in_an_unknown_view_is_the_same_call() {
+        // A view whose name Dixit does not know comes first: its "meeting name" is the view name,
+        // but the real meeting name of the other title is among its segments. Both orders.
+        let call = "Verifica budget | Contoso | a@b.c";
+        let unknown_view = "Some future view | Verifica budget | Contoso | a@b.c";
+        assert!(same_call(Platform::Teams, call, unknown_view));
+        assert!(same_call(Platform::Teams, unknown_view, call));
+        // English pre-join screen, whatever Teams calls it.
+        assert!(same_call(Platform::Teams, "Join meeting | Daily | Contoso", "Daily | Contoso | a@b.c"));
+        assert!(same_call(Platform::Teams, "Meeting compact view | Daily | Contoso", "Daily | Contoso"));
+        assert!(same_call(Platform::Teams, call, call));
+    }
+
+    #[test]
+    fn different_meetings_of_the_same_organisation_are_different_calls() {
+        let daily = "Daily | Contoso | a@b.c";
+        let retro = "Retrospettiva | Contoso | a@b.c";
+        assert!(!same_call(Platform::Teams, daily, retro));
+        assert!(!same_call(Platform::Teams, retro, daily));
+        assert!(!same_call(Platform::Teams, "Meeting compact view | Daily | Contoso", "Retrospettiva | Contoso"));
+    }
+
+    #[test]
+    fn meet_calls_compare_by_meeting_name() {
+        assert!(same_call(Platform::Meet, "Meet – Daily standup", "Meet - Daily standup"));
+        assert!(!same_call(Platform::Meet, "Meet - abc-defg-hij", "Meet - xyz-wxyz-abc"));
+    }
 
     #[test]
     fn classifies_bundles() {
@@ -148,6 +204,13 @@ mod tests {
             meeting_title(Platform::Teams, "Compact meeting view | Daily | Contoso | a@b.c").as_deref(),
             Some("Daily")
         );
+        // English Teams (seen live): same view, other word order. Never a meeting title itself.
+        assert_eq!(
+            meeting_title(Platform::Teams, "Meeting compact view | Verifica budget | Contoso | a@b.c").as_deref(),
+            Some("Verifica budget")
+        );
+        assert_eq!(meeting_title(Platform::Teams, "Meeting compact view | Microsoft Teams"), None);
+        assert_eq!(meeting_title(Platform::Teams, "Meeting compact view"), None);
     }
 
     #[test]

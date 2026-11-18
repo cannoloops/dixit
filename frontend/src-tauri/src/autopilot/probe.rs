@@ -61,6 +61,20 @@ pub fn call_title(platform: Platform) -> Option<String> {
     }
 }
 
+/// Whole title of the call window (Teams call window, Meet tab), when it names a meeting: what
+/// the identity check compares with `platform::same_call`. Walks the Teams tree, not cheap.
+pub fn call_window_title(platform: Platform) -> Option<String> {
+    match platform {
+        Platform::Teams => ax_util::pids_for_bundle(TEAMS_BUNDLE)
+            .into_iter()
+            .filter_map(crate::teams::ax::call_window)
+            .filter_map(|w| ax_util::string_attr(&w, "AXTitle"))
+            .find(|t| platform::meeting_title(Platform::Teams, t).is_some()),
+        Platform::Meet => meet_window_title().filter(|t| platform::meeting_title(Platform::Meet, t).is_some()),
+        Platform::Zoom => None,
+    }
+}
+
 /// Meeting title for the platform, read when a session starts (walks the Teams tree, not cheap).
 pub fn title_for(platform: Platform) -> Option<String> {
     match platform {
@@ -111,10 +125,11 @@ mod tests {
         println!("observation={obs:?} title={title:?} trusted={}", crate::ax_util::is_trusted(false));
         // Raw signals behind a call boundary: who holds the mic, Teams call controls, call title.
         println!(
-            "PROBE mic_users={:?} teams_call_window={} call_title={:?}",
+            "PROBE mic_users={:?} teams_call_window={} call_title={:?} call_window_title={:?}",
             super::mic_users(),
             super::teams_call_window(),
-            super::call_title(super::Platform::Teams)
+            super::call_title(super::Platform::Teams),
+            super::call_window_title(super::Platform::Teams)
         );
     }
 

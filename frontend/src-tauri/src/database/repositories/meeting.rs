@@ -15,6 +15,23 @@ impl MeetingsRepository {
         Ok(meetings)
     }
 
+    /// The meeting's folder on disk, and whether another meeting points at the same folder.
+    pub async fn folder_of(pool: &SqlitePool, meeting_id: &str) -> Result<(Option<String>, bool), SqlxError> {
+        let folder: Option<(Option<String>,)> = sqlx::query_as("SELECT folder_path FROM meetings WHERE id = ?")
+            .bind(meeting_id)
+            .fetch_optional(pool)
+            .await?;
+        let Some(folder) = folder.and_then(|(f,)| f) else {
+            return Ok((None, false));
+        };
+        let (others,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM meetings WHERE folder_path = ? AND id != ?")
+            .bind(&folder)
+            .bind(meeting_id)
+            .fetch_one(pool)
+            .await?;
+        Ok((Some(folder), others > 0))
+    }
+
     pub async fn delete_meeting(pool: &SqlitePool, meeting_id: &str) -> Result<bool, SqlxError> {
         if meeting_id.trim().is_empty() {
             return Err(SqlxError::Protocol(

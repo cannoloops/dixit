@@ -298,6 +298,7 @@ async fn transcribe<R: Runtime>(app: AppHandle<R>, path: String, title: String, 
     if let Ok(Some(folder)) = crate::database::repositories::transcript::TranscriptsRepository::folder_for_meeting(&pool, &imported.meeting_id).await {
         let folder = std::path::PathBuf::from(folder);
         let _pending = crate::summary::auto::Pending::start(&folder);
+        let _in_use = crate::meeting_folder::InUse::start(&folder);
         crate::summary::auto::after_final_transcript(&app, &folder, started).await;
     }
 }
