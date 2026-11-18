@@ -20,6 +20,7 @@ pub fn sanitize_title_for_file(title: &str) -> String {
 }
 
 use crate::database::repositories::transcript::TranscriptsRepository;
+use crate::summary::auto::{set_phase, Phase};
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
@@ -161,8 +162,10 @@ pub fn listen_for_stops<R: Runtime>(app: &AppHandle<R>) {
             // large-v3 and the attribution in the DB need the meeting's row.
             wait_for_meeting(&pool(&app), &folder).await;
             if final_pass {
+                set_phase(&folder, Phase::Transcribing);
                 crate::audio::retranscription::run_final_pass(&app, &folder).await;
             }
+            set_phase(&folder, Phase::Speakers);
             if let Err(e) = process_meeting(app.clone(), folder.clone(), true).await {
                 log::error!("Speaker attribution failed: {e:#}");
             }
@@ -227,14 +230,24 @@ pub fn resume_interrupted<R: Runtime>(app: &AppHandle<R>) {
             .await
             .map(|p| p.save_folder)
             .unwrap_or_else(|_| crate::audio::recording_preferences::get_default_recordings_folder());
-        for folder in own_meetings(&pool(&app), interrupted_meetings(&root)).await {
+        // All queued at once, so the view lists every meeting waiting for its summary.
+        let queue: Vec<_> = own_meetings(&pool(&app), interrupted_meetings(&root))
+            .await
+            .into_iter()
+            .map(|folder| {
+                let pending = crate::summary::auto::Pending::start(&folder);
+                let in_use = crate::meeting_folder::InUse::start(&folder);
+                (folder, pending, in_use)
+            })
+            .collect();
+        for (folder, _pending, _in_use) in queue {
             log::info!("Resuming the post-call work of {}", folder.display());
-            let _pending = crate::summary::auto::Pending::start(&folder);
-            let _in_use = crate::meeting_folder::InUse::start(&folder);
             let resumed_at = chrono::Utc::now();
             if needs_final_pass(&app, &folder).await {
+                set_phase(&folder, Phase::Transcribing);
                 crate::audio::retranscription::run_final_pass(&app, &folder).await;
             }
+            set_phase(&folder, Phase::Speakers);
             if let Err(e) = process_meeting(app.clone(), folder.clone(), true).await {
                 log::error!("Speaker attribution failed: {e:#}");
             }

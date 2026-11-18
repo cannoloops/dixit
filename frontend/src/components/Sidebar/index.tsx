@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Settings, Trash2, Mic, Pencil, Search, X, Upload, Archive, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Settings, Trash2, Mic, Pencil, Search, X, Upload, Archive, PanelLeftClose, PanelLeftOpen, Loader2 } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useSidebar } from './SidebarProvider';
 import type { CurrentMeeting } from '@/components/Sidebar/SidebarProvider';
@@ -17,6 +17,7 @@ import { useRecordingState } from '@/contexts/RecordingStateContext';
 import { useTranscripts } from '@/contexts/TranscriptContext';
 import { useImportDialog } from '@/contexts/ImportDialogContext';
 import { useConfig } from '@/contexts/ConfigContext';
+import { useSummariesInProgress, phaseLabel, cancelSummaryJob, type SummaryJob } from '@/hooks/useSummariesInProgress';
 import { LiveIndicator, StateStamp } from '@/components/dixit';
 import { cn, meetingDisplayTitle } from '@/lib/utils';
 import { locale } from '@/i18n';
@@ -473,6 +474,67 @@ const Sidebar: React.FC = () => {
     router.push(`/meeting-details?id=${meeting.id}`);
   };
 
+  // Summaries on their way or running, automatic and manual: each one can be stopped from here.
+  const summaryJobs = useSummariesInProgress();
+  const stopSummaryJob = async (job: SummaryJob) => {
+    const done = await cancelSummaryJob(job).catch(() => false);
+    if (!done) toast.info(t('summaryAlreadyDone'));
+    else if (job.phase === 'generating') toast.info(t('summaryStopped'));
+    else toast.info(t('autoSummaryCancelled'), { description: t('autoSummaryCancelledDesc') });
+  };
+
+  const renderSummaryJobs = () => {
+    const rows = summaryJobs.flatMap((job) => {
+      const meeting = meetings.find((m) => m.id === job.meeting_id);
+      return meeting ? [{ job, meeting }] : [];
+    });
+    if (rows.length === 0) return null;
+    return (
+      <section aria-label={t('summariesInProgress')} className="shrink-0 border-t border-rail-border px-2 pb-2">
+        <div className="flex h-7 items-center justify-between px-2 text-xs text-rail-muted">
+          <span className="font-medium">{t('summariesInProgress')}</span>
+          <span className="tabular-nums">{rows.length}</span>
+        </div>
+        {rows.map(({ job, meeting }) => {
+          const stopLabel = job.phase === 'generating' ? t('stopSummary') : t('cancelAutoSummary');
+          return (
+            <div key={job.meeting_id} className="group relative">
+              <button
+                type="button"
+                onClick={() => openMeeting(meeting)}
+                aria-current={currentMeeting?.id === meeting.id ? 'page' : undefined}
+                className={cn(
+                  'flex w-full flex-col gap-0.5 rounded-sm px-2 py-1 text-left transition-colors duration-150 group-hover:pr-9 group-has-focus-visible:pr-9 hover:bg-rail-active focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-rail-accent',
+                  currentMeeting?.id === meeting.id && 'bg-rail-active'
+                )}
+              >
+                <span className="w-full truncate text-sm text-rail-foreground" title={meeting.title}>
+                  {meetingDisplayTitle(meeting.title)}
+                </span>
+                <span className="flex w-full items-center gap-1.5 text-xs tabular-nums text-rail-muted">
+                  <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                  <span className="truncate">
+                    {phaseLabel(job)}
+                    {job.automatic && ` · ${t('summaryAutomatic')}`}
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => void stopSummaryJob(job)}
+                className={cn(railIcon, 'absolute right-1 top-1/2 hidden h-6 w-6 -translate-y-1/2 group-hover:flex group-has-focus-visible:flex')}
+                aria-label={stopLabel}
+                title={stopLabel}
+              >
+                <X />
+              </button>
+            </div>
+          );
+        })}
+      </section>
+    );
+  };
+
   const renderCollapsed = () => (
     <div className="flex h-full flex-col items-center gap-1 py-3">
       <Logo isCollapsed />
@@ -675,6 +737,8 @@ const Sidebar: React.FC = () => {
           </button>
         )}
       </div>
+
+      {renderSummaryJobs()}
 
       {/* Archive */}
       {selectedIds.size > 0 ? (

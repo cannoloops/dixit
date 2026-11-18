@@ -22,6 +22,20 @@ static RETRANSCRIPTION_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
 /// Global flag to signal cancellation
 static RETRANSCRIPTION_CANCELLED: AtomicBool = AtomicBool::new(false);
 
+/// Dixit: meeting and percentage of the retranscription running now (one at a time), for the list
+/// of summaries on their way.
+static CURRENT_PROGRESS: std::sync::Mutex<Option<(String, u32)>> = std::sync::Mutex::new(None);
+
+/// Percentage of the retranscription of `meeting_id`, if it is the one running.
+pub fn progress_of(meeting_id: &str) -> Option<u32> {
+    CURRENT_PROGRESS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+        .filter(|(id, _)| id == meeting_id)
+        .map(|(_, progress)| *progress)
+}
+
 /// RAII guard for RETRANSCRIPTION_IN_PROGRESS flag
 /// Ensures flag is cleared even if retranscription panics or returns early
 struct RetranscriptionGuard;
@@ -41,6 +55,7 @@ impl RetranscriptionGuard {
 
 impl Drop for RetranscriptionGuard {
     fn drop(&mut self) {
+        *CURRENT_PROGRESS.lock().unwrap_or_else(|e| e.into_inner()) = None;
         RETRANSCRIPTION_IN_PROGRESS.store(false, Ordering::SeqCst);
     }
 }
@@ -537,6 +552,7 @@ fn emit_progress<R: Runtime>(
     progress: u32,
     message: &str,
 ) {
+    *CURRENT_PROGRESS.lock().unwrap_or_else(|e| e.into_inner()) = Some((meeting_id.to_string(), progress));
     let _ = app.emit(
         "retranscription-progress",
         RetranscriptionProgress {

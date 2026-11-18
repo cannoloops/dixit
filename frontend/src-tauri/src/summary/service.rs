@@ -250,6 +250,18 @@ impl SummaryService {
         token
     }
 
+    /// Generations running now (manual and automatic): meeting and process id.
+    pub fn active_generations() -> Vec<(String, String)> {
+        CANCELLATION_REGISTRY
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .iter()
+            .map(|(meeting_id, entry)| {
+                (meeting_id.clone(), entry.started_at.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true))
+            })
+            .collect()
+    }
+
     /// Cancels only the active generation identified by `started_at`.
     pub fn cancel_summary(meeting_id: &str, started_at: DateTime<Utc>) -> bool {
         let registry = CANCELLATION_REGISTRY
