@@ -147,4 +147,136 @@ mod tests {
             println!("tree written to {path}");
         }
     }
+
+    /// During a Google Meet call in the browser, with someone else talking: what the accessibility
+    /// tree exposes and what it costs. `cargo test --lib meet_captions_smoke -- --ignored --nocapture`;
+    /// `DIXIT_MEET_ENABLE=1` also switches captions on as a session would (never off);
+    /// `DIXIT_AX_DUMP=/tmp/meet.json` writes the Meet window's whole tree (it holds participants'
+    /// names: keep it local).
+    #[test]
+    #[ignore]
+    fn meet_captions_smoke() {
+        use crate::meet::{ax, captions};
+        use std::time::Instant;
+        println!("trusted={}", crate::ax_util::is_trusted(false));
+        for b in super::platform::browser_bundles() {
+            for pid in crate::ax_util::pids_for_bundle(b) {
+                let titles: Vec<_> = crate::ax_util::windows(&crate::ax_util::app(pid))
+                    .iter()
+                    .map(|w| {
+                        let nodes = crate::ax_util::find_all(w, 50_000, &|_| true).len();
+                        let webs = crate::ax_util::find_all(w, 50_000, &|e| crate::ax_util::role(e) == "AXWebArea").len();
+                        (crate::ax_util::string_attr(w, "AXTitle"), nodes, webs)
+                    })
+                    .collect();
+                println!("{b} pid={pid} windows={titles:?}");
+            }
+        }
+        let (pid, window) = ax::meet_window().expect("no browser window with a Meet tab in front");
+        println!("meet window pid={pid} title={:?}", crate::ax_util::string_attr(&window, "AXTitle"));
+        let count = |w| crate::ax_util::find_all(w, 50_000, &|_| true).len();
+        let web = |w| crate::ax_util::find_all(w, 50_000, &|e| crate::ax_util::role(e) == "AXWebArea").len();
+        println!("before: nodes={} web_areas={}", count(&window), web(&window));
+        ax::enable_web_accessibility(pid);
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        let t = Instant::now();
+        let n = count(&window);
+        println!("after AXManualAccessibility: nodes={n} web_areas={} full_walk={:?}", web(&window), t.elapsed());
+        if std::env::var("DIXIT_AX_ENHANCED").is_ok() {
+            crate::ax_util::set_bool_attr(&crate::ax_util::app(pid), "AXEnhancedUserInterface", true);
+            std::thread::sleep(std::time::Duration::from_secs(2));
+            let t = Instant::now();
+            let n = count(&window);
+            println!("after AXEnhancedUserInterface: nodes={n} web_areas={} full_walk={:?}", web(&window), t.elapsed());
+        }
+        let t = Instant::now();
+        let state = match ax::captions_state(&window) {
+            ax::CaptionsState::On => "on".to_string(),
+            ax::CaptionsState::Off(b) => format!("off, button labels {:?}", crate::ax_util::labels(&b)),
+            ax::CaptionsState::Unknown => "unknown: no region, no captions button".to_string(),
+        };
+        println!("captions state: {state} ({:?})", t.elapsed());
+        let buttons: Vec<_> = crate::ax_util::find_all(&window, 50_000, &|e| {
+            crate::ax_util::labels(e).iter().any(|l| l.to_lowercase().contains("caption") || l.to_lowercase().contains("sottotitol"))
+        })
+        .iter()
+        .map(|e| (crate::ax_util::role(e), crate::ax_util::labels(e), crate::ax_util::bool_attr(e, "AXValue")))
+        .collect();
+        println!("elements mentioning captions: {buttons:?}");
+        if std::env::var("DIXIT_MEET_ENABLE").is_ok() {
+            match ax::enable_captions() {
+                Ok(ax::Switched::TurnedOn) => println!("enable_captions: switched on"),
+                Ok(ax::Switched::AlreadyOn) => println!("enable_captions: already on"),
+                Err(e) => println!("enable_captions: {e:#}"),
+            }
+            std::thread::sleep(std::time::Duration::from_secs(3));
+        }
+        // DIXIT_MEET_LANGUAGE=1: the language a session would pick; =en / =it: that one.
+        if let Ok(asked) = std::env::var("DIXIT_MEET_LANGUAGE") {
+            use crate::meet::captions as c;
+            let pref = crate::get_language_preference_internal().unwrap_or_default();
+            let code = if asked == "1" { c::wanted_language(&pref, ax::mac_speaks_italian()).to_string() } else { asked };
+            let names = c::language_names(&code).expect("language not mapped");
+            println!("meeting language now {:?}, wanted {names:?}", ax::meeting_language());
+            match ax::set_meeting_language(names) {
+                Ok(ax::LanguageSet::Changed) => println!("set_meeting_language: changed -> {:?}", ax::meeting_language()),
+                Ok(ax::LanguageSet::AlreadySet) => println!("set_meeting_language: already set"),
+                Err(e) => {
+                    println!("set_meeting_language: {e:#}");
+                    // What the open menu offers: roles and labels mentioning a few languages.
+                    if let Some(combo) = ax::language_box(&window) {
+                        crate::ax_util::press(&combo);
+                        std::thread::sleep(std::time::Duration::from_millis(900));
+                        let hits: Vec<_> = crate::ax_util::find_all(&crate::ax_util::app(pid), 50_000, &|e| {
+                            crate::ax_util::labels(e).iter().any(|l| {
+                                let l = l.to_lowercase();
+                                ["italian", "inglese", "english", "francese", "tedesco"].iter().any(|k| l.starts_with(k))
+                            })
+                        })
+                        .iter()
+                        .take(30)
+                        .map(|e| (crate::ax_util::role(e), crate::ax_util::string_attr(e, "AXSubrole"), crate::ax_util::labels(e)))
+                        .collect();
+                        println!("menu offers: {hits:?}");
+                        crate::teams::ax::escape(pid);
+                    }
+                }
+            }
+        }
+        let t = Instant::now();
+        let region = ax::captions_region(&window);
+        println!("region found={} search={:?}", region.is_some(), t.elapsed());
+        if let Ok(path) = std::env::var("DIXIT_AX_DUMP") {
+            std::fs::write(&path, crate::ax_util::dump(&window, 80).to_string()).unwrap();
+            println!("window tree written to {path}");
+        }
+        let Some(region) = region else {
+            println!("no captions region: are captions on? (try DIXIT_MEET_ENABLE=1; else AXEnhancedUserInterface may be needed)");
+            return;
+        };
+        let snap = ax::snapshot(&region);
+        println!("region snapshot:\n{}", serde_json::to_string_pretty(&snap).unwrap());
+        // Shape of the region with texts reduced to their length: shareable, no names in it.
+        fn shape(n: &captions::Node, d: usize, out: &mut String) {
+            let text = n.text.as_ref().map(|t| format!(" <{} chars>", t.chars().count())).unwrap_or_default();
+            out.push_str(&format!("{}{}{text}\n", "  ".repeat(d), n.role));
+            n.children.iter().for_each(|c| shape(c, d + 1, out));
+        }
+        let mut shown = false;
+        for _ in 0..10 {
+            let t = Instant::now();
+            let snap = ax::snapshot(&region);
+            let lines = captions::caption_lines(&snap);
+            println!("read={:?} lines={lines:?}", t.elapsed());
+            if !shown && !lines.is_empty() {
+                shown = true;
+                let mut out = String::new();
+                shape(&snap, 0, &mut out);
+                println!("SHAPE\n{out}END SHAPE");
+            }
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        }
+        let mut reader = ax::CaptionReader::default();
+        println!("CaptionReader: {:?}", reader.read());
+    }
 }
