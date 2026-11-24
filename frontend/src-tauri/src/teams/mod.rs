@@ -207,8 +207,8 @@ fn run_session<R: Runtime>(app: AppHandle<R>, session: u64) {
 
 /// Polls `read` (the caption lines on screen) once a second until `alive` says the call is over,
 /// into the live log and `captions.json` (Teams and Meet alike): `wait_session_finished` waits for it.
-#[cfg(target_os = "macos")]
 /// `text_usable`: the captions' text may be shown as a live transcript (see `LIVE_TEXT`).
+#[cfg(target_os = "macos")]
 pub(crate) fn collect_captions(
     folder: &Path,
     rec_start: Instant,
