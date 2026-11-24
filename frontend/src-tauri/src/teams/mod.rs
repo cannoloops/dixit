@@ -151,7 +151,6 @@ fn run_session<R: Runtime>(app: AppHandle<R>, session: u64) {
             ),
         );
     }
-    ACTIVE.lock().unwrap().insert(folder.clone());
     let call_over = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let mute_watch = {
         let (app, call_over) = (app.clone(), call_over.clone());
@@ -159,8 +158,6 @@ fn run_session<R: Runtime>(app: AppHandle<R>, session: u64) {
     };
 
     let mut reader = ax::CaptionReader::default();
-    *LIVE.lock().unwrap() = captions::CaptionLog::default();
-    let mut last_write = Instant::now();
     // Captions/native need the meeting menu, which may appear only after the lobby or when the
     // user expands the compact view: keep checking for the whole call. Native transcription is
     // tried once (everyone sees it); captions again after a failure (the menu walk can miss a
@@ -168,8 +165,7 @@ fn run_session<R: Runtime>(app: AppHandle<R>, session: u64) {
     let mut native_done = false;
     let (mut captions_on, mut caption_tries, mut last_caption_try) = (false, 0, None::<Instant>);
     let mut menu_check = captions::SearchThrottle::default();
-    while alive() {
-        std::thread::sleep(Duration::from_secs(1));
+    collect_captions(&folder, rec_start, &alive, || {
         let now = Instant::now();
         let captions_due = !captions_on
             && caption_tries < MAX_CAPTION_TRIES
@@ -192,18 +188,36 @@ fn run_session<R: Runtime>(app: AppHandle<R>, session: u64) {
                 }
             }
         }
-        let visible = reader.read(pid);
+        reader.read(pid)
+    });
+    call_over.store(true, std::sync::atomic::Ordering::Relaxed);
+    let _ = mute_watch.join();
+    NATIVE.lock().unwrap().session_ended(session);
+}
+
+/// Polls `read` (the caption lines on screen) once a second until `alive` says the call is over,
+/// into the live log and `captions.json` (Teams and Meet alike): `wait_session_finished` waits for it.
+#[cfg(target_os = "macos")]
+pub(crate) fn collect_captions(
+    folder: &Path,
+    rec_start: Instant,
+    alive: &dyn Fn() -> bool,
+    mut read: impl FnMut() -> Vec<(String, String)>,
+) {
+    ACTIVE.lock().unwrap().insert(folder.to_path_buf());
+    *LIVE.lock().unwrap() = captions::CaptionLog::default();
+    let mut last_write = Instant::now();
+    while alive() {
+        std::thread::sleep(Duration::from_secs(1));
+        let visible = read();
         LIVE.lock().unwrap().ingest(rec_start.elapsed().as_secs_f64(), &visible);
         if last_write.elapsed() > Duration::from_secs(10) {
             write_json(&folder.join(CAPTIONS_FILE), &live_captions());
             last_write = Instant::now();
         }
     }
-    call_over.store(true, std::sync::atomic::Ordering::Relaxed);
-    let _ = mute_watch.join();
     write_json(&folder.join(CAPTIONS_FILE), &std::mem::take(&mut *LIVE.lock().unwrap()).turns());
-    NATIVE.lock().unwrap().session_ended(session);
-    ACTIVE.lock().unwrap().remove(&folder);
+    ACTIVE.lock().unwrap().remove(folder);
 }
 
 /// Polls Teams' mic button every 100 ms for the whole call: while muted, the mic is recorded and

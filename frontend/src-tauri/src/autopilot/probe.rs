@@ -147,4 +147,47 @@ mod tests {
             println!("tree written to {path}");
         }
     }
+
+    /// During a Google Meet call in the browser, with captions on (button "Attiva sottotitoli" or
+    /// key c) and someone else talking: what the accessibility tree exposes and what it costs.
+    /// `cargo test --lib meet_captions_smoke -- --ignored --nocapture`; `DIXIT_AX_DUMP=/tmp/meet.json`
+    /// also writes the Meet window's whole tree (it holds participants' names: keep it local).
+    #[test]
+    #[ignore]
+    fn meet_captions_smoke() {
+        use crate::meet::{ax, captions};
+        use std::time::Instant;
+        println!("trusted={}", crate::ax_util::is_trusted(false));
+        let (pid, window) = ax::meet_window().expect("no browser window with a Meet tab in front");
+        println!("meet window pid={pid} title={:?}", crate::ax_util::string_attr(&window, "AXTitle"));
+        let count = |w| crate::ax_util::find_all(w, 50_000, &|_| true).len();
+        let web = |w| crate::ax_util::find_all(w, 50_000, &|e| crate::ax_util::role(e) == "AXWebArea").len();
+        println!("before: nodes={} web_areas={}", count(&window), web(&window));
+        ax::enable_web_accessibility(pid);
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        let t = Instant::now();
+        let n = count(&window);
+        println!("after AXManualAccessibility: nodes={n} web_areas={} full_walk={:?}", web(&window), t.elapsed());
+        let t = Instant::now();
+        let region = ax::captions_region(&window);
+        println!("region found={} search={:?}", region.is_some(), t.elapsed());
+        if let Ok(path) = std::env::var("DIXIT_AX_DUMP") {
+            std::fs::write(&path, crate::ax_util::dump(&window, 80).to_string()).unwrap();
+            println!("window tree written to {path}");
+        }
+        let Some(region) = region else {
+            println!("no captions region: are captions on? (else set AXEnhancedUserInterface and retry)");
+            return;
+        };
+        let snap = ax::snapshot(&region);
+        println!("region snapshot:\n{}", serde_json::to_string_pretty(&snap).unwrap());
+        for _ in 0..10 {
+            let t = Instant::now();
+            let lines = captions::caption_lines(&ax::snapshot(&region));
+            println!("read={:?} lines={lines:?}", t.elapsed());
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        }
+        let mut reader = ax::CaptionReader::default();
+        println!("CaptionReader: {:?}", reader.read());
+    }
 }

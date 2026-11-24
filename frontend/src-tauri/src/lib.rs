@@ -52,6 +52,7 @@ pub mod library;
 pub mod mcp;
 pub mod mcp_tools;
 pub mod meeting_folder;
+pub mod meet;
 pub mod notes;
 pub mod notifications;
 pub mod ollama;
