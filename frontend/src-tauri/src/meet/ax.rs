@@ -44,6 +44,71 @@ pub fn captions_region(window: &El) -> Option<El> {
     ax_util::find_all(window, REGION_SEARCH_NODES, &is_captions_region).into_iter().next()
 }
 
+// --- Switching captions on --------------------------------------------------------------
+
+/// Meet's captions button names what a press does (it + en, shortcut "(c)" after it): it is a
+/// toggle, so only a "turn on" label is ever pressed and captions the user has on stay on.
+static TURN_ON: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)^(turn on (live )?captions|attiva (i )?sottotitoli|mostra (i )?sottotitoli)\b").unwrap());
+static TURN_OFF: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)^(turn off (live )?captions|disattiva (i )?sottotitoli|nascondi (i )?sottotitoli)\b").unwrap());
+
+const TOGGLES: &[&str] = &["AXButton", "AXCheckBox", "AXToggle"];
+
+/// From the captions button's labels: Some(true) = captions on, Some(false) = off, None = not it.
+pub fn toggle_state(labels: &[String]) -> Option<bool> {
+    let any = |re: &Regex| labels.iter().any(|l| re.is_match(l.trim()));
+    if any(&TURN_OFF) {
+        Some(true)
+    } else if any(&TURN_ON) {
+        Some(false)
+    } else {
+        None
+    }
+}
+
+pub enum CaptionsState {
+    On,
+    /// Off, with the button that turns them on.
+    Off(El),
+    /// Neither the region nor the button on screen (lobby, another tab in front, Meet UI change).
+    Unknown,
+}
+
+/// One bounded walk: the captions region or a "turn off" button = on; a "turn on" button = off.
+pub fn captions_state(window: &El) -> CaptionsState {
+    let found = ax_util::find_all(window, REGION_SEARCH_NODES, &|e| {
+        is_captions_region(e) || (TOGGLES.contains(&ax_util::role(e).as_str()) && toggle_state(&ax_util::labels(e)).is_some())
+    });
+    let mut off = None;
+    for e in found {
+        match toggle_state(&ax_util::labels(&e)) {
+            Some(false) => off = off.or(Some(e)),
+            _ => return CaptionsState::On, // region or "turn off" button
+        }
+    }
+    off.map_or(CaptionsState::Unknown, CaptionsState::Off)
+}
+
+pub enum Switched {
+    TurnedOn,
+    AlreadyOn,
+}
+
+/// Switches Meet's captions on unless they already are. Errors when the button is not on screen.
+pub fn enable_captions() -> anyhow::Result<Switched> {
+    let (pid, window) = meet_window().ok_or_else(|| anyhow::anyhow!("no Meet tab in front"))?;
+    enable_web_accessibility(pid);
+    match captions_state(&window) {
+        CaptionsState::On => Ok(Switched::AlreadyOn),
+        CaptionsState::Off(button) => {
+            anyhow::ensure!(ax_util::press(&button), "captions button did not take the press");
+            Ok(Switched::TurnedOn)
+        }
+        CaptionsState::Unknown => anyhow::bail!("Meet captions button not found"),
+    }
+}
+
 /// Roles and static texts of the region, depth-first, at most `SNAPSHOT_NODES` elements.
 pub fn snapshot(el: &El) -> Node {
     fn walk(el: &El, budget: &mut usize) -> Node {
@@ -95,6 +160,23 @@ impl CaptionReader {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Labels of Meet's captions button, with the keyboard shortcut Meet appends.
+    #[test]
+    fn captions_button_state_from_its_label() {
+        let state = |l: &str| toggle_state(&[l.to_string()]);
+        for l in ["Attiva sottotitoli (c)", "Attiva i sottotitoli", "Turn on captions (c)", "Turn on live captions"] {
+            assert_eq!(state(l), Some(false), "{l}");
+        }
+        for l in ["Disattiva sottotitoli (c)", "Disattiva i sottotitoli", "Turn off captions (c)"] {
+            assert_eq!(state(l), Some(true), "{l}");
+        }
+        for l in ["Sottotitoli", "Impostazioni sottotitoli", "Attiva microfono", "Captions settings"] {
+            assert_eq!(state(l), None, "{l}");
+        }
+        // Both labels on one element (title + help): "turn off" wins, never pressed.
+        assert_eq!(toggle_state(&["Disattiva sottotitoli (c)".into(), "Attiva sottotitoli".into()]), Some(true));
+    }
 
     #[test]
     fn region_label_is_exact() {

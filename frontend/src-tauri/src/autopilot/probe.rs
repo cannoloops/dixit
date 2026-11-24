@@ -148,10 +148,11 @@ mod tests {
         }
     }
 
-    /// During a Google Meet call in the browser, with captions on (button "Attiva sottotitoli" or
-    /// key c) and someone else talking: what the accessibility tree exposes and what it costs.
-    /// `cargo test --lib meet_captions_smoke -- --ignored --nocapture`; `DIXIT_AX_DUMP=/tmp/meet.json`
-    /// also writes the Meet window's whole tree (it holds participants' names: keep it local).
+    /// During a Google Meet call in the browser, with someone else talking: what the accessibility
+    /// tree exposes and what it costs. `cargo test --lib meet_captions_smoke -- --ignored --nocapture`;
+    /// `DIXIT_MEET_ENABLE=1` also switches captions on as a session would (never off);
+    /// `DIXIT_AX_DUMP=/tmp/meet.json` writes the Meet window's whole tree (it holds participants'
+    /// names: keep it local).
     #[test]
     #[ignore]
     fn meet_captions_smoke() {
@@ -169,6 +170,28 @@ mod tests {
         let n = count(&window);
         println!("after AXManualAccessibility: nodes={n} web_areas={} full_walk={:?}", web(&window), t.elapsed());
         let t = Instant::now();
+        let state = match ax::captions_state(&window) {
+            ax::CaptionsState::On => "on".to_string(),
+            ax::CaptionsState::Off(b) => format!("off, button labels {:?}", crate::ax_util::labels(&b)),
+            ax::CaptionsState::Unknown => "unknown: no region, no captions button".to_string(),
+        };
+        println!("captions state: {state} ({:?})", t.elapsed());
+        let buttons: Vec<_> = crate::ax_util::find_all(&window, 50_000, &|e| {
+            crate::ax_util::labels(e).iter().any(|l| l.to_lowercase().contains("caption") || l.to_lowercase().contains("sottotitol"))
+        })
+        .iter()
+        .map(|e| (crate::ax_util::role(e), crate::ax_util::labels(e)))
+        .collect();
+        println!("elements mentioning captions: {buttons:?}");
+        if std::env::var("DIXIT_MEET_ENABLE").is_ok() {
+            match ax::enable_captions() {
+                Ok(ax::Switched::TurnedOn) => println!("enable_captions: switched on"),
+                Ok(ax::Switched::AlreadyOn) => println!("enable_captions: already on"),
+                Err(e) => println!("enable_captions: {e:#}"),
+            }
+            std::thread::sleep(std::time::Duration::from_secs(3));
+        }
+        let t = Instant::now();
         let region = ax::captions_region(&window);
         println!("region found={} search={:?}", region.is_some(), t.elapsed());
         if let Ok(path) = std::env::var("DIXIT_AX_DUMP") {
@@ -176,7 +199,7 @@ mod tests {
             println!("window tree written to {path}");
         }
         let Some(region) = region else {
-            println!("no captions region: are captions on? (else set AXEnhancedUserInterface and retry)");
+            println!("no captions region: are captions on? (try DIXIT_MEET_ENABLE=1; else AXEnhancedUserInterface may be needed)");
             return;
         };
         let snap = ax::snapshot(&region);
