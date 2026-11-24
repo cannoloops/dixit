@@ -230,8 +230,10 @@ async fn start<R: Runtime>(app: &AppHandle<R>, platform: Platform) -> Result<(),
         end_session();
         return Err(e);
     }
-    if platform == Platform::Teams {
-        crate::teams::on_session_start(app, id);
+    match platform {
+        Platform::Teams => crate::teams::on_session_start(app, id),
+        Platform::Meet => crate::meet::on_session_start(app, id),
+        Platform::Zoom => {}
     }
     let _ = app.emit("autopilot-session", serde_json::json!({ "platform": platform, "title": title }));
     Ok(())
@@ -269,6 +271,9 @@ pub fn finish_adopt<R: Runtime>(app: &AppHandle<R>, session: Session, started: b
         return;
     }
     *ADOPTED.lock().unwrap() = Some(session.platform);
+    if session.platform == Platform::Meet {
+        crate::meet::on_session_start(app, session.id);
+    }
     if session.platform == Platform::Teams {
         crate::teams::on_session_start(app, session.id);
         // The Teams transcription offer, as on auto-start (only on an explicit click).

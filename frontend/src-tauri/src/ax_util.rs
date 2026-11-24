@@ -32,6 +32,16 @@ pub fn string_attr(el: &ax::UiElement, name: &str) -> Option<String> {
     (!s.is_empty()).then_some(s)
 }
 
+/// A boolean or 0/1 attribute (a toggle button's AXValue).
+pub fn bool_attr(el: &ax::UiElement, name: &str) -> Option<bool> {
+    let v = attr_value(el, name)?;
+    if v.get_type_id() == cf::Boolean::type_id() {
+        let b: &cf::Boolean = unsafe { std::mem::transmute(&*v) };
+        return Some(b.value());
+    }
+    v.try_as_number()?.to_i32().map(|n| n != 0)
+}
+
 fn elements_attr(el: &ax::UiElement, name: &str) -> Vec<El> {
     let Some(v) = attr_value(el, name) else { return Vec::new() };
     if v.get_type_id() != cf::Array::type_id() {

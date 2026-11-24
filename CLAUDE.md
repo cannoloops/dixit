@@ -16,6 +16,7 @@ Guida per lavorare su questo repository con Claude Code.
 |---|---|
 | Avvio e stop automatici quando inizia o finisce una call Teams, Zoom, Meet | `src-tauri/src/autopilot/` |
 | Nomi dei parlanti e sottotitoli da Teams; trascrizione nativa Teams solo se la chiedi dal pulsante del banner (è visibile a tutti) | `src-tauri/src/teams/`, `src-tauri/src/speakers/`, `public/banner.html` |
+| Nomi dei parlanti dai sottotitoli di Google Meet nel browser: Dixit li accende a inizio call se sono spenti (sono personali, gli altri non li vedono) e non li riaccende se li spegni; imposta la «Lingua della riunione» sulla lingua di trascrizione (con «auto», italiano se il Mac ha l'italiano tra le lingue o la regione Italia). Dai sottotitoli prende solo nomi e tempi; stesso `captions.json` di Teams. Prova dal vivo: `cargo test --lib meet_captions_smoke -- --ignored --nocapture` (`DIXIT_MEET_ENABLE=1`, `DIXIT_MEET_LANGUAGE=1\|it\|en`) | `src-tauri/src/meet/` |
 | Trascrizione live con Parakeet, definitiva con Whisper large-v3 a fine registrazione | `src-tauri/src/parakeet_engine/`, `src-tauri/src/whisper_engine/`, `audio/transcription/` |
 | Attribuzione dei parlanti (wespeaker) | `src-tauri/src/speakers/` |
 | Memoria delle voci: una voce già nominata viene riconosciuta nelle riunioni successive (dopo i nomi da Teams, prima di «Parlante X») | `src-tauri/src/speakers/voices.rs`; taratura con `cargo test --lib bench_voice_memory -- --ignored` |
@@ -73,7 +74,7 @@ Server `dixit`, HTTP streamable su `http://127.0.0.1:7337/mcp`. Tutti i tool son
 | `transcription_status` | Stato dell'ultimo `transcribe_file`: `running` con fase e percentuale, `done` con `meeting_id`, `failed` con l'errore |
 | `search_transcripts` | `mode: classic` (SQLite FTS5), `smart` (embedding, nessun LLM), `hybrid` (fusione RRF, default). Cerca anche in note e riassunti |
 
-Le date senza fuso orario sono ora locale. I vettori stanno in SQLite e il confronto è a forza bruta: basta fino a migliaia di riunioni, poi sqlite-vec. Per provarli con un client vero:
+Le Impostazioni › Automazione › Agenti mostrano comando o configurazione per Claude Code, Claude Desktop, Codex, Antigravity, Gemini CLI, Cursor, VS Code e un client generico (`CLIENTS` in `AutopilotSettings.tsx`). Le date senza fuso orario sono ora locale. I vettori stanno in SQLite e il confronto è a forza bruta: basta fino a migliaia di riunioni, poi sqlite-vec. Per provarli con un client vero:
 
 ```bash
 claude -p --strict-mcp-config --mcp-config mcp.json --allowedTools "mcp__dixit__list_meetings mcp__dixit__get_meeting mcp__dixit__search_transcripts" "elenca le riunioni"
