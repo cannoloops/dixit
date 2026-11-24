@@ -50,7 +50,9 @@ echo "==> Sidecar llama-helper"
 cp "$ROOT/target/release/llama-helper" "$ROOT/frontend/src-tauri/binaries/llama-helper-$TRIPLE"
 
 echo "==> Build app + dmg (firma: $SIGNING_IDENTITY)"
-(cd "$ROOT/frontend" && pnpm tauri build --bundles app,dmg \
+# ponytail: CI=true fa passare a Tauri --skip-jenkins: da macOS 27 Finder rifiuta l'AppleScript che
+# impagina la finestra del dmg (-10006). Il dmg resta valido, senza disposizione delle icone.
+(cd "$ROOT/frontend" && CI=true pnpm tauri build --bundles app,dmg \
   --config "{\"bundle\":{\"macOS\":{\"signingIdentity\":\"$SIGNING_IDENTITY\"}}}")
 
 BUNDLE="$ROOT/target/release/bundle"
