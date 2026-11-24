@@ -50,6 +50,49 @@ fn after_meet_dash(title: &str) -> Option<&str> {
     Some(rest.trim())
 }
 
+/// Browser names a window title can end with, followed by the profile (`… - Google Chrome - Mario`).
+const BROWSER_NAMES: &[&str] = &[
+    "Google Chrome", "Microsoft Edge", "Brave", "Opera", "Arc", "Comet", "Perplexity Comet", "Safari",
+];
+
+/// What Chrome appends to a tab's title while it records, shares or plays (chromium
+/// `IDS_TAB_AX_LABEL_*_FORMAT`, English and Italian): it changes during a call.
+const TAB_INDICATORS: &[&str] = &[
+    "Camera and microphone recording",
+    "Microphone recording",
+    "Camera recording",
+    "Tab content shared",
+    "Desktop content shared",
+    "Audio playing",
+    "Audio muted",
+    "Video playing in picture-in-picture mode",
+    "Network error",
+    "Pinned",
+    "Registrazione con videocamera e microfono",
+    "Registrazione con microfono",
+    "Registrazione con videocamera",
+    "Contenuti delle schede condivisi",
+    "Contenuti del desktop condivisi",
+    "Riproduzione audio in corso",
+    "Audio disattivato",
+    "Video riprodotto in modalità Picture in picture",
+    "Errore di rete",
+    "Fissata",
+];
+
+/// The meeting name in a Meet tab title, without what the browser adds after it: its name and
+/// the profile, and the tab indicators.
+fn meet_name(rest: &str) -> String {
+    let mut segments: Vec<&str> = rest.split(" - ").map(str::trim).collect();
+    if let Some(browser) = segments.iter().skip(1).position(|s| BROWSER_NAMES.iter().any(|b| s.eq_ignore_ascii_case(b))) {
+        segments.truncate(browser + 1);
+    }
+    while segments.len() > 1 && TAB_INDICATORS.iter().any(|i| segments[segments.len() - 1].eq_ignore_ascii_case(i)) {
+        segments.pop();
+    }
+    segments.join(" - ")
+}
+
 pub fn is_meet_window(title: &str) -> bool {
     after_meet_dash(title).is_some() || title.contains("meet.google.com")
 }
@@ -104,7 +147,7 @@ pub fn meeting_title(platform: Platform, window_title: &str) -> Option<String> {
             }
             first
         }
-        Platform::Meet => after_meet_dash(window_title)?,
+        Platform::Meet => return Some(meet_name(after_meet_dash(window_title)?)).filter(|t| !t.is_empty()),
         Platform::Zoom => return None,
     };
     (!title.is_empty()).then(|| title.to_string())
@@ -123,6 +166,18 @@ pub fn same_call(platform: Platform, a: &str, b: &str) -> bool {
     let (name_a, name_b) = (meeting_title(platform, a), meeting_title(platform, b));
     if name_a.is_some() && name_a == name_b {
         return true;
+    }
+    // Meet: the browser may still add a part we do not know (an indicator in another language, the
+    // profile without the browser's name, seen live in the picture-in-picture window): same call
+    // when one name is the other plus trailing " - …" parts.
+    // ponytail: two unknown indicators swapping ("X - A" then "X - B") still read as a new call.
+    if platform == Platform::Meet {
+        if let (Some(a), Some(b)) = (&name_a, &name_b) {
+            let extends = |long: &str, short: &str| {
+                long.len() > short.len() && long.starts_with(short) && long[short.len()..].starts_with(" - ")
+            };
+            return extends(a, b) || extends(b, a);
+        }
     }
     let named_in = |name: &Option<String>, title: &str| {
         name.as_deref()
@@ -162,6 +217,31 @@ mod tests {
     fn meet_calls_compare_by_meeting_name() {
         assert!(same_call(Platform::Meet, "Meet – Daily standup", "Meet - Daily standup"));
         assert!(!same_call(Platform::Meet, "Meet - abc-defg-hij", "Meet - xyz-wxyz-abc"));
+    }
+
+    /// Chrome appends to the window title what the tab is doing (mic, camera, sharing), then its own
+    /// name and the profile, and changes it during the call (seen live, Nov 2026): each change used
+    /// to split the recording.
+    #[test]
+    fn chrome_tab_indicators_are_not_part_of_the_meet_name() {
+        let mic = "Meet - [Alfa] DR e capacity - Microphone recording - Google Chrome - Rossi (example.com)";
+        let cam = "Meet - [Alfa] DR e capacity - Camera and microphone recording - Google Chrome - Rossi (example.com)";
+        let plain = "Meet - [Alfa] DR e capacity - Rossi (example.com)";
+        let it = "Meet - [Alfa] DR e capacity - Registrazione con videocamera e microfono - Google Chrome - Rossi";
+        for title in [mic, cam, it] {
+            assert_eq!(meeting_title(Platform::Meet, title).as_deref(), Some("[Alfa] DR e capacity"), "{title}");
+        }
+        assert!(same_call(Platform::Meet, mic, cam));
+        assert!(same_call(Platform::Meet, cam, plain));
+        assert!(same_call(Platform::Meet, plain, mic));
+        assert!(same_call(Platform::Meet, cam, it));
+        // A name with its own dashes stays whole; another meeting is still another call.
+        assert_eq!(
+            meeting_title(Platform::Meet, "Meet - SAL - Progetto Beta - Audio playing - Microsoft Edge").as_deref(),
+            Some("SAL - Progetto Beta")
+        );
+        assert!(!same_call(Platform::Meet, mic, "Meet - [Alfa] Retro - Microphone recording - Google Chrome - Rossi"));
+        assert!(!same_call(Platform::Meet, "Meet - Daily", "Meet - Retro - Microphone recording"));
     }
 
     #[test]
