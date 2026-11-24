@@ -77,6 +77,51 @@ pub fn caption_lines(region: &Node) -> Vec<(String, String)> {
         .collect()
 }
 
+/// Meet's caption language ("Lingua della riunione") to ask for: Dixit's transcription language;
+/// when that is "auto", Italian if the Mac speaks it at all, English otherwise.
+pub fn wanted_language(preference: &str, mac_italian: bool) -> &str {
+    match preference {
+        "" | "auto" | "auto-translate" => if mac_italian { "it" } else { "en" },
+        code => code,
+    }
+}
+
+/// The Mac speaks Italian: Italian among its preferred languages (`defaults read -g AppleLanguages`
+/// output) or an Italian region (`AppleLocale`: "it_IT", "en_IT", "en_US@rg=itzzzz"). An English
+/// macOS set to the Italian region is common (seen on a colleague's Mac, Nov 2026).
+pub fn mac_speaks_italian(apple_languages: &str, apple_locale: &str) -> bool {
+    let italian = |l: &str| l.strip_prefix("it").is_some_and(|r| r.is_empty() || r.starts_with(['-', '_', '.', '@']));
+    let languages = apple_languages
+        .split(|c: char| c == '\n' || c == ',')
+        .map(|l| l.trim().trim_matches(|c| c == '"' || c == '(' || c == ')').trim())
+        .any(italian);
+    let locale = apple_locale.trim().to_lowercase();
+    let region_it = locale.contains("@rg=it") || locale.split('@').next().is_some_and(|l| l.ends_with("_it"));
+    languages || italian(&locale) || region_it
+}
+
+/// How Meet names a language in its menu, Italian and English interface (None: not mapped).
+pub fn language_names(code: &str) -> Option<&'static [&'static str]> {
+    Some(match code {
+        "it" => &["Italiano", "Italian"],
+        "en" => &["Inglese", "English"],
+        "fr" => &["Francese", "French", "Français"],
+        "de" => &["Tedesco", "German", "Deutsch"],
+        "es" => &["Spagnolo", "Spanish", "Español"],
+        "pt" => &["Portoghese", "Portuguese", "Português"],
+        _ => return None,
+    })
+}
+
+/// `label` names one of `names`, possibly with a region: "Italiano", "Inglese (Stati Uniti)".
+pub fn is_language(label: &str, names: &[&str]) -> bool {
+    let label = label.trim().to_lowercase();
+    names.iter().any(|n| {
+        let n = n.to_lowercase();
+        label == n || label.starts_with(&format!("{n} ("))
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -124,6 +169,26 @@ mod tests {
         assert_eq!(caption_lines(&region), vec![line("Partecipante Uno", "prima"), line("Partecipante Due", "seconda frase")]);
     }
 
+    /// The region as seen live (Nov 2026), names replaced: per entry, the name three groups deep,
+    /// the sentences side by side in a sibling group.
+    #[test]
+    fn live_region_shape() {
+        let live = |name: &str, said: &[&str]| group(vec![group(vec![group(vec![text(name)])]), group(said.iter().map(|s| text(s)).collect())]);
+        let region = group(vec![
+            live("Partecipante Uno", &["Prima frase.", "e poi la seconda"]),
+            live("Partecipante Due", &["Una domanda.", "Ne ho un'altra, lunga, con virgole e punti."]),
+            live("Partecipante Uno", &["Rispondo."]),
+        ]);
+        assert_eq!(
+            caption_lines(&region),
+            vec![
+                line("Partecipante Uno", "Prima frase. e poi la seconda"),
+                line("Partecipante Due", "Una domanda. Ne ho un'altra, lunga, con virgole e punti."),
+                line("Partecipante Uno", "Rispondo."),
+            ]
+        );
+    }
+
     #[test]
     fn sentences_in_separate_texts_are_joined() {
         let region = group(vec![entry("Partecipante Uno", &["Prima frase.", "Seconda frase."])]);
@@ -151,6 +216,23 @@ mod tests {
     fn empty_region_and_name_without_text() {
         assert!(caption_lines(&group(vec![])).is_empty());
         assert!(caption_lines(&group(vec![entry("Partecipante Uno", &[" "])])).is_empty());
+    }
+
+    #[test]
+    fn meeting_language_follows_dixit() {
+        assert!(mac_speaks_italian("(\n    \"en-US\",\n    \"en-IT\",\n    \"it-IT\"\n)", "en_US@rg=itzzzz"));
+        assert!(mac_speaks_italian("(\n    \"en-US\"\n)", "en_IT"));
+        assert!(mac_speaks_italian("(\n    \"it\"\n)", "en_US"));
+        assert!(!mac_speaks_italian("(\n    \"en-US\",\n    \"de-DE\"\n)", "en_US"));
+        assert_eq!(wanted_language("auto", true), "it");
+        assert_eq!(wanted_language("auto", false), "en");
+        assert_eq!(wanted_language("fr", true), "fr");
+        let it = language_names("it").unwrap();
+        // Seen live (Nov 2026): the menu showed "Inglese" on an Italian interface.
+        assert!(is_language("Italiano", it) && is_language("italiano (Italia)", it) && is_language("Italian", it));
+        assert!(!is_language("Inglese", it) && !is_language("Italiano antico", it));
+        assert!(is_language("Inglese (Stati Uniti)", language_names("en").unwrap()));
+        assert!(language_names("ja").is_none());
     }
 
     /// The lines feed the same `CaptionLog` as Teams, so `captions.json` and naming are unchanged.

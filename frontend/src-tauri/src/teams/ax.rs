@@ -67,8 +67,8 @@ fn find_pressable(root: &El, re: &Regex) -> Option<El> {
     .next()
 }
 
-/// Posts Escape to Teams so no half-open menu is left on screen.
-fn escape(pid: i32) {
+/// Posts Escape to the app so no half-open menu is left on screen (Teams, Meet's browser).
+pub(crate) fn escape(pid: i32) {
     use core_graphics::event::CGEvent;
     use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
     if let Ok(source) = CGEventSource::new(CGEventSourceStateID::HIDSystemState) {

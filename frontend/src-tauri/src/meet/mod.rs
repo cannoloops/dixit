@@ -36,8 +36,14 @@ fn run_session(session: u64) {
     }
     let mut reader = ax::CaptionReader::default();
     let mut switch = CaptionsSwitch::default();
+    // Captions transcribe Meet's "meeting language" (English by default): set it to Dixit's
+    // language once captions are on, once per call (a language the user picks later stays).
+    let mut language = CaptionsSwitch::default();
+    let pref = crate::get_language_preference_internal().unwrap_or_default();
+    let names = captions::language_names(captions::wanted_language(&pref, ax::mac_speaks_italian()));
     let mut seen = false;
-    crate::teams::collect_captions(&folder, rec_start, &alive, || {
+    // Names and timing only: the text follows Meet's "meeting language" (English by default).
+    crate::teams::collect_captions(&folder, rec_start, &alive, false, || {
         let now = Instant::now();
         if switch.due(now) {
             let result = ax::enable_captions();
@@ -47,6 +53,17 @@ fn run_session(session: u64) {
                 Err(e) => log::warn!("Meet captions not switched on (try {}): {e:#}", switch.tries + 1),
             }
             switch.record(now, result.is_ok());
+        }
+        if let (true, Some(names)) = (switch.done, names) {
+            if language.due(now) {
+                let result = ax::set_meeting_language(names);
+                match &result {
+                    Ok(ax::LanguageSet::Changed) => log::info!("Meet meeting language set to {}", names[0]),
+                    Ok(ax::LanguageSet::AlreadySet) => log::info!("Meet meeting language already {}", names[0]),
+                    Err(e) => log::warn!("Meet meeting language not set (try {}): {e:#}", language.tries + 1),
+                }
+                language.record(now, result.is_ok());
+            }
         }
         let lines = reader.read();
         if !seen && !lines.is_empty() {

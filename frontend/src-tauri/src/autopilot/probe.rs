@@ -159,6 +159,19 @@ mod tests {
         use crate::meet::{ax, captions};
         use std::time::Instant;
         println!("trusted={}", crate::ax_util::is_trusted(false));
+        for b in super::platform::browser_bundles() {
+            for pid in crate::ax_util::pids_for_bundle(b) {
+                let titles: Vec<_> = crate::ax_util::windows(&crate::ax_util::app(pid))
+                    .iter()
+                    .map(|w| {
+                        let nodes = crate::ax_util::find_all(w, 50_000, &|_| true).len();
+                        let webs = crate::ax_util::find_all(w, 50_000, &|e| crate::ax_util::role(e) == "AXWebArea").len();
+                        (crate::ax_util::string_attr(w, "AXTitle"), nodes, webs)
+                    })
+                    .collect();
+                println!("{b} pid={pid} windows={titles:?}");
+            }
+        }
         let (pid, window) = ax::meet_window().expect("no browser window with a Meet tab in front");
         println!("meet window pid={pid} title={:?}", crate::ax_util::string_attr(&window, "AXTitle"));
         let count = |w| crate::ax_util::find_all(w, 50_000, &|_| true).len();
@@ -169,6 +182,13 @@ mod tests {
         let t = Instant::now();
         let n = count(&window);
         println!("after AXManualAccessibility: nodes={n} web_areas={} full_walk={:?}", web(&window), t.elapsed());
+        if std::env::var("DIXIT_AX_ENHANCED").is_ok() {
+            crate::ax_util::set_bool_attr(&crate::ax_util::app(pid), "AXEnhancedUserInterface", true);
+            std::thread::sleep(std::time::Duration::from_secs(2));
+            let t = Instant::now();
+            let n = count(&window);
+            println!("after AXEnhancedUserInterface: nodes={n} web_areas={} full_walk={:?}", web(&window), t.elapsed());
+        }
         let t = Instant::now();
         let state = match ax::captions_state(&window) {
             ax::CaptionsState::On => "on".to_string(),
@@ -180,7 +200,7 @@ mod tests {
             crate::ax_util::labels(e).iter().any(|l| l.to_lowercase().contains("caption") || l.to_lowercase().contains("sottotitol"))
         })
         .iter()
-        .map(|e| (crate::ax_util::role(e), crate::ax_util::labels(e)))
+        .map(|e| (crate::ax_util::role(e), crate::ax_util::labels(e), crate::ax_util::bool_attr(e, "AXValue")))
         .collect();
         println!("elements mentioning captions: {buttons:?}");
         if std::env::var("DIXIT_MEET_ENABLE").is_ok() {
@@ -190,6 +210,38 @@ mod tests {
                 Err(e) => println!("enable_captions: {e:#}"),
             }
             std::thread::sleep(std::time::Duration::from_secs(3));
+        }
+        // DIXIT_MEET_LANGUAGE=1: the language a session would pick; =en / =it: that one.
+        if let Ok(asked) = std::env::var("DIXIT_MEET_LANGUAGE") {
+            use crate::meet::captions as c;
+            let pref = crate::get_language_preference_internal().unwrap_or_default();
+            let code = if asked == "1" { c::wanted_language(&pref, ax::mac_speaks_italian()).to_string() } else { asked };
+            let names = c::language_names(&code).expect("language not mapped");
+            println!("meeting language now {:?}, wanted {names:?}", ax::meeting_language());
+            match ax::set_meeting_language(names) {
+                Ok(ax::LanguageSet::Changed) => println!("set_meeting_language: changed -> {:?}", ax::meeting_language()),
+                Ok(ax::LanguageSet::AlreadySet) => println!("set_meeting_language: already set"),
+                Err(e) => {
+                    println!("set_meeting_language: {e:#}");
+                    // What the open menu offers: roles and labels mentioning a few languages.
+                    if let Some(combo) = ax::language_box(&window) {
+                        crate::ax_util::press(&combo);
+                        std::thread::sleep(std::time::Duration::from_millis(900));
+                        let hits: Vec<_> = crate::ax_util::find_all(&crate::ax_util::app(pid), 50_000, &|e| {
+                            crate::ax_util::labels(e).iter().any(|l| {
+                                let l = l.to_lowercase();
+                                ["italian", "inglese", "english", "francese", "tedesco"].iter().any(|k| l.starts_with(k))
+                            })
+                        })
+                        .iter()
+                        .take(30)
+                        .map(|e| (crate::ax_util::role(e), crate::ax_util::string_attr(e, "AXSubrole"), crate::ax_util::labels(e)))
+                        .collect();
+                        println!("menu offers: {hits:?}");
+                        crate::teams::ax::escape(pid);
+                    }
+                }
+            }
         }
         let t = Instant::now();
         let region = ax::captions_region(&window);
@@ -204,10 +256,24 @@ mod tests {
         };
         let snap = ax::snapshot(&region);
         println!("region snapshot:\n{}", serde_json::to_string_pretty(&snap).unwrap());
+        // Shape of the region with texts reduced to their length: shareable, no names in it.
+        fn shape(n: &captions::Node, d: usize, out: &mut String) {
+            let text = n.text.as_ref().map(|t| format!(" <{} chars>", t.chars().count())).unwrap_or_default();
+            out.push_str(&format!("{}{}{text}\n", "  ".repeat(d), n.role));
+            n.children.iter().for_each(|c| shape(c, d + 1, out));
+        }
+        let mut shown = false;
         for _ in 0..10 {
             let t = Instant::now();
-            let lines = captions::caption_lines(&ax::snapshot(&region));
+            let snap = ax::snapshot(&region);
+            let lines = captions::caption_lines(&snap);
             println!("read={:?} lines={lines:?}", t.elapsed());
+            if !shown && !lines.is_empty() {
+                shown = true;
+                let mut out = String::new();
+                shape(&snap, 0, &mut out);
+                println!("SHAPE\n{out}END SHAPE");
+            }
             std::thread::sleep(std::time::Duration::from_secs(1));
         }
         let mut reader = ax::CaptionReader::default();
