@@ -8,6 +8,9 @@ use std::{
 };
 use tracing::{debug, error};
 
+/// Bitrate of every saved recording (also the target of `space_saver` for older, larger files).
+pub const AUDIO_BITRATE: &str = "64k";
+
 pub struct AudioInput {
     pub data: Arc<Vec<f32>>,
     pub sample_rate: u32,
@@ -47,7 +50,7 @@ pub fn encode_single_audio(
             "-c:a",
             "aac",
             "-b:a",
-            "192k", // Increased from 64k for better audio quality (especially for speech)
+            AUDIO_BITRATE, // speech: 64k mono is transparent for Whisper, a third of 192k on disk
             "-profile:a",
             "aac_low", // Use AAC-LC profile for better compatibility
             "-movflags",
