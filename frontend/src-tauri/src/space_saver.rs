@@ -81,6 +81,12 @@ fn process(ffmpeg: &Path, folder: &str, roots: &[PathBuf], delete: bool) -> Done
     let Ok(audio) = crate::audio::retranscription::find_audio_file(&dir) else { return Done::Skipped };
     let Ok(before) = audio.metadata().map(|m| m.len()) else { return Done::Skipped };
     let _in_use = InUse::start(Path::new(folder));
+    // Across processes (a second Dixit on the same folder, e.g. a dev sandbox): whoever holds the
+    // lock on this file works on it, the other skips. A late locker finds it already compacted.
+    let Ok(lock) = std::fs::File::open(&audio) else { return Done::Skipped };
+    if lock.try_lock().is_err() {
+        return Done::Skipped;
+    }
 
     if delete {
         return match move_to_trash(&audio) {
@@ -118,7 +124,7 @@ fn compact(ffmpeg: &Path, audio: &Path) -> anyhow::Result<Option<u64>> {
         return Ok(None);
     }
     let ext = audio.extension().and_then(|e| e.to_str()).unwrap_or("mp4");
-    let tmp = audio.with_file_name(format!("audio.compact.{ext}"));
+    let tmp = audio.with_file_name(format!("audio.compact-{}.{ext}", std::process::id()));
     let out = Command::new(ffmpeg)
         .args(["-y", "-v", "error", "-i"])
         .arg(audio)
@@ -132,6 +138,11 @@ fn compact(ffmpeg: &Path, audio: &Path) -> anyhow::Result<Option<u64>> {
         let (new_duration, _) = probe(ffmpeg, &tmp)?;
         if (new_duration - duration).abs() > 1.0 {
             bail!("duration changed: {duration:.1}s → {new_duration:.1}s");
+        }
+        // Every frame must decode: a header can look right over damaged audio.
+        let decode = Command::new(ffmpeg).args(["-v", "error", "-i"]).arg(&tmp).args(["-f", "null", "-"]).output()?;
+        if !decode.status.success() || !decode.stderr.is_empty() {
+            bail!("new file does not decode cleanly: {}", String::from_utf8_lossy(&decode.stderr).lines().next().unwrap_or(""));
         }
         // Keep the recording date in Finder.
         let mtime = audio.metadata()?.modified()?;
@@ -214,7 +225,42 @@ mod tests {
         assert_eq!(process(&ffmpeg, &folder, &roots, false), Done::Skipped, "already small");
         let (secs, kbps) = probe(&ffmpeg, &audio).unwrap();
         assert!((secs - 60.0).abs() < 1.0 && kbps < COMPACT_ABOVE_KBPS, "{secs} {kbps}");
-        assert!(!meeting.join("audio.compact.mp4").exists());
+        assert_eq!(std::fs::read_dir(&meeting).unwrap().count(), 1, "no temporary file left");
+
+        // Another process holding the file: skipped.
+        let other = std::fs::File::open(&audio).unwrap();
+        other.lock().unwrap();
+        assert_eq!(process(&ffmpeg, &folder, &roots, true), Done::Skipped, "locked elsewhere");
+    }
+
+    /// The incident of 26/11/2026: two workers on the same file at once. Exactly one compacts it,
+    /// and the result decodes cleanly.
+    #[test]
+    fn two_workers_never_mix_one_file() {
+        let Some(ffmpeg) = crate::audio::ffmpeg::find_ffmpeg_path() else { return };
+        let root = tempfile::tempdir().unwrap();
+        let meeting = root.path().join("2026-01-01 10.00 Concorrenza");
+        std::fs::create_dir(&meeting).unwrap();
+        let audio = meeting.join("audio.mp4");
+        let ok = Command::new(&ffmpeg)
+            .args(["-v", "error", "-f", "lavfi", "-i", "anoisesrc=d=300:a=0.3:r=48000", "-ac", "1"])
+            .args(["-c:a", "aac", "-b:a", "192k"])
+            .arg(&audio)
+            .status()
+            .unwrap();
+        assert!(ok.success());
+        let folder = meeting.to_string_lossy().to_string();
+        let roots = vec![root.path().to_path_buf()];
+        let workers: Vec<_> = (0..2)
+            .map(|_| {
+                let (ffmpeg, folder, roots) = (ffmpeg.clone(), folder.clone(), roots.clone());
+                std::thread::spawn(move || process(&ffmpeg, &folder, &roots, false))
+            })
+            .collect();
+        let done: Vec<Done> = workers.into_iter().map(|w| w.join().unwrap()).collect();
+        assert_eq!(done.iter().filter(|d| matches!(d, Done::Compacted(_))).count(), 1, "{done:?}");
+        let decode = Command::new(&ffmpeg).args(["-v", "error", "-i"]).arg(&audio).args(["-f", "null", "-"]).output().unwrap();
+        assert!(decode.stderr.is_empty(), "{}", String::from_utf8_lossy(&decode.stderr));
     }
 
     /// Moves a generated file to the real Trash: `cargo test --lib space_saver_trash -- --ignored`
