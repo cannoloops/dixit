@@ -6,7 +6,7 @@ use crate::audio::encode::AUDIO_BITRATE;
 use crate::audio::recording_preferences::{get_default_recordings_folder, load_recording_preferences};
 use crate::meeting_folder::{move_to_trash, trashable, InUse};
 use anyhow::{bail, Context};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Duration;
 use tauri::{AppHandle, Manager, Runtime};
@@ -49,38 +49,59 @@ async fn run_once<R: Runtime>(app: &AppHandle<R>) {
         if crate::audio::recording_commands::is_recording().await {
             break;
         }
-        // Same checks as deleting a meeting: inside the recordings folder, not being worked on.
-        let Ok(dir) = trashable(Some(&folder), &roots, false) else { continue };
-        let audio = dir.join("audio.mp4");
-        let Ok(before) = audio.metadata().map(|m| m.len()) else { continue };
-        let _in_use = InUse::start(Path::new(&folder));
-
-        if is_older(&created_at, cutoff) {
-            match move_to_trash(&audio) {
-                Ok(()) => {
-                    freed += before;
-                    trashed += 1;
-                }
-                Err(e) => log::warn!("Space saver: {} not trashed: {e}", audio.display()),
-            }
-            continue;
-        }
-        let (ffmpeg, path) = (ffmpeg.clone(), audio.clone());
-        match tokio::task::spawn_blocking(move || compact(&ffmpeg, &path)).await {
-            Ok(Ok(Some(after))) => {
-                freed += before.saturating_sub(after);
-                compacted += 1;
-            }
-            Ok(Ok(None)) => {}
-            Ok(Err(e)) => log::warn!("Space saver: {} not compacted: {e:#}", audio.display()),
+        let delete = is_older(&created_at, cutoff);
+        let (ffmpeg, roots) = (ffmpeg.clone(), roots.clone());
+        match tokio::task::spawn_blocking(move || process(&ffmpeg, &folder, &roots, delete)).await {
+            Ok(Done::Compacted(bytes)) => (freed, compacted) = (freed + bytes, compacted + 1),
+            Ok(Done::Trashed(bytes)) => (freed, trashed) = (freed + bytes, trashed + 1),
+            Ok(Done::Skipped) => {}
             Err(e) => log::warn!("Space saver: {e}"),
         }
     }
     if compacted + trashed > 0 {
+        // Trashed audio frees its space once the Trash is emptied.
         log::info!(
-            "Space saver: {compacted} audio files compacted, {trashed} moved to the Trash, {} MB freed",
+            "Space saver: {compacted} audio files compacted, {trashed} moved to the Trash, {} MB saved",
             freed / 1_000_000
         );
+    }
+}
+
+#[derive(Debug, PartialEq)]
+enum Done {
+    Compacted(u64),
+    Trashed(u64),
+    Skipped,
+}
+
+/// One meeting folder: its audio to the Trash if `delete`, else compacted when worth it.
+fn process(ffmpeg: &Path, folder: &str, roots: &[PathBuf], delete: bool) -> Done {
+    // Same checks as deleting a meeting: inside the recordings folder, not being worked on.
+    let Ok(dir) = trashable(Some(folder), roots, false) else { return Done::Skipped };
+    let Ok(audio) = crate::audio::retranscription::find_audio_file(&dir) else { return Done::Skipped };
+    let Ok(before) = audio.metadata().map(|m| m.len()) else { return Done::Skipped };
+    let _in_use = InUse::start(Path::new(folder));
+
+    if delete {
+        return match move_to_trash(&audio) {
+            Ok(()) => Done::Trashed(before),
+            Err(e) => {
+                log::warn!("Space saver: {} not trashed: {e}", audio.display());
+                Done::Skipped
+            }
+        };
+    }
+    // ponytail: only AAC containers (what Dixit records and imports); a .wav stays as it is.
+    if !matches!(audio.extension().and_then(|e| e.to_str()), Some("mp4" | "m4a")) {
+        return Done::Skipped;
+    }
+    match compact(ffmpeg, &audio) {
+        Ok(Some(after)) => Done::Compacted(before.saturating_sub(after)),
+        Ok(None) => Done::Skipped,
+        Err(e) => {
+            log::warn!("Space saver: {} not compacted: {e:#}", audio.display());
+            Done::Skipped
+        }
     }
 }
 
@@ -96,7 +117,8 @@ fn compact(ffmpeg: &Path, audio: &Path) -> anyhow::Result<Option<u64>> {
     if kbps <= COMPACT_ABOVE_KBPS {
         return Ok(None);
     }
-    let tmp = audio.with_file_name("audio.compact.mp4");
+    let ext = audio.extension().and_then(|e| e.to_str()).unwrap_or("mp4");
+    let tmp = audio.with_file_name(format!("audio.compact.{ext}"));
     let out = Command::new(ffmpeg)
         .args(["-y", "-v", "error", "-i"])
         .arg(audio)
@@ -160,6 +182,54 @@ mod tests {
         assert!(!is_older("2026-07-01T10:00:00+00:00", cutoff));
         assert!(!is_older("not a date", cutoff));
         assert!(!is_older("2020-01-01T00:00:00Z", None));
+    }
+
+    /// Whole path on a generated 192k recording: compacted once, then skipped; outside the
+    /// recordings folder or while in use, left alone.
+    #[test]
+    fn compacts_a_meeting_folder_once() {
+        let Some(ffmpeg) = crate::audio::ffmpeg::find_ffmpeg_path() else { return };
+        let root = tempfile::tempdir().unwrap();
+        let meeting = root.path().join("2026-01-01 10.00 Prova");
+        std::fs::create_dir(&meeting).unwrap();
+        let audio = meeting.join("audio.mp4");
+        let ok = Command::new(&ffmpeg)
+            .args(["-v", "error", "-f", "lavfi", "-i", "anoisesrc=d=60:a=0.3:r=48000", "-ac", "1"])
+            .args(["-c:a", "aac", "-b:a", "192k"])
+            .arg(&audio)
+            .status()
+            .unwrap();
+        assert!(ok.success());
+        let folder = meeting.to_string_lossy().to_string();
+        let roots = [root.path().to_path_buf()];
+
+        {
+            let _busy = InUse::start(&meeting);
+            assert_eq!(process(&ffmpeg, &folder, &roots, false), Done::Skipped, "in use");
+        }
+        let elsewhere = [root.path().join("altro")];
+        assert_eq!(process(&ffmpeg, &folder, &elsewhere, false), Done::Skipped, "outside");
+
+        assert!(matches!(process(&ffmpeg, &folder, &roots, false), Done::Compacted(n) if n > 0));
+        assert_eq!(process(&ffmpeg, &folder, &roots, false), Done::Skipped, "already small");
+        let (secs, kbps) = probe(&ffmpeg, &audio).unwrap();
+        assert!((secs - 60.0).abs() < 1.0 && kbps < COMPACT_ABOVE_KBPS, "{secs} {kbps}");
+        assert!(!meeting.join("audio.compact.mp4").exists());
+    }
+
+    /// Moves a generated file to the real Trash: `cargo test --lib space_saver_trash -- --ignored`
+    #[test]
+    #[ignore]
+    fn space_saver_trash() {
+        let root = tempfile::tempdir().unwrap();
+        let meeting = root.path().join("2020-01-01 10.00 Prova cestino Dixit");
+        std::fs::create_dir(&meeting).unwrap();
+        std::fs::write(meeting.join("audio.m4a"), b"x").unwrap();
+        let folder = meeting.to_string_lossy().to_string();
+        let done = process(Path::new("ffmpeg"), &folder, &[root.path().to_path_buf()], true);
+        assert_eq!(done, Done::Trashed(1));
+        assert!(!meeting.join("audio.m4a").exists());
+        assert!(meeting.join("..").exists());
     }
 
     /// Real files: `SPACE_SAVER_FILE=/path/copy/audio.mp4 cargo test --lib space_saver_real -- --ignored --nocapture`
