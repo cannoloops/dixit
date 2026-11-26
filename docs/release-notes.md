@@ -1,3 +1,6 @@
+**Novità in 0.2.12**
+- La compressione automatica dell'audio è più prudente: controlla ogni file fino all'ultimo secondo prima di sostituire l'originale, e non tocca mai un file su cui sta già lavorando un'altra copia di Dixit.
+
 **Novità in 0.2.11**
 - Le registrazioni occupano un terzo dello spazio: l'audio si salva a una qualità pensata per la voce, senza differenze nella trascrizione.
 - Dixit comprime da solo, in background, l'audio delle riunioni già registrate: libera alcuni GB senza perdere niente.
