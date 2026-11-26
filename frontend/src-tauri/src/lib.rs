@@ -63,6 +63,7 @@ pub mod groq;
 pub mod openrouter;
 pub mod parakeet_engine;
 pub mod search;
+pub mod space_saver;
 pub mod state;
 pub mod speakers;
 pub mod summary;
@@ -542,6 +543,7 @@ pub fn run() {
             let mcp_enabled = autopilot::settings::load(_app.handle()).mcp_enabled;
             mcp::set_pool_source(_app.handle().clone());
             search::spawn(_app.handle().clone());
+            space_saver::spawn(_app.handle().clone());
             tauri::async_runtime::spawn(mcp::apply(mcp_enabled));
 
             // Initialize notification system with proper defaults
