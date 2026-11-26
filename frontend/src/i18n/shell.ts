@@ -188,6 +188,12 @@ export const t = makeT({
     adExample: 'Esempio di evento',
     adKeep: 'Lasciale attive',
     adDisable: 'Disattiva statistiche',
+    // What's new after an update
+    whatsNewTitle: 'Novità di Dixit {version}',
+    whatsNewBody: 'Dixit si è aggiornato. Ecco cosa cambia per te.',
+    whatsNewOk: 'Ho capito',
+    whatsNewAgain: 'Rivedi le novità',
+    openGuide: 'Guida',
     // Agents announcement
     agentsTitle: 'Novità: Dixit lavora con i tuoi agenti',
     agentsBody:
@@ -387,6 +393,12 @@ export const t = makeT({
     adExample: 'Example event',
     adKeep: 'Keep it on',
     adDisable: 'Turn off analytics',
+    // What's new after an update
+    whatsNewTitle: 'What’s new in Dixit {version}',
+    whatsNewBody: 'Dixit has been updated. Here is what changes for you (in Italian).',
+    whatsNewOk: 'Got it',
+    whatsNewAgain: 'See what’s new',
+    openGuide: 'Guide',
     // Agents announcement
     agentsTitle: 'New: Dixit works with your agents',
     agentsBody:

@@ -25,6 +25,7 @@ import { loadBetaFeatures } from '@/types/betaFeatures'
 import { DownloadProgressToastProvider } from '@/components/shared/DownloadProgressToast'
 import { UpdateCheckProvider } from '@/components/UpdateCheckProvider'
 import { AgentsAnnouncement } from '@/components/AgentsAnnouncement'
+import { WhatsNew, markWhatsNewSeen } from '@/components/WhatsNew'
 import { RecordingPostProcessingProvider } from '@/contexts/RecordingPostProcessingProvider'
 import { ImportAudioDialog, ImportDropOverlay } from '@/components/ImportAudio'
 import { ImportDialogProvider } from '@/contexts/ImportDialogContext'
@@ -236,8 +237,9 @@ export default function RootLayout({
     setShowImportDialog(true);
   }, []);
 
-  const handleOnboardingComplete = () => {
+  const handleOnboardingComplete = async () => {
     console.log('[Layout] Onboarding completed, reloading app')
+    await markWhatsNewSeen() // fresh install: the news of this version is not news
     setShowOnboarding(false)
     setOnboardingCompleted(true)
     // Optionally reload the window to ensure all state is fresh
@@ -273,6 +275,7 @@ export default function RootLayout({
                                   </div>
                                 )}
                                 {!showOnboarding && <AgentsAnnouncement />}
+                                {!showOnboarding && <WhatsNew />}
                               </BaseModelsGate>
                               {/* Import audio overlay and dialog */}
                               <ImportDropOverlay visible={showDropOverlay} />

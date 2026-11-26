@@ -4,7 +4,9 @@ import { DixitMark } from "@/components/dixit/DixitMark";
 import { UpdateDialog } from "./UpdateDialog";
 import { updateService, UpdateInfo } from '@/services/updateService';
 import { Button } from './ui/button';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { BookOpen, Loader2, RefreshCw, Sparkles } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
+import { showWhatsNew } from './WhatsNew';
 import { toast } from 'sonner';
 import { t } from '@/i18n/shell';
 
@@ -61,6 +63,21 @@ export function About() {
                         {t('versionAvailable', { version: updateInfo.version ?? '' })}
                     </Button>
                 )}
+            </div>
+
+            <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={showWhatsNew}>
+                    <Sparkles />
+                    {t('whatsNewAgain')}
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => invoke('open_external_url', { url: 'https://github.com/cannoloops/dixit/blob/main/docs/GUIDA.md' })}
+                >
+                    <BookOpen />
+                    {t('openGuide')}
+                </Button>
             </div>
 
             {/* Update Dialog */}
