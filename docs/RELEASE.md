@@ -14,7 +14,7 @@
 
 ## Fare una release
 
-Prima di tutto scrivi il changelog breve in testa a `docs/release-notes.md`, al posto di quello della release precedente:
+Prima di tutto scrivi il changelog breve in testa a `docs/release-notes.md`, sopra quelli delle release precedenti (servono al pannello «Novità» di chi salta qualche versione):
 
 ```markdown
 **Novità in 0.2.4**
@@ -43,7 +43,7 @@ Lo script:
 1. aggiorna la versione in `tauri.conf.json`, `package.json` e `Cargo.toml`;
 2. compila il sidecar `llama-helper`;
 3. lancia `tauri build` (app e dmg, senza modelli: si scaricano al primo avvio);
-4. scrive `latest.json`;
+4. scrive `latest.json`, con le novità della versione che la finestra di aggiornamento mostra prima di installare;
 5. fa il commit `chore: versione 0.2.0` su `develop`, lo mergia in `main` e pusha i due branch;
 6. pubblica la release `v0.2.0` su `cannoloops/dixit` con dmg, `.app.tar.gz`, `.sig` e `latest.json`, con le note di `docs/release-notes.md`. Il tag punta al merge in `main`, cioè al codice compilato.
 
