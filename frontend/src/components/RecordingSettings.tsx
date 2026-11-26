@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { FolderOpen } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { invoke } from '@tauri-apps/api/core';
 import { DeviceSelection, SelectedDevices } from '@/components/DeviceSelection';
 import Analytics from '@/lib/analytics';
@@ -17,6 +18,7 @@ export interface RecordingPreferences {
   file_format: string;
   preferred_mic_device: string | null;
   preferred_system_device: string | null;
+  delete_audio_after_months?: number;
 }
 
 interface RecordingSettingsProps {
@@ -108,6 +110,19 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
     });
   };
 
+  const handleDeleteAudioChange = async (value: string) => {
+    const newPreferences = { ...preferences, delete_audio_after_months: Number(value) };
+    setPreferences(newPreferences);
+    try {
+      await invoke('set_recording_preferences', { preferences: newPreferences });
+      onSave?.(newPreferences);
+      toast.success(t('prefSaved'));
+    } catch (error) {
+      console.error('Failed to save recording preferences:', error);
+      toast.error(t('prefNotSaved'));
+    }
+  };
+
   const handleOpenFolder = async () => {
     try {
       await invoke('open_recordings_folder');
@@ -193,6 +208,19 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
               description={t('fileNameHint', { ext: preferences.file_format })}
             >
               <span className="text-sm text-muted-foreground">{preferences.file_format.toUpperCase()}</span>
+            </SettingRow>
+            <SettingRow label={t('deleteAudio')} description={t('deleteAudioDesc')}>
+              <Select value={String(preferences.delete_audio_after_months ?? 0)} onValueChange={handleDeleteAudioChange}>
+                <SelectTrigger className="w-40" aria-label={t('deleteAudio')}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">{t('deleteAudioNever')}</SelectItem>
+                  {[3, 6, 12].map((n) => (
+                    <SelectItem key={n} value={String(n)}>{t('deleteAudioMonths', { n })}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </SettingRow>
           </>
         )}

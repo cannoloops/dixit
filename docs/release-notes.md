@@ -1,3 +1,8 @@
+**Novità in 0.2.11**
+- Le registrazioni occupano un terzo dello spazio: l'audio si salva a una qualità pensata per la voce, senza differenze nella trascrizione.
+- Dixit comprime da solo, in background, l'audio delle riunioni già registrate: libera alcuni GB senza perdere niente.
+- In Impostazioni › Registrazioni puoi far spostare nel Cestino l'audio delle riunioni più vecchie di 3, 6 o 12 mesi: trascrizione, riassunto e note restano. Di default è spento.
+
 **Novità in 0.2.10**
 - Dixit si collega anche a Codex, Antigravity, Gemini CLI, Cursor e VS Code: in Impostazioni › Automazione › Agenti scegli il tuo agente e copi il comando pronto.
 - Su Google Meet nel browser i parlanti hanno il loro nome: Dixit accende i sottotitoli di Meet (li vedi solo tu) e ne prende i nomi. Se li spegni, restano spenti.
