@@ -279,6 +279,12 @@ async fn stop_recording<R: Runtime>(app: AppHandle<R>, args: RecordingArgs) -> R
     }
 }
 
+/// The changelog of every release, for the "Novità" panel shown after an update.
+#[tauri::command]
+fn release_notes() -> &'static str {
+    include_str!("../../../docs/release-notes.md")
+}
+
 #[tauri::command]
 async fn is_recording() -> bool {
     audio::recording_commands::is_recording().await
@@ -651,6 +657,7 @@ pub fn run() {
             start_recording,
             stop_recording,
             is_recording,
+            release_notes,
             get_transcription_status,
             read_audio_file,
             save_transcript,

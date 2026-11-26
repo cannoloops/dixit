@@ -49,6 +49,7 @@ Se un permesso è stato negato, attivalo da **Impostazioni di Sistema › Privac
 - **In automatico:** quando inizia una call su Teams, Zoom o Meet Dixit parte da solo e mostra un banner con **Annulla**. Si ferma quando la call finisce.
 - **A mano:** avvia e ferma la registrazione dalla finestra di Dixit.
 - Mentre registri vedi la trascrizione live e i nomi dei parlanti (da Teams, oppure dalle voci già riconosciute).
+- **Google Meet nel browser:** per avere i nomi dei parlanti Dixit accende i sottotitoli di Meet a inizio call. Li vedi solo tu, non gli altri. Se li spegni, Dixit non li riaccende.
 - **Muto su Teams:** quando sei in muto nella call, Dixit non registra né trascrive la tua voce, e accanto al tempo di registrazione compare «Microfono in muto». Su Zoom e Meet il microfono viene registrato anche in muto.
 
 ## Note durante la call
@@ -81,6 +82,13 @@ Ogni riunione ha una cartella in `~/Documents/Dixit/<AAAA-MM-GG HH.MM Titolo>/` 
 
 Per eliminare più riunioni insieme selezionale nella barra laterale con **Cmd+clic** (una alla volta) o **Maiusc+clic** (un intervallo), poi premi il cestino accanto a «N selezionate»; **Esc** annulla la selezione. Alla conferma, la casella «Sposta nel Cestino anche la cartella» (attiva di default) sposta anche le cartelle nel Cestino di macOS, da cui si possono recuperare.
 
+## Spazio su disco
+
+L'audio è la parte che pesa: circa 30 MB per ora di riunione.
+
+- **Compressione automatica:** una volta al giorno, in background, Dixit comprime l'audio delle riunioni registrate con le versioni precedenti (che pesava circa tre volte tanto). Non perdi niente: riascolto e trascrizione restano uguali. Si ferma da sola se inizia una call.
+- **Eliminare l'audio vecchio:** in **Impostazioni › Registrazioni › Elimina l'audio delle riunioni vecchie** scegli dopo quanti mesi (3, 6 o 12) spostare l'audio nel Cestino. Trascrizione, riassunto, note e parlanti restano; non potrai più riascoltare né ritrascrivere quelle riunioni. Di default è spento. Lo spazio si libera quando svuoti il Cestino.
+
 ## Aggiornamenti
 
-Dixit si aggiorna da solo; riunioni, impostazioni e modelli restano. Dopo un aggiornamento macOS può chiedere di nuovo i permessi.
+Dixit si aggiorna da solo; riunioni, impostazioni e modelli restano. Prima di aggiornare vedi cosa cambia, e al primo avvio della nuova versione un pannello riassume le novità. Per rivederlo: **Impostazioni › Info › Rivedi le novità**. Dopo un aggiornamento macOS può chiedere di nuovo i permessi.

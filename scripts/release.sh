@@ -61,12 +61,20 @@ TARBALL="$BUNDLE/macos/Dixit.app.tar.gz"
 [[ -f "$TARBALL.sig" ]] || { echo "Firma updater mancante: $TARBALL.sig"; exit 1; }
 
 echo "==> latest.json"
-python3 - "$VERSION" "$TARBALL.sig" "https://github.com/$RELEASES_REPO/releases/download/v$VERSION/Dixit.app.tar.gz" > "$BUNDLE/latest.json" <<'PY'
+python3 - "$VERSION" "$TARBALL.sig" "https://github.com/$RELEASES_REPO/releases/download/v$VERSION/Dixit.app.tar.gz" "$ROOT/docs/release-notes.md" > "$BUNDLE/latest.json" <<'PY'
 import datetime, json, sys
-version, sig_path, url = sys.argv[1:4]
+version, sig_path, url, notes_path = sys.argv[1:5]
+# The "Novità in <version>" bullets: the update dialog shows them before the user installs.
+lines = open(notes_path).read().split("\n")
+start = lines.index(f"**Novità in {version}**") + 1
+notes = []
+for line in lines[start:]:
+    if not line.strip():
+        break
+    notes.append(line)
 print(json.dumps({
     "version": version,
-    "notes": f"Dixit {version}",
+    "notes": "\n".join(notes),
     "pub_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "platforms": {"darwin-aarch64": {"signature": open(sig_path).read().strip(), "url": url}},
 }, indent=2))

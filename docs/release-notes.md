@@ -1,3 +1,8 @@
+**Novità in 0.3.0**
+- Dopo ogni aggiornamento Dixit ti mostra in un pannello cosa è cambiato, anche se hai saltato qualche versione. Lo rivedi da Impostazioni › Info › Rivedi le novità.
+- Prima di aggiornare, la finestra dell'aggiornamento ti dice cosa porta la nuova versione.
+- La guida di Dixit si apre da Impostazioni › Info › Guida, aggiornata con le funzioni più recenti (spazio su disco, nomi da Google Meet).
+
 **Novità in 0.2.12**
 - La compressione automatica dell'audio è più prudente: controlla ogni file fino all'ultimo secondo prima di sostituire l'originale, e non tocca mai un file su cui sta già lavorando un'altra copia di Dixit.
 
