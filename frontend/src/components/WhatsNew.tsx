@@ -64,7 +64,8 @@ export function WhatsNew() {
 
   return (
     <Dialog open={notes.length > 0} onOpenChange={(open) => !open && close()}>
-      <DialogContent className="gap-5 sm:max-w-lg">
+      {/* Opened at startup, often before the window has focus: losing focus must not dismiss it. */}
+      <DialogContent className="gap-5 sm:max-w-lg" onFocusOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="text-lg">{t('whatsNewTitle', { version: current })}</DialogTitle>
           <DialogDescription>{t('whatsNewBody')}</DialogDescription>
