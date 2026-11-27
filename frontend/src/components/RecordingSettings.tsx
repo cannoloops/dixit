@@ -240,10 +240,20 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
       <SettingsSection title={t('spaceSection')}>
         <SettingRow
           label={t('spaceRecordings')}
-          description={space ? t('spaceRecordingsDesc', { n: space.meetings, audio: formatBytes(space.audio_bytes) }) : undefined}
+          description={space ? t('spaceRecordingsDesc', { n: space.meetings }) : undefined}
         >
           <span className="text-sm tabular-nums">{space ? formatBytes(space.total_bytes) : t('spaceLoading')}</span>
         </SettingRow>
+        {space && (
+          <>
+            <SettingRow label={t('spaceAudio')}>
+              <span className="text-sm tabular-nums">{formatBytes(space.audio_bytes)}</span>
+            </SettingRow>
+            <SettingRow label={t('spaceOther')} description={t('spaceOtherDesc')}>
+              <span className="text-sm tabular-nums">{formatBytes(space.total_bytes - space.audio_bytes)}</span>
+            </SettingRow>
+          </>
+        )}
       </SettingsSection>
 
       <SettingsSection title={t('noticesSection')}>
