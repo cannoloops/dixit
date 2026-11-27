@@ -364,7 +364,7 @@ export default function PageContent({
                   refreshKey={summaryGeneration.summaryStatus}
                   onChanged={() => {
                     templates.setSelectedTemplate('auto');
-                    void summaryGeneration.handleGenerateSummary('', 'auto');
+                    void summaryGeneration.handleGenerateSummary(customPrompt, 'auto');
                   }}
                 />
               }

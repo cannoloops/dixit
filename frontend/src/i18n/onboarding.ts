@@ -80,6 +80,7 @@ export const t = makeT({
     checking: 'Verifica…',
     openSettings: 'Apri Impostazioni',
     openSettingsFailed: 'Impossibile aprire Impostazioni di Sistema',
+    finishFailed: 'Impossibile completare la configurazione. Riprova.',
     displayNameLabel: 'Il tuo nome (come appare in Teams, es. Rossi Mario)',
     displayNamePlaceholder: 'Cognome Nome',
     displayNameHint:
@@ -164,6 +165,7 @@ export const t = makeT({
     checking: 'Checking…',
     openSettings: 'Open Settings',
     openSettingsFailed: 'Could not open System Settings',
+    finishFailed: 'Could not finish setup. Try again.',
     displayNameLabel: 'Your name (as it appears in Teams, e.g. Rossi Mario)',
     displayNamePlaceholder: 'Last name First name',
     displayNameHint:

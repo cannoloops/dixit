@@ -21,6 +21,7 @@ import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { toast } from 'sonner';
 import { useConfig } from '@/contexts/ConfigContext';
 import { LANGUAGES } from '@/constants/languages';
+import { displayName } from '@/components/LanguageSelection';
 import { useTranscriptionModels, ModelOption } from '@/hooks/useTranscriptionModels';
 import Analytics from '@/lib/analytics';
 import { Progress } from '../ui/progress';
@@ -314,7 +315,7 @@ export function RetranscribeDialog({
                   <SelectContent className="max-h-60">
                     {LANGUAGES.map((lang) => (
                       <SelectItem key={lang.code} value={lang.code}>
-                        {lang.name}
+                        {displayName(lang)}
                       </SelectItem>
                     ))}
                   </SelectContent>

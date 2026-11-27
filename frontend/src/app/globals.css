@@ -215,7 +215,7 @@
     --rail-muted: 218 4% 40%;
     --rail-border: 210 12% 90%;
     --rail-active: 192 37% 92%;
-    --rail-accent: 190 65% 35%;
+    --rail-accent: 190 65% 30%;      /* petrolio scurito: 4,5:1 come testo su rail e rail-active */
     --rail-live: 358 67% 54%;
 
     --live: 358 67% 54%;             /* registrazione in corso */

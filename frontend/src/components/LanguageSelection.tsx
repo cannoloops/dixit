@@ -118,7 +118,7 @@ const LANGUAGES: Language[] = [
   { code: 'su', name: 'Sundanese' },
 ];
 
-function displayName(language: Language): string {
+export function displayName(language: Language): string {
   if (language.code === 'auto') return t('langAuto');
   if (language.code === 'auto-translate') return t('langAutoTranslate');
   return languageName(language.code, language.name);

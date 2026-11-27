@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { locale } from '@/i18n';
 import { t } from '@/i18n/shell';
 import { t as tApp } from '@/i18n/app';
+import { useRecordingState } from '@/contexts/RecordingStateContext';
 
 interface UpdateDialogProps {
   open: boolean;
@@ -26,6 +27,9 @@ interface UpdateDialogProps {
 
 export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogProps) {
   const [isDownloading, setIsDownloading] = useState(false);
+  // Installing relaunches Dixit: never while a recording or its final pass is running.
+  const { isRecording, isStopping, isProcessing } = useRecordingState();
+  const busy = isRecording || isStopping || isProcessing;
   const [progress, setProgress] = useState<UpdateProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [update, setUpdate] = useState<Update | null>(null);
@@ -270,12 +274,15 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
         </div>
 
         <DialogFooter>
+          {busy && !isDownloading && !error && (
+            <p className="mr-auto self-center text-xs text-muted-foreground">{t('updateAfterRecording')}</p>
+          )}
           {!isDownloading && !error && (
             <>
               <Button variant="outline" onClick={() => handleOpenChange(false)}>
                 {t('later')}
               </Button>
-              <Button onClick={handleDownloadAndInstall}>
+              <Button onClick={handleDownloadAndInstall} disabled={busy}>
                 <Download />
                 {t('downloadInstall')}
               </Button>

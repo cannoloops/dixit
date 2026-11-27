@@ -34,6 +34,7 @@ import { useImportAudio, ImportResult } from '@/hooks/useImportAudio';
 import { useRouter } from 'next/navigation';
 import { useSidebar } from '../Sidebar/SidebarProvider';
 import { LANGUAGES } from '@/constants/languages';
+import { displayName } from '@/components/LanguageSelection';
 import { useTranscriptionModels, ModelOption } from '@/hooks/useTranscriptionModels';
 import { Progress } from '../ui/progress';
 import { t } from '@/i18n/recording';
@@ -337,7 +338,7 @@ export function ImportAudioDialog({
                             <SelectContent className="max-h-60">
                               {LANGUAGES.map((lang) => (
                                 <SelectItem key={lang.code} value={lang.code}>
-                                  {lang.name}
+                                  {displayName(lang)}
                                 </SelectItem>
                               ))}
                             </SelectContent>
