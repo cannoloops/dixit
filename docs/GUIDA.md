@@ -84,7 +84,7 @@ Per eliminare più riunioni insieme selezionale nella barra laterale con **Cmd+c
 
 ## Spazio su disco
 
-L'audio è la parte che pesa: circa 30 MB per ora di riunione.
+L'audio è la parte che pesa: circa 30 MB per ora di riunione. Quanto occupano le tue registrazioni, e quanto di questo è audio, lo vedi in **Impostazioni › Registrazioni › Spazio su disco**.
 
 - **Compressione automatica:** una volta al giorno, in background, Dixit comprime l'audio delle riunioni registrate con le versioni precedenti (che pesava circa tre volte tanto). Non perdi niente: riascolto e trascrizione restano uguali. Si ferma da sola se inizia una call.
 - **Eliminare l'audio vecchio:** in **Impostazioni › Registrazioni › Elimina l'audio delle riunioni vecchie** scegli dopo quanti mesi (3, 6 o 12) spostare l'audio nel Cestino. Trascrizione, riassunto, note e parlanti restano; non potrai più riascoltare né ritrascrivere quelle riunioni. Di default è spento. Lo spazio si libera quando svuoti il Cestino.

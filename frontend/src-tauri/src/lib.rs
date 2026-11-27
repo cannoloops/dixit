@@ -658,6 +658,7 @@ pub fn run() {
             stop_recording,
             is_recording,
             release_notes,
+            space_saver::recordings_space_usage,
             get_transcription_status,
             read_audio_file,
             save_transcript,

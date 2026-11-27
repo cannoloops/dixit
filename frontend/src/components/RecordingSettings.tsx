@@ -11,6 +11,7 @@ import { useRecordingState } from '@/contexts/RecordingStateContext';
 import { useConfig } from '@/contexts/ConfigContext';
 import { SettingsSection, SettingRow } from '@/components/molecules/form-components/setting-row';
 import { t } from '@/i18n/settings';
+import { formatBytes } from '@/lib/utils';
 
 export interface RecordingPreferences {
   save_folder: string;
@@ -34,6 +35,7 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
     preferred_system_device: null
   });
   const [loading, setLoading] = useState(true);
+  const [space, setSpace] = useState<{ total_bytes: number; audio_bytes: number; meetings: number } | null>(null);
   const [saving, setSaving] = useState(false);
   const [showRecordingNotification, setShowRecordingNotification] = useState(true);
   const { isRecording } = useRecordingState();
@@ -60,6 +62,11 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
     };
 
     loadPreferences();
+  }, []);
+
+  // Disk space of the recordings (walks the folder: computed once per visit)
+  useEffect(() => {
+    invoke<typeof space>('recordings_space_usage').then(setSpace).catch(console.error);
   }, []);
 
   // Load recording notification preference
@@ -227,6 +234,25 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
 
         {!preferences.auto_save && (
           <p className="py-2.5 text-sm text-muted-foreground">{t('audioDisabled')}</p>
+        )}
+      </SettingsSection>
+
+      <SettingsSection title={t('spaceSection')}>
+        <SettingRow
+          label={t('spaceRecordings')}
+          description={space ? t('spaceRecordingsDesc', { n: space.meetings }) : undefined}
+        >
+          <span className="text-sm tabular-nums">{space ? formatBytes(space.total_bytes) : t('spaceLoading')}</span>
+        </SettingRow>
+        {space && (
+          <>
+            <SettingRow label={t('spaceAudio')}>
+              <span className="text-sm tabular-nums">{formatBytes(space.audio_bytes)}</span>
+            </SettingRow>
+            <SettingRow label={t('spaceOther')} description={t('spaceOtherDesc')}>
+              <span className="text-sm tabular-nums">{formatBytes(space.total_bytes - space.audio_bytes)}</span>
+            </SettingRow>
+          </>
         )}
       </SettingsSection>
 

@@ -15,6 +15,7 @@ import { check, Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { toast } from 'sonner';
 import { locale } from '@/i18n';
+import { formatBytes } from '@/lib/utils';
 import { t } from '@/i18n/shell';
 import { t as tApp } from '@/i18n/app';
 
@@ -292,10 +293,3 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
   );
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return (bytes / Math.pow(k, i)).toLocaleString(locale, { maximumFractionDigits: 2 }) + ' ' + sizes[i];
-}
