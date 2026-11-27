@@ -54,6 +54,9 @@ export const t = makeT({
     // Summary actions
     generate: 'Genera riassunto',
     regenerate: 'Rigenera riassunto',
+    overwriteSummaryTitle: 'Sostituire il riassunto modificato?',
+    overwriteSummaryText: 'Hai modificato questo riassunto a mano. Rigenerarlo sostituisce le tue modifiche.',
+    overwriteSummaryConfirm: 'Rigenera',
     stop: 'Interrompi',
     stopTitle: 'Interrompi la generazione del riassunto',
     loadingModel: 'Carico la configurazione del modello…',
@@ -249,6 +252,9 @@ export const t = makeT({
     // Summary actions
     generate: 'Generate summary',
     regenerate: 'Regenerate summary',
+    overwriteSummaryTitle: 'Replace the edited summary?',
+    overwriteSummaryText: 'You edited this summary by hand. Regenerating it replaces your edits.',
+    overwriteSummaryConfirm: 'Regenerate',
     stop: 'Stop',
     stopTitle: 'Stop generating the summary',
     loadingModel: 'Loading the model configuration…',

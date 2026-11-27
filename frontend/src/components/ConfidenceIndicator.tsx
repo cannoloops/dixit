@@ -13,7 +13,7 @@ function level(conf: number) {
   if (conf >= 0.8) return { dot: 'bg-primary', label: t('confidenceHigh') };
   if (conf >= 0.7) return { dot: 'bg-primary/60', label: t('confidenceGood') };
   if (conf >= 0.4) return { dot: 'bg-muted-foreground', label: t('confidenceMedium') };
-  return { dot: 'bg-destructive', label: t('confidenceLow') };
+  return { dot: 'bg-error', label: t('confidenceLow') };
 }
 
 export const ConfidenceIndicator: React.FC<ConfidenceIndicatorProps> = ({

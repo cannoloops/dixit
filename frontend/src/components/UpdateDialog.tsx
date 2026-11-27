@@ -13,11 +13,13 @@ import { Progress } from './ui/progress';
 import { updateService, UpdateInfo, UpdateProgress } from '@/services/updateService';
 import { check, Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
+import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { locale } from '@/i18n';
 import { formatBytes } from '@/lib/utils';
 import { t } from '@/i18n/shell';
 import { t as tApp } from '@/i18n/app';
+import { useRecordingState } from '@/contexts/RecordingStateContext';
 
 interface UpdateDialogProps {
   open: boolean;
@@ -27,6 +29,9 @@ interface UpdateDialogProps {
 
 export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogProps) {
   const [isDownloading, setIsDownloading] = useState(false);
+  // Installing relaunches Dixit: never while a recording or its final pass is running.
+  const { isRecording, isStopping, isProcessing } = useRecordingState();
+  const busy = isRecording || isStopping || isProcessing;
   const [progress, setProgress] = useState<UpdateProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [update, setUpdate] = useState<Update | null>(null);
@@ -128,15 +133,15 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
       });
 
       console.log('[UpdateDialog] Update installed successfully');
-      toast.success(t('updateInstalled'));
-
-      // Mark download as complete before closing
       setIsDownloading(false);
-
-      // Close dialog before relaunch
       handleOpenChange(false);
 
-      // Relaunch the app
+      // A call may have started during the download: never relaunch over a recording.
+      if (await invoke<boolean>('is_recording').catch(() => false)) {
+        toast.success(t('updateInstalledLater'));
+        return;
+      }
+      toast.success(t('updateInstalled'));
       await relaunch();
     } catch (err: any) {
       console.error('Update failed:', err);
@@ -199,7 +204,7 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
               </>
             ) : error ? (
               <>
-                <AlertCircle className="h-4 w-4 text-destructive" />
+                <AlertCircle className="h-4 w-4 text-error" />
                 {t('updateFailed')}
               </>
             ) : (
@@ -266,17 +271,20 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
           )}
 
           {error && (
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="text-sm text-error">{error}</p>
           )}
         </div>
 
         <DialogFooter>
+          {busy && !isDownloading && !error && (
+            <p className="mr-auto self-center text-xs text-muted-foreground">{t('updateAfterRecording')}</p>
+          )}
           {!isDownloading && !error && (
             <>
               <Button variant="outline" onClick={() => handleOpenChange(false)}>
                 {t('later')}
               </Button>
-              <Button onClick={handleDownloadAndInstall}>
+              <Button onClick={handleDownloadAndInstall} disabled={busy}>
                 <Download />
                 {t('downloadInstall')}
               </Button>

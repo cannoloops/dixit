@@ -552,7 +552,7 @@ const Sidebar: React.FC = () => {
       <Tooltip>
         <TooltipTrigger asChild>
           {/* span keeps the tooltip working while the button is disabled */}
-          <span>
+          <span className="relative">
             <Button
               variant="ghost"
               size="icon"
@@ -563,6 +563,10 @@ const Sidebar: React.FC = () => {
             >
               <Mic />
             </Button>
+            {/* Recording state stays visible with the rail collapsed (the button is dimmed while disabled). */}
+            {isRecording && (
+              <span aria-hidden className="pointer-events-none absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rail-live" />
+            )}
           </span>
         </TooltipTrigger>
         <TooltipContent side="right">{isRecording ? t('recordingInProgress') : t('startRecording')}</TooltipContent>

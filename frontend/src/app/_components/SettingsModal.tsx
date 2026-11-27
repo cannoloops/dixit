@@ -131,7 +131,7 @@ export function SettingsModals({
             {modelConfig.provider === 'ollama' && (
               <div className="space-y-2 pt-2">
                 <h4 className="text-sm font-semibold">{t('ollamaModels')}</h4>
-                {error && <p className="text-sm text-destructive">{error}</p>}
+                {error && <p className="text-sm text-error">{error}</p>}
                 <div className="max-h-[400px] divide-y divide-border overflow-y-auto border-y border-border">
                   {models.map((model) => {
                     const selected = modelConfig.model === model.name;
@@ -257,7 +257,7 @@ export function SettingsModals({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-destructive" />
+            <AlertCircle className="h-4 w-4 text-error" />
             {t('recordingStopped')}
           </DialogTitle>
           <DialogDescription>{messages.errorAlert}</DialogDescription>

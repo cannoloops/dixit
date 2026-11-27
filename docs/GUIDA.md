@@ -35,7 +35,7 @@ Va fatto una volta sola: gli aggiornamenti successivi arrivano da soli.
 
 ## Primo avvio
 
-1. Dixit scarica i modelli: circa 9 GB, da Hugging Face, con verifica dell'integrità. Se il download si interrompe, riparte da dove era arrivato.
+1. Dixit scarica i modelli: circa 9 GB, da Hugging Face, con verifica dell'integrità. Parte quando premi **Scarica i modelli** e mostra velocità e tempo che manca. Se il download si interrompe, o se esci con **Esci da Dixit**, al prossimo avvio riparte da dove era arrivato.
 2. Poi chiede tre permessi di macOS:
    - **Microfono:** per la tua voce;
    - **Registrazione schermo e audio di sistema:** per l'audio degli altri partecipanti;
@@ -91,4 +91,4 @@ L'audio è la parte che pesa: circa 30 MB per ora di riunione. Quanto occupano l
 
 ## Aggiornamenti
 
-Dixit si aggiorna da solo; riunioni, impostazioni e modelli restano. Prima di aggiornare vedi cosa cambia, e al primo avvio della nuova versione un pannello riassume le novità. Per rivederlo: **Impostazioni › Info › Rivedi le novità**. Dopo un aggiornamento macOS può chiedere di nuovo i permessi.
+Dixit si aggiorna da solo; riunioni, impostazioni e modelli restano. Prima di aggiornare vedi cosa cambia, e al primo avvio della nuova versione un pannello riassume le novità. Per rivederlo: **Info** (in fondo alla barra laterale) › **Rivedi le novità**; dallo stesso pannello si apre anche la **Guida**. Dopo un aggiornamento macOS può chiedere di nuovo i permessi.

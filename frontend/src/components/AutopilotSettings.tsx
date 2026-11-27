@@ -56,6 +56,29 @@ function CopyBlock({ text }: { text: string }) {
 }
 
 /** Trascrivi: automatic start/stop on calls, Teams integration, speaker name. */
+/** Seconds field: free typing, clamped and saved on blur or Enter (not at every keystroke). */
+function SecondsInput({ id, min, value, onCommit }: { id: string; min: number; value: number; onCommit: (v: number) => void }) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+  const commit = () => {
+    const v = Math.max(min, Math.round(Number(draft)) || min);
+    setDraft(String(v));
+    if (v !== value) onCommit(v);
+  };
+  return (
+    <Input
+      id={id}
+      type="number"
+      min={min}
+      className="w-24 tabular-nums"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') commit(); }}
+    />
+  );
+}
+
 export function AutopilotSettings() {
   const [settings, setSettings] = useState<AutopilotSettingsValue | null>(null);
   const [dumping, setDumping] = useState(false);
@@ -120,24 +143,10 @@ export function AutopilotSettings() {
           <Switch id="auto-start" checked={settings.auto_start} onCheckedChange={(v) => save({ auto_start: v })} />
         </SettingRow>
         <SettingRow label={t('startAfter')} htmlFor="start-after-secs">
-          <Input
-            id="start-after-secs"
-            type="number"
-            min={1}
-            className="w-24 tabular-nums"
-            value={settings.start_after_secs}
-            onChange={(e) => save({ start_after_secs: Math.max(1, Number(e.target.value) || 1) })}
-          />
+          <SecondsInput id="start-after-secs" min={1} value={settings.start_after_secs} onCommit={(v) => save({ start_after_secs: v })} />
         </SettingRow>
         <SettingRow label={t('stopAfter')} htmlFor="stop-after-secs">
-          <Input
-            id="stop-after-secs"
-            type="number"
-            min={10}
-            className="w-24 tabular-nums"
-            value={settings.stop_after_secs}
-            onChange={(e) => save({ stop_after_secs: Math.max(10, Number(e.target.value) || 10) })}
-          />
+          <SecondsInput id="stop-after-secs" min={10} value={settings.stop_after_secs} onCommit={(v) => save({ stop_after_secs: v })} />
         </SettingRow>
       </SettingsSection>
 
@@ -177,7 +186,7 @@ export function AutopilotSettings() {
           label={t('mcpEnabled')}
           description={
             typeof mcp === 'string' ? (
-              <span role="alert" className="text-destructive">{t('mcpError', { error: mcp })}</span>
+              <span role="alert" className="text-error">{t('mcpError', { error: mcp })}</span>
             ) : mcp ? (
               t('mcpListening', { url: MCP_URL })
             ) : (

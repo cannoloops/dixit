@@ -19,7 +19,7 @@ export function MessageToast({ message, type, show, setShow }: MessageToastProps
     
     return (
         show && (
-            <span className={type === 'success' ? 'text-primary' : 'text-destructive'}>{message}</span>
+            <span className={type === 'success' ? 'text-primary' : 'text-error'}>{message}</span>
         )
     );
 }

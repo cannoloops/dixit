@@ -477,7 +477,7 @@ function DownloadRow({ title, icon, state, modelSize, sizeUnit = 'MB', onRetry }
               {t('statusReady')}
             </span>
           )}
-          {state.status === 'error' && <span className="font-medium text-destructive">{t('statusFailed')}</span>}
+          {state.status === 'error' && <span className="font-medium text-error">{t('statusFailed')}</span>}
           {isCancelled && <span className="text-muted-foreground">{t('statusCancelled')}</span>}
         </div>
       </div>
@@ -503,11 +503,11 @@ function DownloadRow({ title, icon, state, modelSize, sizeUnit = 'MB', onRetry }
 
       {failed && (
         <div className="space-y-2">
-          <p className="text-sm text-destructive">
+          <p className="text-sm text-error">
             {isCancelled ? t('downloadCancelled') : t('downloadFailed')}{' '}
             {isCancelled ? t('downloadCancelledRemedy') : t('downloadFailedRemedy')}
           </p>
-          {state.error && <p className="wrap-break-word text-xs text-destructive">{state.error}</p>}
+          {state.error && <p className="wrap-break-word text-xs text-error">{state.error}</p>}
           <Button variant="outline" size="sm" onClick={onRetry}>
             <RefreshCw className="h-4 w-4" />
             {t('tryAgain')}

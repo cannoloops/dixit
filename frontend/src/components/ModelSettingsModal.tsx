@@ -1092,7 +1092,7 @@ export function ModelSettingsModal({
                     variant="ghost"
                     size="icon"
                     onClick={() => setIsApiKeyLocked(!isApiKeyLocked)}
-                    className={isLockButtonVibrating ? 'animate-vibrate text-destructive' : ''}
+                    className={isLockButtonVibrating ? 'animate-vibrate text-error' : ''}
                     title={isApiKeyLocked ? t('unlockToEdit') : t('lockToPrevent')}
                     aria-label={isApiKeyLocked ? t('unlockToEdit') : t('lockToPrevent')}
                   >
@@ -1150,14 +1150,14 @@ export function ModelSettingsModal({
                       aria-invalid={endpointValidationState === 'invalid'}
                       className={cn(
                         "pr-10",
-                        endpointValidationState === 'invalid' && "border-destructive"
+                        endpointValidationState === 'invalid' && "border-error"
                       )}
                     />
                     {endpointValidationState === 'valid' && (
                       <CheckCircle2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
                     )}
                     {endpointValidationState === 'invalid' && (
-                      <XCircle className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-destructive" />
+                      <XCircle className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-error" />
                     )}
                   </div>
                   <Button
@@ -1182,7 +1182,7 @@ export function ModelSettingsModal({
                   </Button>
                 </div>
                 {endpointValidationState === 'invalid' && (
-                  <p role="alert" className="mt-1 text-xs text-destructive">{t('invalidEndpoint')}</p>
+                  <p role="alert" className="mt-1 text-xs text-error">{t('invalidEndpoint')}</p>
                 )}
                 {ollamaEndpointChanged && !error && (
                   <p role="status" className="mt-3 text-sm text-foreground">{t('endpointChangedSave')}</p>
@@ -1222,7 +1222,7 @@ export function ModelSettingsModal({
                 {ollamaNotInstalled ? (
                   /* Show Ollama download link when not installed */
                   <div className="space-y-3">
-                    <p role="alert" className="text-sm text-destructive">{t('ollamaNotInstalled')}</p>
+                    <p role="alert" className="text-sm text-error">{t('ollamaNotInstalled')}</p>
                     <Button
                       variant="default"
                       size="sm"
