@@ -115,7 +115,7 @@ Questi P1 cambiavano flusso, copy fattuale o regole di DESIGN.md, quindi aspetta
    - Provato nel browser mockato: la conferma compare su Rigenera.
 5. **Percorso Info.** I testi ora dicono «**Info** (in fondo alla barra laterale) › Rivedi le novità», da cui si apre anche la Guida: `docs/GUIDA.md` e un commento in `WhatsNew.tsx`.
    - `docs/release-notes.md` non l'ho toccato: il blocco in cima è della 0.3.0, già pubblicata.
-   - **`CLAUDE.md` non l'ho modificato**, perché la richiesta è arrivata da un'altra sessione. Restano da correggere a mano le righe 121-122, che citano «Impostazioni › Info».
+   - `CLAUDE.md`: **chiuso** in un commit a parte su `develop` (9874634). Ora dice «Info in fondo alla barra laterale».
 
 **In più, deciso da Vito:**
 - **Token di errore.** Nuovo `--error`, un rosso spento:
