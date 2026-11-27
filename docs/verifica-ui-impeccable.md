@@ -22,13 +22,9 @@ Data: 27 novembre 2026. Branch: `claude/ui-impeccable-c10408`, partito da `devel
 
   Non ho verificato il rendering nella webview WebKit vera (font, scrollbar, finestra del banner) né altre dimensioni della finestra.
 
-### Da segnalare a Vito (contesto, non corretto)
+### Contesto
 
-PRODUCT.md non è marcato stale, ma contraddice CLAUDE.md in due punti:
-- dice «Next.js 14»: l'app è su Next 15;
-- dice che la trascrizione nativa di Teams «Dixit starts automatically»: oggi parte solo dal pulsante del banner.
-
-Va aggiornato a mano (o con `/impeccable init`).
+PRODUCT.md non era marcato stale, ma contraddiceva CLAUDE.md in due punti: diceva «Next.js 14» (l'app è su Next 15) e diceva che la trascrizione nativa di Teams parte da sola (parte solo dal pulsante del banner). **Chiuso:** PRODUCT.md ora dice Next.js 15 e Tailwind 4, e che la trascrizione Teams parte solo su richiesta dal banner.
 
 ## Punteggi
 
@@ -40,7 +36,7 @@ Va aggiornato a mano (o con `/impeccable init`).
 | 2 | Prestazioni | 3 | Polling dello stato a 500 ms che ri-renderizza 24 consumatori; trascrizione già virtualizzata |
 | 3 | Responsive (finestra desktop) | 3 | Vista solo a 1280×800; dal codice, transizione di `width` e `margin` sulla sidebar |
 | 4 | Theming | 3 | Token usati ovunque, chiaro e scuro completi; bordo dei campi a 1,46:1 |
-| 5 | Integrità d'implementazione | 3 | Sistema coerente; il rosso è usato anche per errori generici (contro DESIGN.md) |
+| 5 | Integrità d'implementazione | 3 | Sistema coerente; il rosso era usato anche per errori generici (ora token `error`, vedi sotto) |
 | **Totale** | | **14/20** | **Buono** |
 
 **Verdetto d'integrità: passa.** L'interfaccia è specifica di Dixit e non intercambiabile. Esempi: i nomi dei parlanti nel loro colore, la banda dei turni, il verde per la propria voce, la nota intercalata con filetto petrolio, la pillola di registrazione. Il design system è applicato con disciplina: un solo pulsante petrolio per schermata, nessuna classe di colore hard-coded, filetti al posto delle card. Le eccezioni sono ai bordi e sono elencate sotto.
@@ -88,24 +84,47 @@ Controlli fatti dopo le correzioni:
 Ho riprovato a runtime le correzioni 1, 2, 3 e 5. Per la 4, la 6, la 7 e l'8 c'è solo il controllo dei tipi: il brief prevede un solo giro di conferma. Il Rust non è stato toccato.
 
 Note sulle correzioni:
-- **Correzione 4.** Resta scoperto il caso in cui una call parte da sola mentre l'aggiornamento si sta già scaricando: `relaunch()` scatta comunque. Proposta P2: controllare `is_recording` subito prima del riavvio.
-- **Correzione 1.** In DESIGN.md `button-rail-outline` punta ancora a `colors.primary`, ma in chiaro il petrolio della sidebar ora è più scuro. Va aggiornato DESIGN.md: non l'ho fatto, decide Vito.
+- **Correzione 4.** **Chiuso anche il caso** di una call partita da sola durante il download dell'aggiornamento: subito prima di `relaunch()` Dixit chiede `is_recording`; se sta registrando non riavvia e avvisa «Aggiornamento installato: sarà attivo al prossimo avvio di Dixit.».
+- **Correzione 1.** **Chiuso:** DESIGN.md ha ora il token `rail-accent` (#1B6E7E) e `button-rail-outline` punta a quello.
 
-### P1 non corretti: serve una decisione di Vito (il punto 1 è stato poi corretto)
+### P1 decisi da Vito e poi corretti
 
-Sono problemi gravi, ma la correzione cambia il flusso, il copy fattuale o una regola di DESIGN.md.
+Questi P1 cambiavano flusso, copy fattuale o regole di DESIGN.md, quindi aspettavano una decisione. Vito ha deciso e sono **tutti chiusi** in questo branch.
 
-1. **Il download dei modelli (circa 9 GB) partiva da solo al primo avvio.** Avveniva senza consenso, senza stima dei tempi e senza uscita (`BaseModelsGate.tsx`). **Corretto dopo la scelta di Vito:**
-   - ora parte dal pulsante «Scarica i modelli (9,1 GB)»;
-   - durante il download mostra velocità e tempo residuo (finestra di 10 s);
-   - «Esci da Dixit» è sempre disponibile: al prossimo avvio il download riprende dai `.part`;
-   - l'errore grezzo è passato in grigio sotto il messaggio tradotto, con `role="alert"`.
+1. **Download dei modelli al primo avvio** (`BaseModelsGate.tsx`). Partiva da solo, senza consenso, stima dei tempi o uscita. Ora:
+   - il testo dice «Dixit scarica circa 9,1 GB di modelli, una volta sola», con il pulsante «Inizia download»;
+   - durante il download mostra velocità e tempo che manca (media degli ultimi 10 s);
+   - «Più tardi» chiude Dixit: non esiste una modalità senza modelli, e la ripresa dai `.part` è invariata;
+   - gli errori sono tradotti in tre casi (rete assente o interrotta, spazio su disco insufficiente, generico), con «Riprova». L'errore tecnico resta sotto, in grigio, e il blocco ha `role="alert"`.
+   - Provato nel browser mockato: consenso; avanzamento («12 MB/s, mancano circa 11 min»); errore «Spazio su disco insufficiente: servono circa 9,1 GB liberi», nel nuovo colore di errore.
+2. **Bordo dei controlli** (`globals.css`, `ui/input`, `select`, `textarea`, `input-group`, `switch`). Nuovo token `--control-border`:
+   - chiaro `210 8% 55%` (#838C95): 3,40:1 su bianco, 3,11:1 su `rail`;
+   - scuro `230 4% 54%` (#85878E): 3,95:1 sul fondo, 3,45:1 su `card`;
+   - vale per campi, select, textarea e binario dello switch spento. I filetti `--border` e `--input` non cambiano;
+   - provato in scuro nelle Impostazioni › Automazione: bordo e switch spento in `rgb(133,135,142)`.
+3. **Banner e menu della barra.**
+   - `banner.html`: `role="status"` sul titolo.
+   - «Annulla registrazione» era già nel menu della barra durante la registrazione e in pausa (`tray.rs`).
+   - Nuova voce «Chiedi trascrizione Teams (visibile a tutti)», solo se si sta registrando una call Teams e l'offerta è attiva in Automazione. Riusa `teams_request_native_transcription`. Il menu si aggiorna anche quando una registrazione manuale viene riconosciuta come call Teams.
+   - Modifica circoscritta: `teams_transcription_available` in `autopilot/mod.rs` più una voce e un gestore in `tray.rs`.
+   - `cargo test --lib`: 428 superati, 0 falliti.
+   - La voce non l'ho vista nel menu vero.
+4. **Riassunto sovrascritto.** Rigenera, Genera e il cambio di tipo chiedono conferma («Sostituire il riassunto modificato?») se ci sono modifiche non salvate o se l'utente ha salvato modifiche a mano.
+   - Il segno «modificato a mano» si mette al salvataggio e si toglie quando si rigenera. È per riunione, nel `localStorage` di quel Mac (nota `ponytail:`; se deve viaggiare tra Mac va in una colonna del DB). Niente cronologia delle versioni.
+   - Se al cambio di tipo si annulla, il tipo resta cambiato e il riassunto resta quello di prima.
+   - Provato nel browser mockato: la conferma compare su Rigenera.
+5. **Percorso Info.** I testi ora dicono «**Info** (in fondo alla barra laterale) › Rivedi le novità», da cui si apre anche la Guida: `docs/GUIDA.md` e un commento in `WhatsNew.tsx`.
+   - `docs/release-notes.md` non l'ho toccato: il blocco in cima è della 0.3.0, già pubblicata.
+   - **`CLAUDE.md` non l'ho modificato**, perché la richiesta è arrivata da un'altra sessione. Restano da correggere a mano le righe 121-122, che citano «Impostazioni › Info».
 
-   Provato nel browser mockato, in chiaro e in scuro: consenso, avanzamento («12 MB/s, mancano circa 11 min») ed errore con Riprova ed Esci. Non c'è una pausa vera, perché servirebbe un comando Rust per annullare: uscire fa da pausa.
-2. **Il bordo dei campi e il binario dello switch spento sono a 1,46:1** in chiaro (1,69:1 in scuro), sotto il 3:1 di WCAG 1.4.11 per i confini dei controlli. È in tensione con i «filetti quieti» di DESIGN.md. Proposta: un token `--control-border` solo per campi e switch (circa `210 8% 58%` in chiaro), lasciando invariati i filetti `--border`.
-3. **Il banner della call non si usa da tastiera né con VoiceOver.** Non prende il focus, ed è voluto (principio 2), si chiude da solo dopo 20 s e non annuncia nulla. Il pulsante «Trascrizione Teams» non si può più chiedere dopo. Proposta: l'azione «Annulla registrazione» e la richiesta della trascrizione Teams anche nel menu della barra dei menu, e `role="status"` sul titolo del banner.
-4. **Rigenera e il cambio di tipo sovrascrivono il riassunto senza conferma,** anche quando l'utente lo ha modificato a mano. Proposta: chiedere conferma quando il riassunto è stato modificato, oppure tenere la versione precedente con un «Annulla».
-5. **Il percorso «Impostazioni › Info › Guida/Novità» non esiste.** Lo citano changelog, CLAUDE.md e GUIDA. Info è un dialogo aperto dalla sidebar. Inoltre la Guida apre GitHub nel browser, quindi serve la rete. Si possono correggere i testi o spostare Info in Impostazioni: è copy fattuale, quindi decide Vito.
+**In più, deciso da Vito:**
+- **Token di errore.** Nuovo `--error`, un rosso spento:
+  - chiaro `8 40% 40%` (#8F483D): 6,64:1 su fondo, 5,99:1 su `accent`;
+  - scuro `8 55% 72%` (#DF9B90): 6,25:1 su fondo, 5,45:1 su `card`, 4,87:1 su `accent`.
+  - Applicato a 40 punti in 22 file: tutti i testi, le icone e i bordi di errore, gli stati falliti, i permessi negati, la confidenza bassa e l'icona dei toast di errore.
+  - Restano `destructive` solo le azioni che eliminano: pulsanti e voci di eliminazione, hover del cestino.
+  - DESIGN.md aggiornato: colori, Recording Red Rule e campi. Il progetto non ha un sidecar del design system.
+- **DESIGN.md e PRODUCT.md** aggiornati come sopra.
 
 ### P2: proposte
 
@@ -116,11 +135,9 @@ Sono problemi gravi, ma la correzione cambia il flusso, il copy fattuale o una r
 - Lo stato di registrazione è annunciato male: la live region nasce già piena. In sidebar, `aria-label` di «Apri live» sovrascrive il testo visibile (WCAG 2.5.3).
 - La casella «Includi le mie note» resta senza nome sotto `@md` (label `hidden`). Il campo di modifica nota ha `aria-label="Esc"`, non tradotto.
 - La barra del toast di download (`DownloadProgressToast.tsx:96`) non ha `role="progressbar"`.
-- In scuro `text-destructive` su `card`/`popover` è a 4,15:1, su `accent` a 3,71:1: sono gli errori dentro i dialoghi. Va deciso insieme al punto sul rosso qui sotto.
 - In scuro `text-primary` su `accent` è a 4,04:1: va verificato dove compare.
 
 **Coerenza con DESIGN.md**
-- Il rosso è usato per errori generici in una decina di punti, contro la Recording Red Rule: `EmptyStateSummary`, `BaseModelsGate`, `PermissionRow` («Negato»), `UpdateDialog`, `AutopilotSettings`, `MessageToast`, `SummaryPanel`, `ConfidenceIndicator`, `DownloadProgressStep`. Serve una decisione: un token neutro o ambra per gli errori, oppure aggiornare la regola.
 - Il banner ha un puntino rosso che pulsa, mentre DESIGN.md vuole il LiveIndicator statico. Rispetta `prefers-reduced-motion`.
 
 **Flussi**
@@ -193,9 +210,8 @@ L'empty state della home invece toglie carico: una sola azione e due righe di sp
 
 ## Domande per Vito
 
-1. Il primo avvio deve restare automatico (download subito) o diventare un passaggio con consenso e stima?
-2. Il rosso per gli errori generici è voluto, o serve un colore di errore distinto da «sta registrando»?
-3. Il percorso «Impostazioni › Info» va creato (spostando Info nelle Impostazioni) o vanno corretti i testi?
+Le domande 1-3 (primo avvio, colore degli errori, percorso Info) hanno avuto risposta e sono chiuse sopra. Resta aperta questa:
+
 4. Tipo di call e Template: va esposto solo il Tipo, con il Template nella modalità esperto?
 
 Questions skipped: l'ambito della critique era già fissato dal brief (correggere i P1, lasciare P2 e P3 come proposte). Le domande qui sopra restano aperte per Vito. Lo snapshot `.impeccable/critique/` non è stato salvato, perché il report è questo file.

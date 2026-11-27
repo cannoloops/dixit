@@ -6,7 +6,7 @@
 
 web
 
-Desktop app for macOS only (Tauri 2 webview, Next.js 14 static export, Tailwind 3 + shadcn/ui). It lives in the menu bar and opens one main window; a small always-on-top banner window appears when a call starts. Native macOS expectations apply: follows system light/dark appearance, native title bar, standard controls.
+Desktop app for macOS only (Tauri 2 webview, Next.js 15 static export, Tailwind 4 + shadcn/ui). It lives in the menu bar and opens one main window; a small always-on-top banner window appears when a call starts. Native macOS expectations apply: follows system light/dark appearance, native title bar, standard controls.
 
 ## Users
 
@@ -14,7 +14,7 @@ Vito (Italian developer at an IT company) and a few colleagues, all on Mac. They
 
 ## Product Purpose
 
-Dixit records and transcribes calls locally, without being asked. It notices when a call starts on Teams, Zoom or Meet, starts recording with a cancellable notice, and stops when the call ends. It attributes every line to a real person: the microphone is the user, the call audio is diarized locally, and on Teams the names come from live captions and from Teams' own transcription, which Dixit starts automatically. Success: no call lost, no recording left running after a call, every Teams turn carrying a real name, minutes written without manual fixes.
+Dixit records and transcribes calls locally, without being asked. It notices when a call starts on Teams, Zoom or Meet, starts recording with a cancellable notice, and stops when the call ends. It attributes every line to a real person: the microphone is the user, the call audio is diarized locally, and on Teams the names come from live captions and, when the user asks for it from the call banner, from Teams' own transcription (visible to everyone, so never started alone). Success: no call lost, no recording left running after a call, every Teams turn carrying a real name, minutes written without manual fixes.
 
 ## Positioning
 

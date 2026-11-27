@@ -91,4 +91,4 @@ L'audio è la parte che pesa: circa 30 MB per ora di riunione.
 
 ## Aggiornamenti
 
-Dixit si aggiorna da solo; riunioni, impostazioni e modelli restano. Prima di aggiornare vedi cosa cambia, e al primo avvio della nuova versione un pannello riassume le novità. Per rivederlo: **Impostazioni › Info › Rivedi le novità**. Dopo un aggiornamento macOS può chiedere di nuovo i permessi.
+Dixit si aggiorna da solo; riunioni, impostazioni e modelli restano. Prima di aggiornare vedi cosa cambia, e al primo avvio della nuova versione un pannello riassume le novità. Per rivederlo: **Info** (in fondo alla barra laterale) › **Rivedi le novità**; dallo stesso pannello si apre anche la **Guida**. Dopo un aggiornamento macOS può chiedere di nuovo i permessi.
