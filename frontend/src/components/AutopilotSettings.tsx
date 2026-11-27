@@ -186,7 +186,7 @@ export function AutopilotSettings() {
           label={t('mcpEnabled')}
           description={
             typeof mcp === 'string' ? (
-              <span role="alert" className="text-destructive">{t('mcpError', { error: mcp })}</span>
+              <span role="alert" className="text-error">{t('mcpError', { error: mcp })}</span>
             ) : mcp ? (
               t('mcpListening', { url: MCP_URL })
             ) : (

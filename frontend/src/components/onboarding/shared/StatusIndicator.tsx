@@ -13,7 +13,7 @@ export function StatusIndicator({ status, size = 'md' }: StatusIndicatorProps) {
     idle: 'bg-muted-foreground/40',
     checking: 'bg-primary/60 animate-pulse motion-reduce:animate-none',
     success: 'bg-primary',
-    error: 'bg-destructive',
+    error: 'bg-error',
   };
 
   return <span className={cn('rounded-full inline-block', sizeClasses[size], statusColors[status])} />;

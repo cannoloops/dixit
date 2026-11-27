@@ -25,7 +25,7 @@ export function EmptyStateSummary({
       <div className="max-w-sm space-y-2">
         {error ? (
           <>
-            <h3 className="text-sm font-semibold text-destructive">{t('statusError')}</h3>
+            <h3 className="text-sm font-semibold text-error">{t('statusError')}</h3>
             <p role="alert" className="text-sm text-foreground">{error}</p>
             <p className="text-xs text-muted-foreground">{t('summaryErrorFix')}</p>
           </>

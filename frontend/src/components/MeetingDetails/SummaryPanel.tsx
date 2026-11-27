@@ -287,7 +287,7 @@ export function SummaryPanel({
           {/* relative: the editor's table handles are absolute and portal inside; without a
               positioned scroller they escape its overflow and float over the header. */}
           {summaryStatus === 'error' && summaryError && (
-            <p role="alert" className="border-b border-border px-4 py-2 text-xs text-destructive">
+            <p role="alert" className="border-b border-border px-4 py-2 text-xs text-error">
               {summaryError} {t('summaryErrorFix')}
             </p>
           )}

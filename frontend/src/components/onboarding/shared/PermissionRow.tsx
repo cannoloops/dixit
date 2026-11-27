@@ -26,7 +26,7 @@ export function PermissionRow({ icon, title, description, status, isPending = fa
 
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{title}</p>
-        <p className={cn('text-xs', isDenied ? 'text-destructive' : 'text-muted-foreground')}>
+        <p className={cn('text-xs', isDenied ? 'text-error' : 'text-muted-foreground')}>
           {isDenied ? (deniedHint ?? t('deniedDefault')) : description}
         </p>
       </div>

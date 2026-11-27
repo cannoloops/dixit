@@ -608,7 +608,7 @@ export const AISummary = ({ summary, status, error, onSummaryChange, onRegenerat
 
   const renderErrorState = () => (
     <div role="alert" className="w-full space-y-1">
-      <div className="flex items-center gap-2 text-destructive">
+      <div className="flex items-center gap-2 text-error">
         <AlertTriangle className="h-4 w-4" />
         <h3 className="text-sm font-semibold">{t('statusError')}</h3>
       </div>

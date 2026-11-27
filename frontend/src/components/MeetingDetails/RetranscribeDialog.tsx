@@ -281,7 +281,7 @@ export function RetranscribeDialog({
               </>
             ) : error ? (
               <>
-                <AlertCircle className="h-4 w-4 text-destructive" />
+                <AlertCircle className="h-4 w-4 text-error" />
                 {t('rtFailed')}
               </>
             ) : (
@@ -369,7 +369,7 @@ export function RetranscribeDialog({
           )}
 
           {error && (
-            <p role="alert" className="rounded-md border border-destructive/30 p-3 text-sm text-destructive">{error}</p>
+            <p role="alert" className="rounded-md border border-error/30 p-3 text-sm text-error">{error}</p>
           )}
         </div>
 

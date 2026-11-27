@@ -62,8 +62,8 @@ export function ModelListLoading() {
 export function ModelListError({ message, className }: { message: string; className?: string }) {
   return (
     <div role="alert" className={cn('space-y-1', className)}>
-      <p className="text-sm font-medium text-destructive">{t('loadModelsFailed')}</p>
-      <p className="text-xs text-destructive">
+      <p className="text-sm font-medium text-error">{t('loadModelsFailed')}</p>
+      <p className="text-xs text-error">
         {message.trim().replace(/[.\s]+$/, '')}. {t('loadModelsRemedy')}
       </p>
     </div>
@@ -130,7 +130,7 @@ export function ModelRow({ name, detail, size, labels, state, onSelect, onDownlo
               {t('inUse')}
             </span>
           ) : failed ? (
-            <span className="font-medium text-destructive">
+            <span className="font-medium text-error">
               {state.kind === 'corrupted' ? t('stateCorrupted') : t('stateError')}
             </span>
           ) : (
@@ -195,7 +195,7 @@ export function ModelRow({ name, detail, size, labels, state, onSelect, onDownlo
 
       {state.kind === 'downloading' && <DownloadBar progress={state.progress} info={state.info} className="pb-1.5 pt-0.5" />}
       {failed && (
-        <p role="alert" className="pb-1.5 text-xs text-destructive">
+        <p role="alert" className="pb-1.5 text-xs text-error">
           {state.message}
         </p>
       )}

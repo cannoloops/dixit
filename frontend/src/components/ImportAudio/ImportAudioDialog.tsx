@@ -242,7 +242,7 @@ export function ImportAudioDialog({
               </>
             ) : error ? (
               <>
-                <AlertCircle className="h-4 w-4 text-destructive" />
+                <AlertCircle className="h-4 w-4 text-error" />
                 {t('importFailed')}
               </>
             ) : status === 'complete' ? (
@@ -396,7 +396,7 @@ export function ImportAudioDialog({
 
           {/* Error display */}
           {error && (
-            <p className="rounded-md border border-destructive/40 px-3 py-2 text-sm text-destructive">{error}</p>
+            <p className="rounded-md border border-error/40 px-3 py-2 text-sm text-error">{error}</p>
           )}
         </div>
 

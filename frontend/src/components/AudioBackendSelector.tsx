@@ -95,7 +95,7 @@ export function AudioBackendSelector({
       </div>
 
       {error && (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className="text-xs text-error">
           {error}
         </p>
       )}

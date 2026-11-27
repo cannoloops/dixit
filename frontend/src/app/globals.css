@@ -17,6 +17,8 @@
   --color-foreground: hsl(var(--foreground));
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
+  --color-control-border: hsl(var(--control-border));
+  --color-error: hsl(var(--error));
   --color-ring: hsl(var(--ring));
 
   --color-primary: hsl(var(--primary));
@@ -207,6 +209,8 @@
     --success: 93 69% 29%;           /* verde, versione leggibile su bianco */
     --border: 210 12% 90%;
     --input: 210 10% 84%;
+    --control-border: 210 8% 55%;    /* contorno di campi, select e switch spento: 3:1 sul fondo */
+    --error: 8 40% 40%;              /* errori: rosso spento, distinto dal rosso di registrazione */
     --ring: 190 65% 35%;
     --radius: 0.5rem;
 
@@ -256,6 +260,8 @@
       --success: 82 67% 47%;         /* verde #8DC928 */
       --border: 228 4% 26%;
       --input: 230 4% 31%;
+      --control-border: 230 4% 54%;
+      --error: 8 55% 72%;
       --ring: 191 61% 48%;
 
       --rail: 240 3% 14%;
@@ -328,7 +334,7 @@
     font-family: inherit;
   }
   [data-sonner-toast] { box-shadow: var(--shadow-float); }
-  [data-sonner-toast][data-type='error'] [data-icon] { color: hsl(var(--destructive)); }
+  [data-sonner-toast][data-type='error'] [data-icon] { color: hsl(var(--error)); }
 
 
   /* BlockNote Editor - Override fixed dimensions for responsive layout */

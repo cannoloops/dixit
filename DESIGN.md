@@ -11,9 +11,12 @@ colors:
   accent: "#EEF4F6"
   border: "#E2E6E9"
   input: "#D2D6DA"
+  control-border: "#838C95"
   rail: "#F4F5F6"
   rail-active: "#E3EFF2"
+  rail-accent: "#1B6E7E"
   destructive: "#C3373C"
+  error: "#8F483D"
   live: "#D83B40"
   success: "#457D17"
   speaker-me: "#457D17"
@@ -34,6 +37,8 @@ colors:
   rail-accent-dark: "#5DC3DA"
   primary-dark: "#30AAC5"
   destructive-dark: "#F06A6F"
+  error-dark: "#DF9B90"
+  control-border-dark: "#85878E"
   live-dark: "#FF5C61"
   success-dark: "#8DC828"
   speaker-me-dark: "#8DC828"
@@ -108,7 +113,7 @@ components:
     padding: "0 12px"
   button-rail-outline:
     backgroundColor: "transparent"
-    textColor: "{colors.primary}"
+    textColor: "{colors.rail-accent}"
     rounded: "{rounded.md}"
     height: "32px"
     padding: "0 12px"
@@ -167,7 +172,7 @@ Light e dark seguono macOS (`prefers-color-scheme`); in scuro lo sfondo è l'ant
 Antracite e bianco, un petrolio, un verde e una scala di sette colori per le voci. I token con suffisso `-dark` sono i valori in modalità scura dello stesso ruolo; in CSS sono le stesse variabili ridefinite in `prefers-color-scheme: dark` (valori HSL in `globals.css`).
 
 ### Primary
-- **Petrolio** (`primary`): l'azione principale della schermata, l'anello di focus, la selezione, i puntini e i timbri "da verificare". In scuro si schiarisce (`primary-dark`); in sidebar l'accento è `rail-accent-dark`.
+- **Petrolio** (`primary`): l'azione principale della schermata, l'anello di focus, la selezione, i puntini e i timbri "da verificare". In scuro si schiarisce (`primary-dark`). In sidebar l'accento è `rail-accent`: in chiaro un petrolio più scuro (#1B6E7E) per reggere 4,5:1 come testo su `rail` e `rail-active`, in scuro `rail-accent-dark`.
 
 ### Secondary
 - **Verde** (`success`, `speaker-me`): la voce dell'utente e gli stati positivi. In chiaro è scurito (`#457D17`) per reggere il contrasto su bianco; in scuro è il verde pieno (`success-dark`, circa #8DC928).
@@ -175,6 +180,7 @@ Antracite e bianco, un petrolio, un verde e una scala di sette colori per le voc
 ### Tertiary
 - **Rosso registrazione** (`live`): solo per "sta registrando" (puntino, etichetta, pulsante di stop).
 - **Rosso distruttivo** (`destructive`): solo per le azioni che distruggono.
+- **Errore** (`error`, `error-dark`): rosso spento, desaturato, per messaggi di errore, stati falliti e permessi negati. Non è il rosso di registrazione né quello distruttivo; regge 4,5:1 su fondo, `card`, `muted` e `accent` in chiaro e in scuro.
 
 ### Speaker
 - **Altri parlanti** (`speaker-1` ... `speaker-7`): blu, ambra, magenta, teal, viola, ruggine, indaco, assegnati per posizione nel roster ordinato per numero di turni (chi parla di più prende il primo colore), quindi in una riunione nessun colore si ripete prima dell'ottava voce. `speaker-other` (grigio) è per "Altri" e per i nomi sconosciuti. Se un nome non è nel roster, il colore deriva da un hash del nome.
@@ -188,7 +194,7 @@ Antracite e bianco, un petrolio, un verde e una scala di sette colori per le voc
 ### Named Rules
 **The One Petrol Rule.** Un solo pulsante petrolio pieno per schermata, l'azione principale. Le azioni di avvio nella sidebar sono outline (testo e contorno `rail-accent`) o ghost.
 
-**The Recording Red Rule.** Il rosso esiste solo per "sta registrando" e per le azioni distruttive. Mai per errori generici o decorazione.
+**The Recording Red Rule.** Il rosso esiste solo per "sta registrando" e per le azioni distruttive. Mai per errori generici o decorazione: gli errori usano `error`.
 
 **The Own Voice Rule.** Il verde è la voce dell'utente e gli esiti positivi; nessun altro parlante lo usa.
 
@@ -244,7 +250,7 @@ Angoli piccoli e sobri: base `--radius` 8px (`lg`), 6px sui pulsanti e campi (`m
 - **Focus:** outline globale da 2px con offset 2px nel colore `ring` (petrolio); i componenti shadcn aggiungono anche `ring-1`.
 
 ### Inputs / Fields
-- **Style:** contorno 1px `input`, fondo `background`, angolo 6px, altezza 32px, padding 10px. In sidebar il campo di ricerca usa `rail-active` e `rail-border`.
+- **Style:** contorno 1px `control-border` (3:1 sul fondo, WCAG 1.4.11; vale anche per select, textarea e binario dello switch spento), fondo `background`, angolo 6px, altezza 32px, padding 10px. In sidebar il campo di ricerca usa `rail-active` e `rail-border`.
 - **Focus:** anello `ring` da 1px; disabilitato a 50% di opacità.
 
 ### Navigation
