@@ -111,6 +111,62 @@ fn process(ffmpeg: &Path, folder: &str, roots: &[PathBuf], delete: bool) -> Done
     }
 }
 
+/// Disk used by the recordings (Settings › Registrazioni › Spazio su disco).
+#[derive(Debug, Default, PartialEq, serde::Serialize)]
+pub struct SpaceUsage {
+    pub total_bytes: u64,
+    pub audio_bytes: u64,
+    pub meetings: u64,
+    /// Free space on the disk that holds the recordings, when known.
+    pub free_bytes: Option<u64>,
+}
+
+#[tauri::command]
+pub async fn recordings_space_usage<R: Runtime>(app: AppHandle<R>) -> Result<SpaceUsage, String> {
+    let root = load_recording_preferences(&app).await.map(|p| p.save_folder).unwrap_or_else(|_| get_default_recordings_folder());
+    tokio::task::spawn_blocking(move || {
+        let mut usage = folder_usage(&root);
+        usage.free_bytes = free_space(&root);
+        usage
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
+/// Every file under `root`; audio = files named `audio.*`; meetings = its subfolders.
+fn folder_usage(root: &Path) -> SpaceUsage {
+    fn walk(dir: &Path, usage: &mut SpaceUsage) {
+        let Ok(entries) = std::fs::read_dir(dir) else { return };
+        for entry in entries.flatten() {
+            let Ok(meta) = entry.metadata() else { continue };
+            if meta.is_dir() {
+                walk(&entry.path(), usage);
+            } else {
+                usage.total_bytes += meta.len();
+                if entry.file_name().to_string_lossy().starts_with("audio.") {
+                    usage.audio_bytes += meta.len();
+                }
+            }
+        }
+    }
+    let mut usage = SpaceUsage::default();
+    usage.meetings = std::fs::read_dir(root)
+        .map(|e| e.flatten().filter(|e| e.metadata().is_ok_and(|m| m.is_dir())).count() as u64)
+        .unwrap_or(0);
+    walk(root, &mut usage);
+    usage
+}
+
+/// Free space of the disk whose mount point is the longest prefix of `path`.
+fn free_space(path: &Path) -> Option<u64> {
+    let path = path.canonicalize().ok()?;
+    sysinfo::Disks::new_with_refreshed_list()
+        .iter()
+        .filter(|d| path.starts_with(d.mount_point()))
+        .max_by_key(|d| d.mount_point().as_os_str().len())
+        .map(|d| d.available_space())
+}
+
 fn is_older(created_at: &str, cutoff: Option<chrono::DateTime<chrono::Utc>>) -> bool {
     let Some(cutoff) = cutoff else { return false };
     chrono::DateTime::parse_from_rfc3339(created_at).is_ok_and(|t| t < cutoff)
@@ -184,6 +240,21 @@ mod tests {
         let s = "Input #0, mov,mp4 from 'a.mp4':\n  Duration: 00:29:02.43, start: 0.000000, bitrate: 161 kb/s\n";
         assert_eq!(parse_probe(s), Some((1742.43, 161)));
         assert_eq!(parse_probe("Duration: N/A, bitrate: N/A"), None);
+    }
+
+    #[test]
+    fn counts_recordings_space() {
+        let root = tempfile::tempdir().unwrap();
+        for (name, audio, md) in [("a", 300, 20), ("b", 100, 5)] {
+            let dir = root.path().join(name);
+            std::fs::create_dir(&dir).unwrap();
+            std::fs::write(dir.join("audio.mp4"), vec![0u8; audio]).unwrap();
+            std::fs::write(dir.join("t.md"), vec![0u8; md]).unwrap();
+        }
+        let u = folder_usage(root.path());
+        assert_eq!((u.total_bytes, u.audio_bytes, u.meetings), (425, 400, 2));
+        assert!(free_space(root.path()).is_some_and(|f| f > 0));
+        assert_eq!(folder_usage(&root.path().join("nope")), SpaceUsage::default());
     }
 
     #[test]
