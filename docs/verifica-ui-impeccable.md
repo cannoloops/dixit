@@ -91,11 +91,17 @@ Note sulle correzioni:
 - **Correzione 4.** Resta scoperto il caso in cui una call parte da sola mentre l'aggiornamento si sta già scaricando: `relaunch()` scatta comunque. Proposta P2: controllare `is_recording` subito prima del riavvio.
 - **Correzione 1.** In DESIGN.md `button-rail-outline` punta ancora a `colors.primary`, ma in chiaro il petrolio della sidebar ora è più scuro. Va aggiornato DESIGN.md: non l'ho fatto, decide Vito.
 
-### P1 non corretti: serve una decisione di Vito
+### P1 non corretti: serve una decisione di Vito (il punto 1 è stato poi corretto)
 
 Sono problemi gravi, ma la correzione cambia il flusso, il copy fattuale o una regola di DESIGN.md.
 
-1. **Il download dei modelli (circa 9 GB) parte da solo al primo avvio.** Avviene senza consenso, senza stima dei tempi, senza pausa né uscita (`BaseModelsGate.tsx:39-43`). Se fallisce, mostra l'errore Rust grezzo in rosso, e senza rete resta solo «Riprova». Per un collega su hotspot è il momento peggiore dell'app. Proposta: una schermata con «Scarico circa 9 GB» e il pulsante «Inizia download», poi velocità e tempo residuo, un errore tradotto e una via d'uscita.
+1. **Il download dei modelli (circa 9 GB) partiva da solo al primo avvio.** Avveniva senza consenso, senza stima dei tempi e senza uscita (`BaseModelsGate.tsx`). **Corretto dopo la scelta di Vito:**
+   - ora parte dal pulsante «Scarica i modelli (9,1 GB)»;
+   - durante il download mostra velocità e tempo residuo (finestra di 10 s);
+   - «Esci da Dixit» è sempre disponibile: al prossimo avvio il download riprende dai `.part`;
+   - l'errore grezzo è passato in grigio sotto il messaggio tradotto, con `role="alert"`.
+
+   Provato nel browser mockato, in chiaro e in scuro: consenso, avanzamento («12 MB/s, mancano circa 11 min») ed errore con Riprova ed Esci. Non c'è una pausa vera, perché servirebbe un comando Rust per annullare: uscire fa da pausa.
 2. **Il bordo dei campi e il binario dello switch spento sono a 1,46:1** in chiaro (1,69:1 in scuro), sotto il 3:1 di WCAG 1.4.11 per i confini dei controlli. È in tensione con i «filetti quieti» di DESIGN.md. Proposta: un token `--control-border` solo per campi e switch (circa `210 8% 58%` in chiaro), lasciando invariati i filetti `--border`.
 3. **Il banner della call non si usa da tastiera né con VoiceOver.** Non prende il focus, ed è voluto (principio 2), si chiude da solo dopo 20 s e non annuncia nulla. Il pulsante «Trascrizione Teams» non si può più chiedere dopo. Proposta: l'azione «Annulla registrazione» e la richiesta della trascrizione Teams anche nel menu della barra dei menu, e `role="status"` sul titolo del banner.
 4. **Rigenera e il cambio di tipo sovrascrivono il riassunto senza conferma,** anche quando l'utente lo ha modificato a mano. Proposta: chiedere conferma quando il riassunto è stato modificato, oppure tenere la versione precedente con un «Annulla».

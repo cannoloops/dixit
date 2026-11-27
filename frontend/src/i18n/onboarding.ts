@@ -34,6 +34,12 @@ export const t = makeT({
     modelsDescription:
       'Trascrizione e riassunti girano sul tuo Mac. Al primo avvio Dixit scarica i suoi modelli di intelligenza artificiale, circa {size}: tienilo aperto e collegato a internet.',
     modelsResume: 'Se il download si interrompe, riparte da dove era arrivato.',
+    modelsStart: 'Scarica i modelli ({size})',
+    modelsQuit: 'Esci da Dixit',
+    modelsRate: '{speed}, mancano {time}',
+    modelsLessThanMinute: 'meno di un minuto',
+    modelsMinutes: 'circa {n} min',
+    modelsHours: 'circa {h} h {m} min',
 
     // Downloads
     downloadsTitle: 'Download dei modelli',
@@ -121,6 +127,12 @@ export const t = makeT({
     modelsDescription:
       'Transcription and summaries run on your Mac. On first launch Dixit downloads its artificial intelligence models, about {size}: keep it open and online.',
     modelsResume: 'If the download stops, it picks up where it left off.',
+    modelsStart: 'Download the models ({size})',
+    modelsQuit: 'Quit Dixit',
+    modelsRate: '{speed}, {time} left',
+    modelsLessThanMinute: 'less than a minute',
+    modelsMinutes: 'about {n} min',
+    modelsHours: 'about {h} h {m} min',
 
     // Downloads
     downloadsTitle: 'Downloading models',

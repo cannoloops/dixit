@@ -35,7 +35,7 @@ Va fatto una volta sola: gli aggiornamenti successivi arrivano da soli.
 
 ## Primo avvio
 
-1. Dixit scarica i modelli: circa 9 GB, da Hugging Face, con verifica dell'integrità. Se il download si interrompe, riparte da dove era arrivato.
+1. Dixit scarica i modelli: circa 9 GB, da Hugging Face, con verifica dell'integrità. Parte quando premi **Scarica i modelli** e mostra velocità e tempo che manca. Se il download si interrompe, o se esci con **Esci da Dixit**, al prossimo avvio riparte da dove era arrivato.
 2. Poi chiede tre permessi di macOS:
    - **Microfono:** per la tua voce;
    - **Registrazione schermo e audio di sistema:** per l'audio degli altri partecipanti;
