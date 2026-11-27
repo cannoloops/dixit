@@ -13,6 +13,27 @@ interface UseMeetingDataProps {
   onMeetingUpdated?: () => Promise<void>;
 }
 
+// ponytail: "edited by hand" lives in this Mac's localStorage, per meeting; a DB column if it must travel.
+const editedKey = (meetingId: string) => `dixit-summary-edited-${meetingId}`;
+
+/** Whether the user saved hand edits to this meeting's summary (cleared when it is regenerated). */
+export function isSummaryEdited(meetingId: string): boolean {
+  try {
+    return localStorage.getItem(editedKey(meetingId)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function markSummaryEdited(meetingId: string, edited: boolean) {
+  try {
+    if (edited) localStorage.setItem(editedKey(meetingId), '1');
+    else localStorage.removeItem(editedKey(meetingId));
+  } catch {
+    // storage unavailable: the guard simply does not ask
+  }
+}
+
 export function useMeetingData({ meeting, summaryData, onMeetingUpdated }: UseMeetingDataProps) {
   // State
   // Use prop directly since summary generation fetches transcripts independently
@@ -65,6 +86,7 @@ export function useMeetingData({ meeting, summaryData, onMeetingUpdated }: UseMe
         await handleSaveSummary(aiSummary);
       }
 
+      markSummaryEdited(meeting.id, true);
       toast.success(t('changesSaved'));
     } catch (error) {
       console.error('Failed to save changes:', error);
@@ -72,7 +94,7 @@ export function useMeetingData({ meeting, summaryData, onMeetingUpdated }: UseMe
     } finally {
       setIsSaving(false);
     }
-  }, [aiSummary, handleSaveSummary]);
+  }, [aiSummary, handleSaveSummary, meeting.id]);
 
   // Update meeting title from external source (e.g., AI summary)
   const updateMeetingTitle = useCallback((newTitle: string) => {

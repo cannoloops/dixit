@@ -20,9 +20,11 @@ interface ConfirmationModalProps {
   title?: string;
   /** Extra controls between the text and the buttons (e.g. an option checkbox). */
   children?: React.ReactNode;
+  /** Defaults to "Elimina". */
+  confirmLabel?: string;
 }
 
-export function ConfirmationModal({ onConfirm, onCancel, text, isOpen, title, children }: ConfirmationModalProps) {
+export function ConfirmationModal({ onConfirm, onCancel, text, isOpen, title, children, confirmLabel }: ConfirmationModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onCancel(); }}>
       <DialogContent className="sm:max-w-md">
@@ -36,7 +38,7 @@ export function ConfirmationModal({ onConfirm, onCancel, text, isOpen, title, ch
             {tApp('cancel')}
           </Button>
           <Button variant="destructive" onClick={onConfirm}>
-            {t('delete')}
+            {confirmLabel ?? t('delete')}
           </Button>
         </DialogFooter>
       </DialogContent>

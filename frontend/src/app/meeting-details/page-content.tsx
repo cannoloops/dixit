@@ -20,7 +20,8 @@ import { t as tShell } from '@/i18n/shell';
 import { useSummariesInProgress, cancelSummaryJob } from '@/hooks/useSummariesInProgress';
 
 // Custom hooks
-import { useMeetingData } from '@/hooks/meeting-details/useMeetingData';
+import { useMeetingData, isSummaryEdited, markSummaryEdited } from '@/hooks/meeting-details/useMeetingData';
+import { ConfirmationModal } from '@/components/ConfirmationModel/confirmation-modal';
 import { useSummaryGeneration } from '@/hooks/meeting-details/useSummaryGeneration';
 import { useTemplates } from '@/hooks/meeting-details/useTemplates';
 import { MeetingTypePicker } from '@/components/MeetingDetails/MeetingTypePicker';
@@ -85,6 +86,8 @@ export default function PageContent({
 
   // State
   const [customPrompt, setCustomPrompt] = useState<string>('');
+  // A regeneration waiting for confirmation, because it would replace hand edits.
+  const [pendingOverwrite, setPendingOverwrite] = useState<(() => void) | null>(null);
   const isRecording = false;
   const [activeTab, setActiveTab] = useState<MeetingDetailsTab>('transcript');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -255,8 +258,31 @@ export default function PageContent({
     }
   }, [meeting.id, meetingData.aiSummary, summaryGeneration.summaryStatus]);
 
+  // Regenerate / type change replace the summary: ask first if the user edited it by hand.
+  const guardOverwrite = (run: () => void) => {
+    const edited = meetingData.isSummaryDirty || isSummaryEdited(meeting.id);
+    const go = () => {
+      markSummaryEdited(meeting.id, false);
+      run();
+    };
+    if (edited && hasVisibleSummaryContent(meetingData.aiSummary)) setPendingOverwrite(() => go);
+    else go();
+  };
+
   return (
     <div className="flex h-screen min-w-0 flex-col bg-background">
+      <ConfirmationModal
+        isOpen={pendingOverwrite !== null}
+        title={t('overwriteSummaryTitle')}
+        text={t('overwriteSummaryText')}
+        confirmLabel={t('overwriteSummaryConfirm')}
+        onCancel={() => setPendingOverwrite(null)}
+        onConfirm={() => {
+          const run = pendingOverwrite;
+          setPendingOverwrite(null);
+          run?.();
+        }}
+      />
       <header className="shrink-0 px-3 pb-3 pt-4">
         <div className="flex items-start gap-4">
           <div className="min-w-0 flex-1">
@@ -279,7 +305,7 @@ export default function PageContent({
               hasTranscripts={meetingData.transcripts.length > 0}
               isModelConfigLoading={isModelConfigLoading}
               autoJob={autoJob}
-              onGenerate={() => void summaryGeneration.handleGenerateSummary(customPrompt)}
+              onGenerate={() => guardOverwrite(() => void summaryGeneration.handleGenerateSummary(customPrompt))}
               onStop={summaryGeneration.handleStopGeneration}
               onCancelAuto={() => void handleCancelAuto()}
             />
@@ -350,7 +376,7 @@ export default function PageContent({
               onSummaryChange={meetingData.handleSummaryChange}
               onDirtyChange={meetingData.setIsSummaryDirty}
               summaryError={summaryGeneration.summaryError}
-              onRegenerateSummary={summaryGeneration.handleRegenerateSummary}
+              onRegenerateSummary={async () => guardOverwrite(() => void summaryGeneration.handleRegenerateSummary())}
               getSummaryStatusMessage={summaryGeneration.getSummaryStatusMessage}
               availableTemplates={templates.availableTemplates}
               selectedTemplate={templates.selectedTemplate}
@@ -363,8 +389,10 @@ export default function PageContent({
                   meetingId={meeting.id}
                   refreshKey={summaryGeneration.summaryStatus}
                   onChanged={() => {
-                    templates.setSelectedTemplate('auto');
-                    void summaryGeneration.handleGenerateSummary(customPrompt, 'auto');
+                    guardOverwrite(() => {
+                      templates.setSelectedTemplate('auto');
+                      void summaryGeneration.handleGenerateSummary(customPrompt, 'auto');
+                    });
                   }}
                 />
               }
