@@ -13,6 +13,7 @@ import { Progress } from './ui/progress';
 import { updateService, UpdateInfo, UpdateProgress } from '@/services/updateService';
 import { check, Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
+import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { locale } from '@/i18n';
 import { t } from '@/i18n/shell';
@@ -131,15 +132,15 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
       });
 
       console.log('[UpdateDialog] Update installed successfully');
-      toast.success(t('updateInstalled'));
-
-      // Mark download as complete before closing
       setIsDownloading(false);
-
-      // Close dialog before relaunch
       handleOpenChange(false);
 
-      // Relaunch the app
+      // A call may have started during the download: never relaunch over a recording.
+      if (await invoke<boolean>('is_recording').catch(() => false)) {
+        toast.success(t('updateInstalledLater'));
+        return;
+      }
+      toast.success(t('updateInstalled'));
       await relaunch();
     } catch (err: any) {
       console.error('Update failed:', err);
@@ -202,7 +203,7 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
               </>
             ) : error ? (
               <>
-                <AlertCircle className="h-4 w-4 text-destructive" />
+                <AlertCircle className="h-4 w-4 text-error" />
                 {t('updateFailed')}
               </>
             ) : (
@@ -269,7 +270,7 @@ export function UpdateDialog({ open, onOpenChange, updateInfo }: UpdateDialogPro
           )}
 
           {error && (
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="text-sm text-error">{error}</p>
           )}
         </div>
 
