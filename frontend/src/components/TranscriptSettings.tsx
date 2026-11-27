@@ -209,7 +209,7 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => setIsApiKeyLocked(!isApiKeyLocked)}
-                                    className={isLockButtonVibrating ? 'animate-vibrate text-destructive' : ''}
+                                    className={isLockButtonVibrating ? 'animate-vibrate text-error' : ''}
                                     title={isApiKeyLocked ? t('apiKeyUnlock') : t('apiKeyLock')}
                                     aria-label={isApiKeyLocked ? t('apiKeyUnlock') : t('apiKeyLock')}
                                 >

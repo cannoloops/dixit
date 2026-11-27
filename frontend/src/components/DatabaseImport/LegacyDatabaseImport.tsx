@@ -165,8 +165,8 @@ export function LegacyDatabaseImport({ isOpen, onComplete }: LegacyDatabaseImpor
           {/* Error Message */}
           {importState === 'error' && errorMessage && (
             <div role="alert" className="flex items-start gap-2">
-              <X className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-              <p className="text-sm text-destructive">{errorMessage}</p>
+              <X className="mt-0.5 h-4 w-4 shrink-0 text-error" />
+              <p className="text-sm text-error">{errorMessage}</p>
             </div>
           )}
 

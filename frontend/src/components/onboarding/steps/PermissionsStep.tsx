@@ -15,6 +15,7 @@ import { t } from '@/i18n/onboarding';
 export function PermissionsStep() {
   const { setPermissionStatus, setPermissionsSkipped, permissions, completeOnboarding } = useOnboarding();
   const [pending, setPending] = useState<'microphone' | 'systemAudio' | null>(null);
+  const [finishing, setFinishing] = useState(false);
   // Trascrivi: Accessibility (Teams window reading) and the user's speaker name
   const [accessibility, setAccessibility] = useState<PermissionStatus>('not_determined');
   const [displayName, setDisplayName] = useState('');
@@ -132,6 +133,8 @@ export function PermissionsStep() {
   };
 
   const handleFinish = async () => {
+    if (finishing) return;
+    setFinishing(true);
     await saveDisplayName();
     // Speaker model (26 MB) downloads in the background; attribution also fetches it on demand.
     invoke('speakers_ensure_model').catch((e) => console.error('Speaker model download failed:', e));
@@ -140,6 +143,8 @@ export function PermissionsStep() {
       window.location.reload();
     } catch (error) {
       console.error('Failed to complete onboarding:', error);
+      toast.error(t('finishFailed'));
+      setFinishing(false);
     }
   };
 
@@ -208,10 +213,10 @@ export function PermissionsStep() {
       <div className="mt-8 space-y-3">
         {!allPermissionsGranted && <p className="text-xs text-muted-foreground">{t('permissionsNote')}</p>}
         <div className="flex items-center justify-between">
-          <Button variant="ghost" onClick={handleSkip}>
+          <Button variant="ghost" onClick={handleSkip} disabled={finishing}>
             {t('doLater')}
           </Button>
-          <Button size="lg" onClick={handleFinish} disabled={!allPermissionsGranted}>
+          <Button size="lg" onClick={handleFinish} disabled={!allPermissionsGranted || finishing}>
             {t('finishSetup')}
           </Button>
         </div>

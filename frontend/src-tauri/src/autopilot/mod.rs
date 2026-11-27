@@ -279,8 +279,15 @@ pub fn finish_adopt<R: Runtime>(app: &AppHandle<R>, session: Session, started: b
         // The Teams transcription offer, as on auto-start (only on an explicit click).
         if offers_teams_transcription(app, session.platform) {
             banner::show(app, &session.title, true);
+            // The tray menu offers it too, for after the banner is gone.
+            crate::tray::update_tray_menu(app);
         }
     }
+}
+
+/// The Teams transcription can be asked from the tray menu: a Teams call is being recorded and the offer is on.
+pub fn teams_transcription_available<R: Runtime>(app: &AppHandle<R>) -> bool {
+    current_session().is_some_and(|s| offers_teams_transcription(app, s.platform))
 }
 
 /// Teams' own transcription is offered in the banner (Settings → Automazione), never started alone.

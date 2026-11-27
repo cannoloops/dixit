@@ -34,6 +34,7 @@ import { useImportAudio, ImportResult } from '@/hooks/useImportAudio';
 import { useRouter } from 'next/navigation';
 import { useSidebar } from '../Sidebar/SidebarProvider';
 import { LANGUAGES } from '@/constants/languages';
+import { displayName } from '@/components/LanguageSelection';
 import { useTranscriptionModels, ModelOption } from '@/hooks/useTranscriptionModels';
 import { Progress } from '../ui/progress';
 import { t } from '@/i18n/recording';
@@ -241,7 +242,7 @@ export function ImportAudioDialog({
               </>
             ) : error ? (
               <>
-                <AlertCircle className="h-4 w-4 text-destructive" />
+                <AlertCircle className="h-4 w-4 text-error" />
                 {t('importFailed')}
               </>
             ) : status === 'complete' ? (
@@ -337,7 +338,7 @@ export function ImportAudioDialog({
                             <SelectContent className="max-h-60">
                               {LANGUAGES.map((lang) => (
                                 <SelectItem key={lang.code} value={lang.code}>
-                                  {lang.name}
+                                  {displayName(lang)}
                                 </SelectItem>
                               ))}
                             </SelectContent>
@@ -395,7 +396,7 @@ export function ImportAudioDialog({
 
           {/* Error display */}
           {error && (
-            <p className="rounded-md border border-destructive/40 px-3 py-2 text-sm text-destructive">{error}</p>
+            <p className="rounded-md border border-error/40 px-3 py-2 text-sm text-error">{error}</p>
           )}
         </div>
 

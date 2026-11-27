@@ -99,6 +99,8 @@ export const t = makeT({
     updatePrepareFailed: "Impossibile preparare l'aggiornamento: {error}",
     updateInstalled: 'Aggiornamento installato. Dixit si riavvia…',
     updateInstallFailed: 'Download o installazione non riusciti.',
+    updateAfterRecording: 'Installa a registrazione finita: il riavvio la interromperebbe.',
+    updateInstalledLater: 'Aggiornamento installato: sarà attivo al prossimo avvio di Dixit.',
     updateFailedToast: 'Aggiornamento non riuscito: {error}',
 
     // Shell toasts
@@ -304,6 +306,8 @@ export const t = makeT({
     updatePrepareFailed: 'Could not prepare the update: {error}',
     updateInstalled: 'Update installed. Dixit is restarting…',
     updateInstallFailed: 'Download or installation failed.',
+    updateAfterRecording: 'Install once the recording ends: restarting would stop it.',
+    updateInstalledLater: 'Update installed: it takes effect next time Dixit starts.',
     updateFailedToast: 'Update failed: {error}',
 
     // Shell toasts

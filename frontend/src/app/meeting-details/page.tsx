@@ -157,7 +157,7 @@ function MeetingDetailsContent() {
             <p className="text-sm text-muted-foreground">{error}</p>
           ) : (
             <>
-              <h1 className="text-sm font-semibold text-destructive">{t('openFailed')}</h1>
+              <h1 className="text-sm font-semibold text-error">{t('openFailed')}</h1>
               <p role="alert" className="text-sm text-muted-foreground">{error}</p>
             </>
           )}

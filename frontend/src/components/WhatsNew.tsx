@@ -19,7 +19,7 @@ const setSeen = (version: string) => {
 /** After the onboarding of a fresh install: nothing is "new" yet. */
 export const markWhatsNewSeen = () => getVersion().then(setSeen).catch(console.error);
 
-/** Opens the news of the current version again (Settings › Info). */
+/** Opens the news of the current version again (Info, at the bottom of the sidebar). */
 export const showWhatsNew = () => window.dispatchEvent(new Event(SHOW_EVENT));
 
 const load = async (seen: string | null | 'current') => {

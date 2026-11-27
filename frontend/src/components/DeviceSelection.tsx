@@ -280,7 +280,7 @@ export function DeviceSelection({ selectedDevices, onDeviceChange, disabled = fa
   return (
     <div className="divide-y divide-border">
       {error && (
-        <p role="alert" className="py-2.5 text-sm text-destructive">
+        <p role="alert" className="py-2.5 text-sm text-error">
           {error}
         </p>
       )}

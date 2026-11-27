@@ -32,8 +32,18 @@ export const t = makeT({
     // Base models (first launch)
     modelsTitle: 'Scarico i modelli',
     modelsDescription:
-      'Trascrizione e riassunti girano sul tuo Mac. Al primo avvio Dixit scarica i suoi modelli di intelligenza artificiale, circa {size}: tienilo aperto e collegato a internet.',
+      'Dixit scarica circa {size} di modelli, una volta sola: poi trascrizione e riassunti girano sul tuo Mac. Durante il download tienilo aperto e collegato a internet.',
     modelsResume: 'Se il download si interrompe, riparte da dove era arrivato.',
+    modelsStart: 'Inizia download',
+    modelsLater: 'Più tardi',
+    modelsLaterHint: 'Più tardi chiude Dixit: il download riprende al prossimo avvio.',
+    modelsErrorNetwork: 'Connessione assente o interrotta. Controlla la rete e riprova.',
+    modelsErrorDisk: 'Spazio su disco insufficiente: servono circa {size} liberi. Libera spazio e riprova.',
+    modelsErrorGeneric: 'Download non riuscito. Riprova.',
+    modelsRate: '{speed}, mancano {time}',
+    modelsLessThanMinute: 'meno di un minuto',
+    modelsMinutes: 'circa {n} min',
+    modelsHours: 'circa {h} h {m} min',
 
     // Downloads
     downloadsTitle: 'Download dei modelli',
@@ -80,6 +90,7 @@ export const t = makeT({
     checking: 'Verifica…',
     openSettings: 'Apri Impostazioni',
     openSettingsFailed: 'Impossibile aprire Impostazioni di Sistema',
+    finishFailed: 'Impossibile completare la configurazione. Riprova.',
     displayNameLabel: 'Il tuo nome (come appare in Teams, es. Rossi Mario)',
     displayNamePlaceholder: 'Cognome Nome',
     displayNameHint:
@@ -118,8 +129,18 @@ export const t = makeT({
     // Base models (first launch)
     modelsTitle: 'Downloading the models',
     modelsDescription:
-      'Transcription and summaries run on your Mac. On first launch Dixit downloads its artificial intelligence models, about {size}: keep it open and online.',
+      'Dixit downloads about {size} of models, only once: then transcription and summaries run on your Mac. Keep it open and online while it downloads.',
     modelsResume: 'If the download stops, it picks up where it left off.',
+    modelsStart: 'Start download',
+    modelsLater: 'Later',
+    modelsLaterHint: 'Later quits Dixit: the download resumes on next launch.',
+    modelsErrorNetwork: 'No connection, or it dropped. Check the network and try again.',
+    modelsErrorDisk: 'Not enough disk space: about {size} must be free. Free up space and try again.',
+    modelsErrorGeneric: 'Download failed. Try again.',
+    modelsRate: '{speed}, {time} left',
+    modelsLessThanMinute: 'less than a minute',
+    modelsMinutes: 'about {n} min',
+    modelsHours: 'about {h} h {m} min',
 
     // Downloads
     downloadsTitle: 'Downloading models',
@@ -164,6 +185,7 @@ export const t = makeT({
     checking: 'Checking…',
     openSettings: 'Open Settings',
     openSettingsFailed: 'Could not open System Settings',
+    finishFailed: 'Could not finish setup. Try again.',
     displayNameLabel: 'Your name (as it appears in Teams, e.g. Rossi Mario)',
     displayNamePlaceholder: 'Last name First name',
     displayNameHint:

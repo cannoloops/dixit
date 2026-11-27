@@ -72,7 +72,7 @@ function DownloadToastContent({
         {isComplete ? (
           <Check className="h-4 w-4 text-primary" />
         ) : hasError ? (
-          <X className="h-4 w-4 text-destructive" />
+          <X className="h-4 w-4 text-error" />
         ) : isCancelled ? (
           <X className="h-4 w-4 text-muted-foreground" />
         ) : (
@@ -85,7 +85,7 @@ function DownloadToastContent({
         <p className="mb-1 truncate text-sm font-medium text-foreground">{download.displayName}</p>
 
         {hasError ? (
-          <p className="text-xs text-destructive">{download.error || t('toastDownloadFailed')}</p>
+          <p className="text-xs text-error">{download.error || t('toastDownloadFailed')}</p>
         ) : isComplete ? (
           <p className="text-xs text-muted-foreground">{t('toastDownloadComplete')}</p>
         ) : isCancelled ? (

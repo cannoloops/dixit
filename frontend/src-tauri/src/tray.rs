@@ -44,6 +44,13 @@ fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, item_id: &str) {
         "resume_recording" => resume_recording_handler(app),
         "stop_recording" => stop_recording_handler(app),
         "cancel_recording" => crate::autopilot::cancel_in_background(app),
+        "teams_transcription" => {
+            tauri::async_runtime::spawn(async {
+                if let Err(e) = crate::teams::teams_request_native_transcription().await {
+                    log::warn!("Tray: Teams transcription not requested: {e}");
+                }
+            });
+        }
         "open_window" => focus_main_window(app),
         "settings" => {
             focus_main_window(app);
@@ -362,6 +369,15 @@ fn build_menu<R: Runtime>(
                     .item(&MenuItemBuilder::with_id("pause_recording", tr("Metti in pausa", "Pause Recording")).build(app)?)
                     .item(&MenuItemBuilder::with_id("stop_recording", tr("Interrompi e salva", "Stop and Save")).build(app)?)
                     .item(&MenuItemBuilder::with_id("cancel_recording", tr("Annulla registrazione", "Cancel Recording")).build(app)?);
+                if crate::autopilot::teams_transcription_available(app) {
+                    builder = builder.item(
+                        &MenuItemBuilder::with_id(
+                            "teams_transcription",
+                            tr("Chiedi trascrizione Teams (visibile a tutti)", "Ask for Teams transcription (visible to everyone)"),
+                        )
+                        .build(app)?,
+                    );
+                }
             }
             RecordingState::Pausing => {
                 builder = builder
