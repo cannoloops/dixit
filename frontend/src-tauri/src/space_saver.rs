@@ -117,19 +117,12 @@ pub struct SpaceUsage {
     pub total_bytes: u64,
     pub audio_bytes: u64,
     pub meetings: u64,
-    /// Free space on the disk that holds the recordings, when known.
-    pub free_bytes: Option<u64>,
 }
 
 #[tauri::command]
 pub async fn recordings_space_usage<R: Runtime>(app: AppHandle<R>) -> Result<SpaceUsage, String> {
     let root = load_recording_preferences(&app).await.map(|p| p.save_folder).unwrap_or_else(|_| get_default_recordings_folder());
-    tokio::task::spawn_blocking(move || {
-        let mut usage = folder_usage(&root);
-        usage.free_bytes = free_space(&root);
-        usage
-    })
-    .await
+    tokio::task::spawn_blocking(move || folder_usage(&root)).await
     .map_err(|e| e.to_string())
 }
 
@@ -155,16 +148,6 @@ fn folder_usage(root: &Path) -> SpaceUsage {
         .unwrap_or(0);
     walk(root, &mut usage);
     usage
-}
-
-/// Free space of the disk whose mount point is the longest prefix of `path`.
-fn free_space(path: &Path) -> Option<u64> {
-    let path = path.canonicalize().ok()?;
-    sysinfo::Disks::new_with_refreshed_list()
-        .iter()
-        .filter(|d| path.starts_with(d.mount_point()))
-        .max_by_key(|d| d.mount_point().as_os_str().len())
-        .map(|d| d.available_space())
 }
 
 fn is_older(created_at: &str, cutoff: Option<chrono::DateTime<chrono::Utc>>) -> bool {
@@ -253,7 +236,6 @@ mod tests {
         }
         let u = folder_usage(root.path());
         assert_eq!((u.total_bytes, u.audio_bytes, u.meetings), (425, 400, 2));
-        assert!(free_space(root.path()).is_some_and(|f| f > 0));
         assert_eq!(folder_usage(&root.path().join("nope")), SpaceUsage::default());
     }
 

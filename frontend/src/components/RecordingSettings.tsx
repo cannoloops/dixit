@@ -35,7 +35,7 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
     preferred_system_device: null
   });
   const [loading, setLoading] = useState(true);
-  const [space, setSpace] = useState<{ total_bytes: number; audio_bytes: number; meetings: number; free_bytes: number | null } | null>(null);
+  const [space, setSpace] = useState<{ total_bytes: number; audio_bytes: number; meetings: number } | null>(null);
   const [saving, setSaving] = useState(false);
   const [showRecordingNotification, setShowRecordingNotification] = useState(true);
   const { isRecording } = useRecordingState();
@@ -244,11 +244,6 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
         >
           <span className="text-sm tabular-nums">{space ? formatBytes(space.total_bytes) : t('spaceLoading')}</span>
         </SettingRow>
-        {space?.free_bytes != null && (
-          <SettingRow label={t('spaceFree')}>
-            <span className="text-sm tabular-nums">{formatBytes(space.free_bytes)}</span>
-          </SettingRow>
-        )}
       </SettingsSection>
 
       <SettingsSection title={t('noticesSection')}>
