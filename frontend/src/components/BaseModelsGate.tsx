@@ -16,6 +16,13 @@ const gb = (bytes: number) =>
 const mbps = (bytesPerSec: number) =>
   `${(bytesPerSec / 1e6).toLocaleString(locale, { maximumFractionDigits: bytesPerSec < 1e7 ? 1 : 0 })} MB/s`;
 
+/** Translated cause of a failed download: the Rust error stays as a grey detail. */
+function errorMessage(raw: string, missing: number): string {
+  if (/no space left|os error 28|disk full/i.test(raw)) return t('modelsErrorDisk', { size: gb(missing) });
+  if (/error sending request|connect|dns|timed out|network|unreachable|offline|reset/i.test(raw)) return t('modelsErrorNetwork');
+  return t('modelsErrorGeneric');
+}
+
 function remaining(seconds: number): string {
   if (seconds < 60) return t('modelsLessThanMinute');
   const min = Math.round(seconds / 60);
@@ -74,9 +81,10 @@ export function BaseModelsGate({ children }: { children: React.ReactNode }) {
 
   const total = progress.totalBytes || missing;
   const percent = total ? (progress.downloadedBytes / total) * 100 : 0;
-  const quit = (
+  // No mode without models: "Later" quits, and the `.part` files resume on next launch.
+  const later = (
     <Button variant="ghost" size="sm" onClick={() => void exit(0)}>
-      {t('modelsQuit')}
+      {t('modelsLater')}
     </Button>
   );
 
@@ -93,11 +101,11 @@ export function BaseModelsGate({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-2">
               <Button onClick={download}>
                 <Download className="h-4 w-4" />
-                {t('modelsStart', { size: gb(missing) })}
+                {t('modelsStart')}
               </Button>
-              {quit}
+              {later}
             </div>
-            <p className="text-xs text-muted-foreground">{t('modelsResume')}</p>
+            <p className="text-xs text-muted-foreground">{t('modelsLaterHint')}</p>
           </div>
         ) : (
           <>
@@ -116,16 +124,14 @@ export function BaseModelsGate({ children }: { children: React.ReactNode }) {
 
             {error ? (
               <div className="space-y-2" role="alert">
-                <p className="text-sm text-destructive">
-                  {t('downloadFailed')} {t('downloadFailedRemedy')}
-                </p>
+                <p className="text-sm text-error">{errorMessage(error, missing)}</p>
                 <p className="wrap-break-word text-xs text-muted-foreground">{error}</p>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={download}>
                     <RefreshCw className="h-4 w-4" />
                     {t('tryAgain')}
                   </Button>
-                  {quit}
+                  {later}
                 </div>
               </div>
             ) : (
@@ -134,7 +140,7 @@ export function BaseModelsGate({ children }: { children: React.ReactNode }) {
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                   {t('modelsResume')}
                 </p>
-                {quit}
+                {later}
               </div>
             )}
           </>
