@@ -1,3 +1,12 @@
+**Novità in 1.0.0**
+- Al primo avvio Dixit chiede prima di scaricare i modelli (circa 9 GB), mostra velocità e tempo che manca e, se qualcosa va storto, spiega l'errore in italiano.
+- In Impostazioni › Registrazioni › Spazio su disco vedi quanto occupano le tue registrazioni, tra audio e trascrizioni.
+- Se hai modificato a mano un riassunto, Dixit chiede conferma prima di rigenerarlo o di cambiare il tipo di call.
+- La trascrizione nativa di Teams si chiede anche dal menu di Dixit nella barra dei menu, non solo dal banner.
+- Dixit non si riavvia più per un aggiornamento mentre stai registrando.
+- Con la barra laterale chiusa, un puntino ti ricorda che stai registrando.
+- Ritocchi all'interfaccia: i secondi dell'automazione si scrivono normalmente, le lingue di Importa audio e Ritrascrivi sono in italiano, contrasti più leggibili.
+
 **Novità in 0.3.0**
 - Dopo ogni aggiornamento Dixit ti mostra in un pannello cosa è cambiato, anche se hai saltato qualche versione. Lo rivedi da Impostazioni › Info › Rivedi le novità.
 - Prima di aggiornare, la finestra dell'aggiornamento ti dice cosa porta la nuova versione.
